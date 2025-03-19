@@ -908,11 +908,11 @@
                         tbody.innerHTML = orgCourses.map(course => {
                             const statusClass = course.completionStatus === 'COMPLETED' ? 'complete' :
                                 course.adminConfirmed ? 'confirmed' :
-                                course.instructorId ? 'scheduled' : 'pending';
+                                course.adminScheduledDashStatus === 'SCHEDULED' ? 'scheduled' : 'pending';
 
                             const statusText = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
                                 course.adminConfirmed ? 'CONFIRMED' :
-                                course.instructorId ? 'SCHEDULED' : 'PENDING';
+                                course.adminScheduledDashStatus === 'SCHEDULED' ? 'SCHEDULED' : 'PENDING';
 
                             const attendanceText = course.studentsAttended ? 
                                 `${course.studentsAttended}/${course.studentsRegistered} Present` : 

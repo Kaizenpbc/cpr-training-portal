@@ -1638,32 +1638,30 @@
                     return;
                 }
 
-                // Update course status across all portals
+                // Mark course as complete
                 courses[courseIndex].completionStatus = 'COMPLETED';
-                courses[courseIndex].completedDate = new Date().toISOString();
-                courses[courseIndex].completedBy = JSON.parse(localStorage.getItem('currentInstructor')).id;
+                courses[courseIndex].completionDate = new Date().toISOString();
+                courses[courseIndex].completedBy = JSON.parse(localStorage.getItem('currentInstructor')).name;
                 
-                // Update status for all portals
-                courses[courseIndex].status = 'COMPLETED';
-                courses[courseIndex].adminScheduledDashStatus = 'COMPLETED';
-                courses[courseIndex].adminInstructorDashStatus = 'COMPLETED';
-                courses[courseIndex].organizationStatus = 'COMPLETED';
-                courses[courseIndex].instructorStatus = 'COMPLETED';
-
-                // Set auto-archive date to one week from completion
-                const completionDate = new Date();
-                const archiveDate = new Date(completionDate);
+                // Set auto-archive date to 1 week from completion
+                const archiveDate = new Date();
                 archiveDate.setDate(archiveDate.getDate() + 7);
                 courses[courseIndex].autoArchiveDate = archiveDate.toISOString();
 
-                // Save changes
+                // Update status in all portals
+                courses[courseIndex].status = 'COMPLETED';
+                courses[courseIndex].instructorStatus = 'COMPLETED';
+                courses[courseIndex].adminStatus = 'COMPLETED';
+                courses[courseIndex].organizationStatus = 'COMPLETED';
+
+                // Update in localStorage
                 localStorage.setItem('courses', JSON.stringify(courses));
-                
+
                 // Update display
                 updateTodaysCourses();
                 updateClassList();
-                
-                showNotification('Course marked as COMPLETED', 'success');
+
+                showNotification('Course marked as completed', 'success');
             } catch (error) {
                 console.error('Error completing course:', error);
                 showNotification('Error completing course', 'error');
