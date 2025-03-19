@@ -634,6 +634,53 @@
             font-weight: 500;
             margin-top: 4px;
         }
+
+        /* Add modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .close-modal:hover {
+            color: #000;
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .modal-buttons button {
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -1529,30 +1576,33 @@
 
         function updateTodaysCourses() {
             try {
-            const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
-            if (!instructor) return;
-
-                const today = formatDateForStorage(new Date());
-                document.getElementById('todayDate').textContent = formatDateForDisplay(today);
+                const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!instructor) return;
 
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const todayCourses = courses.filter(course => 
-                    course.instructorId === instructor.id && 
-                    course.courseDate === today &&
-                    course.status === 'Confirmed'
-                );
-
                 const courseList = document.querySelector('.course-list');
                 const noCourses = document.querySelector('.no-courses');
+                
+                if (!courseList || !noCourses) return;
 
-                if (todayCourses.length === 0) {
-                    courseList.innerHTML = '';
-                    noCourses.style.display = 'block';
-                    noCourses.innerHTML = '<p>No confirmed courses for today</p>';  // Updated message
-                    return;
-                }
+                // Get today's date in YYYY-MM-DD format
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Filter for today's courses assigned to this instructor
+                const todayCourses = courses.filter(course => 
+                    course.courseDate === today && 
+                    course.instructorId === instructor.id &&
+                    course.adminConfirmed // Only show confirmed courses
+                );
 
-                noCourses.style.display = 'none';
+                // Update today's date display
+                document.getElementById('todayDate').textContent = formatDate(today);
+
+                // Show/hide no courses message
+                noCourses.style.display = todayCourses.length === 0 ? 'block' : 'none';
+                courseList.style.display = todayCourses.length === 0 ? 'none' : 'block';
+
+                // Update course list
                 courseList.innerHTML = todayCourses.map(course => `
                     <div class="course-card">
                         <div class="course-info">
@@ -1806,8 +1856,16 @@
         }
 
         function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-            currentCourseId = null;
+            try {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'none';
+                } else {
+                    console.error(`Modal ${modalId} not found`);
+                }
+            } catch (error) {
+                console.error('Error closing modal:', error);
+            }
         }
 
         function editCourse(courseId) {
@@ -1896,16 +1954,23 @@
         }
 
         function showAddUnregisteredModal() {
-            // Clear previous values
-            document.getElementById('unregisteredName').value = '';
-            document.getElementById('unregisteredEmail').value = '';
-            document.getElementById('unregisteredNotes').value = '';
-            
-            // Show the modal
-            document.getElementById('addUnregisteredModal').style.display = 'block';
-            
-            // Hide the attendance modal temporarily
-            document.getElementById('attendanceModal').style.display = 'none';
+            try {
+                // Clear previous values
+                document.getElementById('unregisteredName').value = '';
+                document.getElementById('unregisteredEmail').value = '';
+                document.getElementById('unregisteredNotes').value = '';
+                
+                // Show the modal
+                const modal = document.getElementById('addUnregisteredModal');
+                if (modal) {
+                    modal.style.display = 'block';
+                } else {
+                    console.error('Add unregistered modal not found');
+                }
+            } catch (error) {
+                console.error('Error showing unregistered modal:', error);
+                showNotification('Error opening add student form', 'error');
+            }
         }
 
         function addUnregisteredStudent() {
@@ -1920,6 +1985,11 @@
                 }
 
                 const courseId = localStorage.getItem('currentAttendanceCourse');
+                if (!courseId) {
+                    showNotification('No course selected', 'error');
+                    return;
+                }
+
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                 const courseIndex = courses.findIndex(c => c.id === courseId);
 
@@ -1951,9 +2021,8 @@
                 // Save changes
                 localStorage.setItem('courses', JSON.stringify(courses));
 
-                // Close unregistered modal and reopen attendance modal
+                // Close unregistered modal
                 closeModal('addUnregisteredModal');
-                document.getElementById('attendanceModal').style.display = 'block';
 
                 // Refresh attendance table
                 openAttendance(courseId);

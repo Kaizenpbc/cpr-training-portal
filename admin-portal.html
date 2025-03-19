@@ -2259,6 +2259,108 @@
                 showNotification('Error updating instructor dashboard', 'error');
             }
         }
+
+        function updateCourseList() {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseList = document.querySelector('.course-list');
+                const noCourses = document.querySelector('.no-courses');
+                
+                if (!courseList || !noCourses) return;
+
+                // Show/hide no courses message
+                noCourses.style.display = courses.length === 0 ? 'block' : 'none';
+                courseList.style.display = courses.length === 0 ? 'none' : 'block';
+
+                // Update course list
+                courseList.innerHTML = courses.map(course => `
+                    <div class="course-card">
+                        <div class="course-info">
+                            <h4>${course.classType}</h4>
+                            <p>Date: ${formatDate(course.courseDate)}</p>
+                            <p>Location: ${course.location}</p>
+                            <p>Organization: ${course.organizationName}</p>
+                            <p>Instructor: ${course.instructorName || 'Not Assigned'}</p>
+                            <p>Status: ${getStatusText(course.status)}</p>
+                            <p>Students Registered: ${course.studentsRegistered}</p>
+                            <p>Attendance: ${course.studentsAttended ? 
+                                `${course.studentsAttended}/${course.studentsRegistered} Present` : 
+                                'Not Taken'}</p>
+                        </div>
+                        <div class="course-actions">
+                            <button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">
+                                View Details
+                            </button>
+                            ${!course.instructorId ? `
+                                <button class="btn btn-success" onclick="showAssignInstructorModal('${course.id}')">
+                                    Assign Instructor
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error updating course list:', error);
+                showNotification('Error loading courses', 'error');
+            }
+        }
+
+        function viewStudentList(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses')) || [];
+                const course = courses.find(c => c.id === courseId);
+                
+                if (course) {
+                    const studentListTableBody = document.getElementById('studentListTableBody');
+                    if (!studentListTableBody) return;
+                    
+                    // Clear existing content
+                    studentListTableBody.innerHTML = '';
+                    
+                    if (!course.studentList || course.studentList.length === 0) {
+                        studentListTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="4" style="text-align: center;">No students added yet</td>
+                            </tr>
+                        `;
+                    } else {
+                        course.studentList.forEach(student => {
+                            const row = document.createElement('tr');
+                            // Determine attendance status
+                            const attendanceStatus = student.attendance === 'present' ? 
+                                '<span style="color: green;">Present</span>' : 
+                                '<span style="color: red;">Absent</span>';
+                            
+                            row.innerHTML = `
+                                <td>${student.name || '-'}</td>
+                                <td>${student.email || '-'}</td>
+                                <td>${student.status || 'Registered'}</td>
+                                <td>${attendanceStatus}</td>
+                            `;
+                            studentListTableBody.appendChild(row);
+                        });
+                    }
+                    
+                    // Show the modal
+                    document.getElementById('studentListModal').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error viewing student list:', error);
+                showNotification('Error loading student list', 'error');
+            }
+        }
+
+        function closeStudentListModal() {
+            try {
+                const modal = document.getElementById('studentListModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error closing student list modal:', error);
+                showNotification('Error closing modal', 'error');
+            }
+        }
     </script>
 </body>
 </html> 
