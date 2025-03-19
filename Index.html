@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA CPR Portal Selection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --background-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --header-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .main-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0 20px;
+            height: var(--header-height);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .nav-links a:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .welcome-header {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: var(--header-height);
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .welcome-header h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .portal-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+
+        .portal-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .portal-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .portal-icon {
+            font-size: 2.5em;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+        }
+
+        .portal-title {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .portal-description {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        .portal-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: var(--secondary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .portal-link:hover {
+            background-color: var(--primary-color);
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: var(--primary-color);
+            color: white;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .portal-container {
+                grid-template-columns: 1fr;
+                padding: 0 10px;
+            }
+
+            .welcome-header {
+                padding: 20px 10px;
+            }
+
+            .nav-links {
+                gap: 10px;
+            }
+        }
+
+        .documentation-viewer {
+            display: none;
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            z-index: 999;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .documentation-viewer.active {
+            display: block;
+        }
+
+        .close-docs {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--primary-color);
+        }
+
+        /* Documentation content styles */
+        #documentationContent {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        #documentationContent h1 {
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            font-size: 2em;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+        }
+
+        #documentationContent h2 {
+            color: var(--primary-color);
+            margin: 25px 0 15px;
+            font-size: 1.7em;
+        }
+
+        #documentationContent h3 {
+            color: var(--secondary-color);
+            margin: 20px 0 10px;
+            font-size: 1.4em;
+        }
+
+        #documentationContent ul, 
+        #documentationContent ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+
+        #documentationContent li {
+            margin: 5px 0;
+        }
+
+        #documentationContent ul ul,
+        #documentationContent ol ul,
+        #documentationContent ul ol,
+        #documentationContent ol ol {
+            margin: 5px 0;
+        }
+
+        @media (max-width: 768px) {
+            #documentationContent {
+                padding: 15px;
+                font-size: 14px;
+            }
+        }
+
+        .change-entry {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .change-entry:last-child {
+            border-bottom: none;
+        }
+
+        .change-entry h3 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .version-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .version-info h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .table-of-contents {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0 40px 0;
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .table-of-contents h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .table-of-contents ul ul {
+            padding-left: 20px;
+        }
+
+        .table-of-contents a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            display: inline-block;
+            padding: 4px 0;
+            transition: color 0.3s;
+        }
+
+        .table-of-contents a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        .changes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .changes-table th,
+        .changes-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .changes-table th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        .changes-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .changes-table td:first-child {
+            white-space: nowrap;
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+
+        .changes-table td:nth-child(2) {
+            white-space: nowrap;
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .changes-table ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .changes-table li {
+            margin: 5px 0;
+        }
+
+        @media (max-width: 768px) {
+            .changes-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="main-header">
+        <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="instructor-portal.html">Instructors</a>
+            <a href="organization-portal.html">Organizations</a>
+            <a href="admin-portal.html">Admin</a>
+            <a href="accounting-portal.html">Accounting</a>
+            <a href="#" onclick="viewDocumentation(event)">Documentation</a>
+        </nav>
+    </header>
+
+    <div class="welcome-header">
+        <h1>Welcome to GTA CPR</h1>
+        <p>Please select your portal to continue</p>
+    </div>
+
+    <main class="portal-container">
+        <div class="portal-card">
+            <i class="fas fa-chalkboard-teacher portal-icon"></i>
+            <h2 class="portal-title">Instructor Portal</h2>
+            <p class="portal-description">For instructors to manage their availability and view assigned courses.</p>
+            <a href="instructor-portal.html" class="portal-link">Enter Portal</a>
+        </div>
+
+        <div class="portal-card">
+            <i class="fas fa-building portal-icon"></i>
+            <h2 class="portal-title">Organization Portal</h2>
+            <p class="portal-description">For organizations to schedule and manage their CPR training courses.</p>
+            <a href="organization-portal.html" class="portal-link">Enter Portal</a>
+        </div>
+
+        <div class="portal-card">
+            <i class="fas fa-user-shield portal-icon"></i>
+            <h2 class="portal-title">Admin Portal</h2>
+            <p class="portal-description">For administrators to manage courses, instructors, and organizations.</p>
+            <a href="admin-portal.html" class="portal-link">Enter Portal</a>
+        </div>
+
+        <div class="portal-card">
+            <i class="fas fa-calculator portal-icon"></i>
+            <h2 class="portal-title">Accounting Portal</h2>
+            <p class="portal-description">For managing billing, payments, and financial records.</p>
+            <a href="accounting-portal.html" class="portal-link" onclick="console.log('Accounting portal link clicked'); return true;">Enter Portal</a>
+        </div>
+
+        <div class="portal-card">
+            <i class="fas fa-book portal-icon"></i>
+            <h2 class="portal-title">Documentation</h2>
+            <p class="portal-description">Access system documentation, changelogs, and user guides.</p>
+            <a href="#" class="portal-link" onclick="viewDocumentation(event)">View Docs</a>
+        </div>
+    </main>
+
+    <!-- Documentation Viewer -->
+    <div id="documentationViewer" class="documentation-viewer">
+        <span class="close-docs" onclick="closeDocumentation()">&times;</span>
+        <div id="documentationContent">
+            <h1>CPR Course Management System Documentation</h1>
+
+            <div class="table-of-contents">
+                <h2>Table of Contents</h2>
+                <ul>
+                    <li><a href="#features">1. Features & Functionalities</a>
+                        <ul>
+                            <li><a href="#admin-features">Admin Portal Features</a></li>
+                            <li><a href="#instructor-features">Instructor Portal Features</a></li>
+                            <li><a href="#org-features">Organization Portal Features</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#changes">2. Change History</a></li>
+                    <li><a href="#version">3. Version Information</a></li>
+                </ul>
+            </div>
+
+            <h2 id="features">1. Features & Functionalities</h2>
+
+            <h3 id="admin-features">Admin Portal Features</h3>
+            <ul>
+                <li>Course Management
+                    <ul>
+                        <li>View all scheduled courses</li>
+                        <li>Confirm course bookings</li>
+                        <li>Assign instructors to courses</li>
+                        <li>Monitor course status and completion</li>
+                    </ul>
+                </li>
+                <li>Instructor Management
+                    <ul>
+                        <li>Add/remove instructors</li>
+                        <li>Set instructor availability</li>
+                        <li>Track instructor assignments</li>
+                    </ul>
+                </li>
+                <li>Organization Management
+                    <ul>
+                        <li>View organization requests</li>
+                        <li>Manage organization accounts</li>
+                        <li>Track organization course history</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3 id="instructor-features">Instructor Portal Features</h3>
+            <ul>
+                <li>Availability Management
+                    <ul>
+                        <li>Set weekly availability schedule</li>
+                        <li>Mark specific dates as unavailable</li>
+                        <li>Set preferred teaching locations</li>
+                        <li>Specify maximum courses per day/week</li>
+                        <li>Set vacation periods or time-off blocks</li>
+                    </ul>
+                </li>
+                <li>Course Management
+                    <ul>
+                        <li>View assigned courses with detailed information:
+                            <ul>
+                                <li>Course date, time, and location</li>
+                                <li>Organization details</li>
+                                <li>Number of registered students</li>
+                                <li>Course type and duration</li>
+                            </ul>
+                        </li>
+                        <li>Attendance Management
+                            <ul>
+                                <li>Take attendance with real-time updates</li>
+                                <li>Mark late arrivals or early departures</li>
+                                <li>Record no-shows and cancellations</li>
+                                <li>Add notes for attendance exceptions</li>
+                            </ul>
+                        </li>
+                        <li>Course Completion
+                            <ul>
+                                <li>Mark courses as complete with timestamp</li>
+                                <li>Add detailed completion notes</li>
+                                <li>Record certification details</li>
+                                <li>Document any course incidents or special circumstances</li>
+                                <li>Upload course materials or resources</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li>Student Management
+                    <ul>
+                        <li>Student List Management
+                            <ul>
+                                <li>View complete student lists with contact information</li>
+                                <li>Add unregistered or walk-in students</li>
+                                <li>Update student information as needed</li>
+                                <li>Mark special accommodations or requirements</li>
+                            </ul>
+                        </li>
+                        <li>Attendance Tracking
+                            <ul>
+                                <li>Track individual student attendance status</li>
+                                <li>Record participation and engagement</li>
+                                <li>Note completion of practical exercises</li>
+                                <li>Document assessment results</li>
+                            </ul>
+                        </li>
+                        <li>Student Performance
+                            <ul>
+                                <li>Record practical skills assessments</li>
+                                <li>Track written test scores</li>
+                                <li>Add performance notes and feedback</li>
+                                <li>Flag students requiring additional attention</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li>Communication Tools
+                    <ul>
+                        <li>Send notifications to admin about course status</li>
+                        <li>Report technical issues or facility problems</li>
+                        <li>Request support or additional resources</li>
+                        <li>Submit feedback about course materials</li>
+                    </ul>
+                </li>
+                <li>Resource Access
+                    <ul>
+                        <li>Download course materials and handouts</li>
+                        <li>Access teaching guides and manuals</li>
+                        <li>View emergency protocols and procedures</li>
+                        <li>Access equipment checklists</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3 id="org-features">Organization Portal Features</h3>
+            <ul>
+                <li>Course Booking
+                    <ul>
+                        <li>Schedule new courses</li>
+                        <li>Upload student lists</li>
+                        <li>View course status</li>
+                        <li>Track attendance</li>
+                    </ul>
+                </li>
+                <li>Student Management
+                    <ul>
+                        <li>Manage student registrations</li>
+                        <li>View attendance records</li>
+                        <li>Download completion records</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h2 id="changes">2. Change History</h2>
+            <div class="change-log">
+                <table class="changes-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Changes</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>March 20, 2024</td>
+                            <td>Course Completion</td>
+                            <td>Added course completion functionality</td>
+                            <td>
+                                <ul>
+                                    <li>Instructors can now mark courses as complete</li>
+                                    <li>Added completion notes and date tracking</li>
+                                    <li>Updated status display across all portals</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>March 20, 2024</td>
+                            <td>Attendance</td>
+                            <td>Enhanced attendance tracking system</td>
+                            <td>
+                                <ul>
+                                    <li>Added real-time attendance updates</li>
+                                    <li>Improved attendance count accuracy</li>
+                                    <li>Added unregistered student handling</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>March 19, 2024</td>
+                            <td>System</td>
+                            <td>Improved status synchronization</td>
+                            <td>
+                                <ul>
+                                    <li>Fixed status display in organization portal</li>
+                                    <li>Enhanced instructor name visibility</li>
+                                    <li>Updated course confirmation process</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>March 19, 2024</td>
+                            <td>Students</td>
+                            <td>Added student list management</td>
+                            <td>
+                                <ul>
+                                    <li>Implemented Excel file upload</li>
+                                    <li>Added student list validation</li>
+                                    <li>Enhanced student data display</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>March 18, 2024</td>
+                            <td>Release</td>
+                            <td>Initial system release</td>
+                            <td>
+                                <ul>
+                                    <li>Basic course management functionality</li>
+                                    <li>Instructor assignment system</li>
+                                    <li>Organization booking process</li>
+                                </ul>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="version">3. Version Information</h2>
+            <div class="version-info">
+                <h3>Current Version: 1.0.0</h3>
+                <ul>
+                    <li><strong>Release Date:</strong> March 20, 2024</li>
+                    <li><strong>Status:</strong> Production</li>
+                    <li><strong>Major Features:</strong>
+                        <ul>
+                            <li>Course Management System</li>
+                            <li>Attendance Tracking</li>
+                            <li>Student List Management</li>
+                            <li>Course Completion Handling</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 GTA CPR. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function viewDocumentation(event) {
+            event.preventDefault();
+            document.getElementById('documentationViewer').classList.add('active');
+        }
+
+        function closeDocumentation() {
+            document.getElementById('documentationViewer').classList.remove('active');
+        }
+
+        // Close documentation when clicking outside the content
+        document.getElementById('documentationViewer').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeDocumentation();
+            }
+        });
+
+        // Debug traces for portal links
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded');
+            
+            // Add click event listeners to all portal links
+            document.querySelectorAll('.portal-link').forEach(link => {
+                console.log('Found portal link:', link.href);
+                link.addEventListener('click', function(e) {
+                    console.log('Portal link clicked:', this.href);
+                });
+            });
+
+            // Specific trace for accounting portal
+            const accountingLink = document.querySelector('a[href="accounting-portal.html"]');
+            if (accountingLink) {
+                console.log('Accounting portal link found:', accountingLink.href);
+            } else {
+                console.error('Accounting portal link not found!');
+            }
+        });
+    </script>
+</body>
+
+</html>
+

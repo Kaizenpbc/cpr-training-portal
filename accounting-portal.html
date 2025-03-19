@@ -1,0 +1,2881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA CPR - Accounting Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --background-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --header-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .main-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0 20px;
+            height: var(--header-height);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            margin-left: auto;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .nav-links a:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .content-wrapper {
+            display: flex;
+            margin-top: var(--header-height);
+            min-height: calc(100vh - var(--header-height));
+        }
+
+        .left-nav {
+            width: 250px;
+            background-color: white;
+            padding: 20px;
+            height: calc(100vh - 60px);
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            background-color: #ecf0f1;
+            color: var(--text-color);
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+            color: var(--text-color);
+        }
+
+        .nav-link:hover {
+            background-color: #dfe6e9;
+        }
+
+        .nav-link.active {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .nav-link.active i {
+            color: white;
+        }
+
+        /* Add styles for the danger button (Reset All Data) */
+        .nav-link.btn-danger {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .nav-link.btn-danger i {
+            color: white;
+        }
+
+        .nav-link.btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .nav-divider {
+            height: 1px;
+            background-color: #34495e;
+            margin: 15px 0;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 0;
+            position: relative;
+        }
+
+        .welcome-banner {
+            background-color: #f5f5f5;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .portal-title {
+            flex: 1;
+            text-align: center;
+            font-size: 24px;
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        .welcome-banner p {
+            margin: 0;
+            text-align: right;
+            font-size: 1.1em;
+            color: var(--text-color);
+            min-width: 200px;
+        }
+
+        .section {
+            padding: 20px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .status-paid { background-color: #2ecc71; color: white; }
+        .status-pending { background-color: #f1c40f; color: black; }
+        .status-overdue { background-color: #e74c3c; color: white; }
+
+        /* Button Styles */
+        .btn-primary {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-color);
+        }
+
+        /* Table Styles */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .table th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+        }
+
+        .table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        /* Grid Layout for Dashboard Cards */
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Table Header Styles */
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .table-header h3 {
+            margin: 0;
+        }
+
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .analytics-tables {
+            margin-top: 40px;
+        }
+
+        .analytics-tables .table-container {
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 300px;
+        }
+
+        .chart-container h4 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+
+        .col-md-6 {
+            width: 48%;
+            margin: 1%;
+        }
+
+        @media (max-width: 768px) {
+            .col-md-6 {
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .search-field {
+            flex: 1;
+        }
+
+        .search-field label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+
+        .search-results {
+            margin-top: 20px;
+        }
+
+        #resultCount {
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .search-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .search-field {
+                width: 100%;
+            }
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-create-invoice {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 0.9em;
+        }
+
+        .btn-create-invoice:hover {
+            background-color: #c0392b;
+        }
+
+        .btn-secondary i {
+            margin-right: 5px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .modal-footer {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary-color);
+            outline: none;
+        }
+
+        .line-item {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .mt-2 {
+            margin-top: 10px;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: -5px;
+        }
+        .col-md-3, .col-md-6, .col-md-12 {
+            padding: 5px;
+            flex: 0 0 25%;
+        }
+        .col-md-6 {
+            flex: 0 0 50%;
+        }
+        .col-md-12 {
+            flex: 0 0 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <h1>GTA CPR</h1>
+        <nav class="nav-links">
+            <a href="Index.html">Home</a>
+            <a href="instructor-portal.html">Instructors</a>
+            <a href="organization-portal.html">Organizations</a>
+            <a href="admin-portal.html">Admin</a>
+            <a href="accounting-portal.html" class="active">Accounting</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </nav>
+    </header>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+        <!-- Left Navigation -->
+        <nav class="left-nav">
+            <a href="#dashboard" class="nav-link active" onclick="showSection('dashboard')">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#invoices" class="nav-link" onclick="showSection('invoices')">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Invoices</span>
+            </a>
+            <a href="#payments" class="nav-link" onclick="showSection('payments')">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Payments</span>
+            </a>
+            <a href="#rates" class="nav-link" onclick="showSection('rates')">
+                <i class="fas fa-dollar-sign"></i>
+                <span>Rate Management</span>
+            </a>
+            <a href="#search" class="nav-link" onclick="showSection('search')">
+                <i class="fas fa-search"></i>
+                <span>Advanced Search</span>
+            </a>
+            <a href="#analytics" class="nav-link" onclick="showSection('analytics')">
+                <i class="fas fa-chart-bar"></i>
+                <span>Analytics</span>
+            </a>
+            <a href="#reports" class="nav-link" onclick="showSection('reports')">
+                <i class="fas fa-file-alt"></i>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Welcome Banner -->
+            <div class="welcome-banner">
+                <div class="portal-title">
+                    <h2>Accounting Portal</h2>
+                </div>
+                <p>Welcome, <span id="userDisplay">Admin</span></p>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="section">
+                <div class="row">
+                    <div class="dashboard-card">
+                        <h3>Total Revenue</h3>
+                        <h2 id="totalRevenue">$0.00</h2>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Outstanding Invoices</h3>
+                        <h2 id="outstandingInvoices">0</h2>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Overdue Payments</h3>
+                        <h2 id="overduePayments">0</h2>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Total Courses</h3>
+                        <h2 id="totalCourses">0</h2>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="paymentDistributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- To Be Invoiced Section -->
+            <div id="toBeInvoiced" class="section" style="display: none;">
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3>Classes To Be Invoiced</h3>
+                        <button onclick="refreshToBeInvoiced()" class="btn-primary">Refresh</button>
+                    </div>
+                    <table id="toBeInvoicedTable" class="table">
+                        <thead>
+                            <tr>
+                                <th>Class ID</th>
+                                <th>Completion Date</th>
+                                <th>Organization</th>
+                                <th>Course Type</th>
+                                <th>Instructor</th>
+                                <th>Attendance</th>
+                                <th>Fee</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div id="analytics" class="section" style="display: none;">
+                <div class="analytics-header">
+                    <h3>Class Analytics</h3>
+                    <button onclick="exportAnalyticsReport()" class="btn-primary">Export Report</button>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="row">
+                    <div class="dashboard-card">
+                        <h3>Total Classes Scheduled</h3>
+                        <h2 id="totalClassesScheduled">0</h2>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Classes Completed</h3>
+                        <h2 id="totalClassesCompleted">0</h2>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Classes Cancelled</h3>
+                        <h2 id="totalClassesCancelled">0</h2>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Average Attendance Rate</h3>
+                        <h2 id="averageAttendanceRate">0%</h2>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="row">
+                    <div class="chart-container col-md-6">
+                        <h4>Class Status Distribution</h4>
+                        <canvas id="classStatusChart"></canvas>
+                    </div>
+                    <div class="chart-container col-md-6">
+                        <h4>Revenue by Organization</h4>
+                        <canvas id="revenueByOrgChart"></canvas>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="chart-container col-md-6">
+                        <h4>Student Attendance</h4>
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                    <div class="chart-container col-md-6">
+                        <h4>Monthly Class Distribution</h4>
+                        <canvas id="monthlyClassChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Detailed Analytics Tables -->
+                <div class="analytics-tables">
+                    <div class="table-container">
+                        <h4>Organization Performance</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Organization</th>
+                                    <th>Total Classes</th>
+                                    <th>Completed</th>
+                                    <th>Cancelled</th>
+                                    <th>Total Revenue</th>
+                                    <th>Avg. Attendance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orgAnalyticsTable"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <h4>Instructor Performance</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Instructor</th>
+                                    <th>Classes Taught</th>
+                                    <th>Total Students</th>
+                                    <th>Avg. Attendance</th>
+                                    <th>Revenue Generated</th>
+                                </tr>
+                            </thead>
+                            <tbody id="instructorAnalyticsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoices Section -->
+            <div id="invoices" class="section" style="display: none;">
+                <!-- Completed Courses Table -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3>To Bill</h3>
+                        <div class="table-actions">
+                            <button onclick="refreshCompletedCourses()" class="btn-secondary">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <table id="completedCoursesTable" class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Organization</th>
+                                <th>Location</th>
+                                <th>Course Type</th>
+                                <th>Students Registered</th>
+                                <th>Students Attended</th>
+                                <th>Instructor</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="nav-divider"></div>
+
+                <!-- Existing Invoices Table -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3>Invoices</h3>
+                        <button onclick="showCreateInvoiceModal()" class="btn-primary">Create Invoice</button>
+                    </div>
+                    <table id="invoicesTable" class="table">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Date</th>
+                                <th>Client</th>
+                                <th>Course</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Due Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Payments Section -->
+            <div id="payments" class="section" style="display: none;">
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3>Payments</h3>
+                        <button onclick="showProcessPaymentModal()" class="btn-primary">Process Payment</button>
+                    </div>
+                    <table id="paymentsTable" class="table">
+                        <thead>
+                            <tr>
+                                <th>Payment ID</th>
+                                <th>Date</th>
+                                <th>Invoice #</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reports Section -->
+            <div id="reports" class="section" style="display: none;">
+                <h3>Financial Reports</h3>
+                <div class="report-options">
+                    <button class="btn-primary">Generate Revenue Report</button>
+                    <button class="btn-primary">Generate Payment Report</button>
+                    <button class="btn-primary">Export to Excel</button>
+                </div>
+            </div>
+
+            <!-- Rate Management Section -->
+            <div id="rates" class="section" style="display: none;">
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3>Organization Rate Management</h3>
+                        <button onclick="showAddRateModal()" class="btn-primary">
+                            <i class="fas fa-plus"></i> Add New Rate
+                        </button>
+                    </div>
+                    <table id="ratesTable" class="table">
+                        <thead>
+                            <tr>
+                                <th>Organization</th>
+                                <th>Course Type</th>
+                                <th>Rate Type</th>
+                                <th>Base Rate</th>
+                                <th>Per Student Rate</th>
+                                <th>Min Students</th>
+                                <th>Max Students</th>
+                                <th>Discount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rate Management Modal -->
+    <div id="rateModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="rateModalTitle">Add New Rate</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="rateForm">
+                    <input type="hidden" id="rateId">
+                    <div class="form-group">
+                        <label for="rateOrganization">Organization*</label>
+                        <select id="rateOrganization" class="form-control" required>
+                            <option value="">Select Organization</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rateCourseType">Course Type*</label>
+                        <select id="rateCourseType" class="form-control" required>
+                            <option value="">Select Course Type</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rateType">Rate Type*</label>
+                        <select id="rateType" class="form-control" required onchange="toggleRateFields()">
+                            <option value="">Select Rate Type</option>
+                            <option value="Flat">Flat Rate</option>
+                            <option value="Per Student">Per Student</option>
+                            <option value="Hybrid">Hybrid (Base + Per Student)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="baseRateGroup">
+                        <label for="baseRate">Base Rate ($)</label>
+                        <input type="number" id="baseRate" class="form-control" min="0" step="0.01">
+                    </div>
+                    <div class="form-group" id="perStudentRateGroup">
+                        <label for="perStudentRate">Per Student Rate ($)</label>
+                        <input type="number" id="perStudentRate" class="form-control" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="minStudents">Minimum Students</label>
+                        <input type="number" id="minStudents" class="form-control" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="maxStudents">Maximum Students</label>
+                        <input type="number" id="maxStudents" class="form-control" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="discount">Discount (%)</label>
+                        <input type="number" id="discount" class="form-control" min="0" max="100" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="rateNotes">Notes</label>
+                        <textarea id="rateNotes" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeRateModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="saveRate()">Save Rate</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Invoice Modal -->
+    <div id="invoiceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Invoice</h3>
+                <span class="close" onclick="closeModal('invoiceModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="createInvoiceForm" onsubmit="saveInvoice(event)">
+                    <div class="form-group">
+                        <label for="organizationName">Organization Name:</label>
+                        <input type="text" id="organizationName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="organizationAddress">Address:</label>
+                        <textarea id="organizationAddress" class="form-control" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="attention">Attention:</label>
+                        <input type="text" id="attention" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="invoiceDate">Invoice Date:</label>
+                        <input type="date" id="invoiceDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dueDate">Due Date:</label>
+                        <input type="date" id="dueDate" class="form-control" required>
+                    </div>
+
+                    <!-- Line Items Section -->
+                    <div class="form-group">
+                        <h4>Course Details</h4>
+                        <div class="line-item">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label for="courseDate">Date:</label>
+                                    <input type="date" id="courseDate" class="form-control" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="courseType">Type of Class:</label>
+                                    <input type="text" id="courseType" class="form-control" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="studentsAttended"># of Students Attended:</label>
+                                    <input type="number" id="studentsAttended" class="form-control" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="unitPrice">Unit Price:</label>
+                                    <input type="number" id="unitPrice" class="form-control" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-12">
+                                    <label for="lineItemNotes">Notes:</label>
+                                    <input type="text" id="lineItemNotes" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Totals Section -->
+                    <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="subtotal">Subtotal:</label>
+                                <input type="number" id="subtotal" class="form-control" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="discount">Discount (%):</label>
+                                <input type="number" id="discount" class="form-control" value="0" min="0" max="100">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <label for="totalAmount">Total Amount:</label>
+                                <input type="number" id="totalAmount" class="form-control" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="invoiceNotes">Additional Notes:</label>
+                        <textarea id="invoiceNotes" class="form-control"></textarea>
+                    </div>
+                    <input type="hidden" id="courseId">
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" onclick="closeModal('invoiceModal')">Cancel</button>
+                        <button type="submit" class="btn-primary">Create Invoice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Debug traces
+        console.log('Accounting portal page loaded');
+
+        function showSection(sectionId) {
+            console.log('Showing section:', sectionId);
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.style.display = 'none';
+                console.log('Hidden section:', section.id);
+            });
+            // Show selected section
+            const selectedSection = document.getElementById(sectionId);
+            if (selectedSection) {
+                console.log('Displaying section:', sectionId);
+                selectedSection.style.display = 'block';
+                
+                // If showing invoices section, update completed courses
+                if (sectionId === 'invoices') {
+                    console.log('Invoices section shown, updating completed courses');
+                    updateCompletedCourses();
+                }
+            } else {
+                console.error('Section not found:', sectionId);
+            }
+        }
+
+        // Add page load traces
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded');
+            
+            // Create dummy invoices if none exist
+            const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+            console.log('Current invoices:', invoices);
+            
+            if (invoices.length === 0) {
+                console.log('Creating dummy invoices');
+                const dummyInvoices = [
+                    {
+                        id: 'INV-001',
+                        organizationName: 'Anderson',
+                        organizationAddress: '123 Main St, Toronto, ON M5V 2L7',
+                        attention: 'John Smith',
+                        invoiceDate: '2024-03-15',
+                        dueDate: '2024-04-15',
+                        paymentTerms: 'Net 30',
+                        notes: 'BLS Training for Healthcare Providers',
+                        lineItems: [
+                            {
+                                date: '2024-03-15',
+                                description: 'BLS Provider Course',
+                                amount: 1500.00
+                            },
+                            {
+                                date: '2024-03-15',
+                                description: 'Course Materials',
+                                amount: 250.00
+                            }
+                        ],
+                        subtotal: 1750.00,
+                        discount: 0,
+                        totalAmount: 1750.00,
+                        status: 'Pending',
+                        createdAt: '2024-03-15T10:00:00.000Z'
+                    },
+                    {
+                        id: 'INV-002',
+                        organizationName: 'Anderson',
+                        organizationAddress: '123 Main St, Toronto, ON M5V 2L7',
+                        attention: 'John Smith',
+                        invoiceDate: '2024-03-10',
+                        dueDate: '2024-04-10',
+                        paymentTerms: 'Net 30',
+                        notes: 'ACLS Training for Medical Staff',
+                        lineItems: [
+                            {
+                                date: '2024-03-10',
+                                description: 'ACLS Provider Course',
+                                amount: 2000.00
+                            },
+                            {
+                                date: '2024-03-10',
+                                description: 'Course Materials',
+                                amount: 300.00
+                            }
+                        ],
+                        subtotal: 2300.00,
+                        discount: 5,
+                        totalAmount: 2185.00,
+                        status: 'Paid',
+                        createdAt: '2024-03-10T09:00:00.000Z'
+                    }
+                ];
+                localStorage.setItem('invoices', JSON.stringify(dummyInvoices));
+                console.log('Dummy invoices created:', dummyInvoices);
+            }
+            
+            // Check if required elements exist
+            const elements = {
+                dashboard: document.getElementById('dashboard'),
+                invoices: document.getElementById('invoices'),
+                payments: document.getElementById('payments'),
+                reports: document.getElementById('reports'),
+                userDisplay: document.getElementById('userDisplay'),
+                revenueChart: document.getElementById('revenueChart'),
+                paymentDistributionChart: document.getElementById('paymentDistributionChart')
+            };
+
+            // Log which elements were found
+            Object.entries(elements).forEach(([name, element]) => {
+                console.log(`Element "${name}" ${element ? 'found' : 'not found'}`);
+            });
+
+            // Update invoices table immediately
+            console.log('Updating invoices table');
+            updateInvoicesTable();
+            
+            // Show invoices section by default
+            console.log('Showing invoices section');
+            showSection('invoices');
+
+            // Check if scripts are loaded
+            console.log('Chart.js loaded:', typeof Chart !== 'undefined');
+            console.log('Accounting.js loaded:', typeof updateDashboardData !== 'undefined');
+
+            console.log('confirmedCourses:', JSON.parse(localStorage.getItem('confirmedCourses') || '[]'));
+            console.log('adminCompletedCourses:', JSON.parse(localStorage.getItem('adminCompletedCourses') || '[]'));
+        });
+
+        function handleLogout() {
+            // Add any cleanup or session termination logic here
+            window.location.href = 'Index.html';
+        }
+
+        // Add active class to current nav item
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        function updateCompletedCourses() {
+            try {
+                console.log('Starting updateCompletedCourses function');
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                console.log('Total courses found:', courses.length);
+                
+                const tableBody = document.querySelector('#completedCoursesTable tbody');
+                console.log('Table body element found:', !!tableBody);
+                
+                if (!tableBody) {
+                    console.error('Completed courses table body not found');
+                    return;
+                }
+
+                // Filter completed courses
+                const completedCourses = courses.filter(course => {
+                    // Check if course is marked as complete in any of the status fields
+                    const isComplete = course.completionStatus === 'Complete' || 
+                                     course.adminScheduledDashStatus === 'Complete' ||
+                                     course.isComplete === true ||
+                                     course.status === 'Complete';
+                    
+                    // Check if course doesn't already have an invoice
+                    const hasNoInvoice = !course.invoiceId && !course.invoiceStatus;
+                    
+                    console.log(`Course ${course.id}: completionStatus=${course.completionStatus}, adminScheduledDashStatus=${course.adminScheduledDashStatus}, isComplete=${isComplete}, hasNoInvoice=${hasNoInvoice}`);
+                    return isComplete && hasNoInvoice;
+                });
+
+                console.log('Completed courses found:', completedCourses.length);
+                console.log('Completed courses:', completedCourses);
+
+                // Sort by completion date (most recent first)
+                completedCourses.sort((a, b) => {
+                    const dateA = a.completedDate || a.courseDate;
+                    const dateB = b.completedDate || b.courseDate;
+                    return new Date(dateB) - new Date(dateA);
+                });
+                console.log('Sorted completed courses:', completedCourses);
+
+                // Update completed courses table
+                const tableHTML = completedCourses.length ? 
+                    completedCourses.map(course => {
+                        console.log('Processing course:', course.id);
+                        return `
+                            <tr>
+                                <td>${formatDate(course.courseDate)}</td>
+                                <td>${course.organizationName || 'N/A'}</td>
+                                <td>${course.location}</td>
+                                <td>${course.classType}</td>
+                                <td>${course.studentsRegistered || 0}</td>
+                                <td>${course.studentsAttended || 0}</td>
+                                <td>${course.displayInstructorName ? course.instructorName : 'Not Assigned'}</td>
+                                <td>${course.completionNotes || '-'}</td>
+                                <td>
+                                    <button class="btn btn-primary" onclick="viewStudentList('${course.id}')">View Students</button>
+                                    <button class="btn btn-info" onclick="createInvoice('${course.id}')">Create Invoice</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('') :
+                    '<tr><td colspan="9" style="text-align: center;">No courses to bill</td></tr>';
+
+                console.log('Generated table HTML:', tableHTML);
+                tableBody.innerHTML = tableHTML;
+
+                // Update payment status counters
+                updatePaymentStatus();
+                console.log('Completed updateCompletedCourses function');
+            } catch (error) {
+                console.error('Error in updateCompletedCourses:', error);
+                showNotification('Error updating completed courses list', 'error');
+            }
+        }
+
+        // Add function to refresh completed courses
+        function refreshCompletedCourses() {
+            console.log('Refreshing completed courses');
+            updateCompletedCourses();
+            showNotification('Completed courses list refreshed', 'success');
+        }
+
+        // Add function to view student list
+        function viewStudentList(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const course = courses.find(c => c.id === courseId);
+
+                if (!course) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Create and show modal with student list
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Student List - ${course.classType}</h3>
+                            <span class="close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${course.studentList.map(student => `
+                                        <tr>
+                                            <td>${student.name}</td>
+                                            <td>${student.email}</td>
+                                            <td>${student.attendance || 'Not Recorded'}</td>
+                                            <td>${student.notes || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                modal.style.display = 'flex';
+            } catch (error) {
+                console.error('Error viewing student list:', error);
+                showNotification('Error viewing student list', 'error');
+            }
+        }
+
+        // Add function to show notifications
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Add formatDate function
+        function formatDate(dateString) {
+            try {
+                if (!dateString) return 'N/A';
+                const date = new Date(dateString);
+                // Add timezone offset to get local date
+                const localDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+                return localDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return 'Invalid Date';
+            }
+        }
+
+        // Add event listener for section changes
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM Content Loaded - Setting up section observer');
+            // Update completed courses when the invoices section is shown
+            const invoicesSection = document.getElementById('invoices');
+            console.log('Invoices section found:', !!invoicesSection);
+            
+            if (invoicesSection) {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                            console.log('Invoices section style changed:', invoicesSection.style.display);
+                            if (invoicesSection.style.display === 'block') {
+                                console.log('Invoices section shown, updating completed courses');
+                                updateCompletedCourses();
+                            }
+                        }
+                    });
+                });
+
+                observer.observe(invoicesSection, { attributes: true });
+                console.log('Observer set up for invoices section');
+            }
+        });
+
+        function markAsPaid(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+
+                if (courseIndex === -1) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Mark course as paid
+                courses[courseIndex].paymentStatus = 'Paid';
+                courses[courseIndex].paymentDate = new Date().toISOString();
+                courses[courseIndex].paidBy = 'Accounting Portal';
+
+                localStorage.setItem('courses', JSON.stringify(courses));
+                updateCompletedCourses();
+                updatePaymentStatus();
+                showNotification('Course marked as paid successfully', 'success');
+            } catch (error) {
+                console.error('Error marking course as paid:', error);
+                showNotification('Error marking course as paid', 'error');
+            }
+        }
+
+        function updatePaymentStatus() {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                
+                // Calculate total revenue
+                const totalRevenue = invoices
+                    .filter(inv => inv.status === 'Paid')
+                    .reduce((sum, inv) => sum + inv.amount, 0);
+                
+                // Calculate outstanding invoices
+                const outstandingInvoices = invoices.filter(inv => inv.status === 'Pending').length;
+                
+                // Calculate overdue payments
+                const today = new Date();
+                const overduePayments = invoices.filter(inv => {
+                    if (inv.status === 'Pending') {
+                        const dueDate = new Date(inv.dueDate);
+                        return dueDate < today;
+                    }
+                    return false;
+                }).length;
+                
+                // Calculate total courses
+                const totalCourses = courses.length;
+
+                // Update dashboard cards
+                const totalRevenueElement = document.getElementById('totalRevenue');
+                const outstandingInvoicesElement = document.getElementById('outstandingInvoices');
+                const overduePaymentsElement = document.getElementById('overduePayments');
+                const totalCoursesElement = document.getElementById('totalCourses');
+
+                if (totalRevenueElement) totalRevenueElement.textContent = `$${totalRevenue.toFixed(2)}`;
+                if (outstandingInvoicesElement) outstandingInvoicesElement.textContent = outstandingInvoices;
+                if (overduePaymentsElement) overduePaymentsElement.textContent = overduePayments;
+                if (totalCoursesElement) totalCoursesElement.textContent = totalCourses;
+
+                console.log('Payment status updated successfully');
+            } catch (error) {
+                console.error('Error updating payment status:', error);
+            }
+        }
+
+        // Add function to create invoice
+        function createInvoice(courseId) {
+            try {
+                console.log('Creating invoice for course:', courseId);
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const course = courses.find(c => c.id === courseId);
+                
+                if (!course) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Get organization details
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const organization = organizations.find(org => org.id === course.organizationId);
+                
+                if (!organization) {
+                    showNotification('Organization not found', 'error');
+                    return;
+                }
+
+                // Get rate details
+                const rates = JSON.parse(localStorage.getItem('organizationRates') || '[]');
+                const rate = rates.find(r => r.organizationId === course.organizationId && r.courseType === course.classType);
+
+                // Populate the invoice modal
+                document.getElementById('organizationName').value = organization.name;
+                document.getElementById('organizationAddress').value = organization.address || '';
+                document.getElementById('attention').value = organization.contactPerson || '';
+                document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('dueDate').value = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                document.getElementById('courseId').value = courseId;
+                
+                // Populate line item details
+                document.getElementById('courseDate').value = course.courseDate.split('T')[0];
+                document.getElementById('courseType').value = course.classType;
+                document.getElementById('studentsAttended').value = course.studentsAttended || 0;
+                
+                // Calculate and set unit price based on rate type
+                let unitPrice = 0;
+                if (rate) {
+                    switch (rate.rateType) {
+                        case 'Flat':
+                            unitPrice = rate.baseRate;
+                            break;
+                        case 'Per Student':
+                            unitPrice = rate.perStudentRate;
+                            break;
+                        case 'Hybrid':
+                            unitPrice = rate.baseRate + (rate.perStudentRate * (course.studentsAttended || 0));
+                            break;
+                    }
+                }
+                document.getElementById('unitPrice').value = unitPrice.toFixed(2);
+
+                // Calculate subtotal
+                const subtotal = unitPrice * (course.studentsAttended || 1);
+                document.getElementById('subtotal').value = subtotal.toFixed(2);
+
+                // Set discount if available
+                if (rate && rate.discount) {
+                    document.getElementById('discount').value = rate.discount;
+                }
+
+                // Calculate total
+                const discount = parseFloat(document.getElementById('discount').value) || 0;
+                const total = subtotal * (1 - discount / 100);
+                document.getElementById('totalAmount').value = total.toFixed(2);
+
+                // Show the modal
+                const modal = document.getElementById('invoiceModal');
+                modal.style.display = 'flex';
+                console.log('Invoice modal displayed');
+            } catch (error) {
+                console.error('Error creating invoice:', error);
+                showNotification('Error creating invoice', 'error');
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function calculateInvoiceTotal() {
+            try {
+                // Check if we're in the course-based invoice form
+                const studentsAttended = document.getElementById('studentsAttended');
+                const unitPrice = document.getElementById('unitPrice');
+                const discount = document.getElementById('discount');
+                
+                if (studentsAttended && unitPrice) {
+                    // Course-based invoice calculation
+                    const students = parseInt(studentsAttended.value) || 0;
+                    const price = parseFloat(unitPrice.value) || 0;
+                    const disc = parseFloat(discount.value) || 0;
+                    
+                    const subtotal = students * price;
+                    document.getElementById('subtotal').value = subtotal.toFixed(2);
+                    
+                    const total = subtotal * (1 - disc / 100);
+                    document.getElementById('totalAmount').value = total.toFixed(2);
+                } else {
+                    // Line item-based invoice calculation
+                    const lineItems = document.querySelectorAll('.line-item');
+                    let subtotal = 0;
+                    
+                    lineItems.forEach(item => {
+                        const amount = parseFloat(item.querySelector('.line-item-amount')?.value) || 0;
+                        subtotal += amount;
+                    });
+
+                    const disc = parseFloat(discount?.value) || 0;
+                    const total = subtotal * (1 - disc / 100);
+
+                    const subtotalInput = document.getElementById('subtotal');
+                    const totalInput = document.getElementById('totalAmount');
+                    
+                    if (subtotalInput) subtotalInput.value = subtotal.toFixed(2);
+                    if (totalInput) totalInput.value = total.toFixed(2);
+                }
+            } catch (error) {
+                console.error('Error calculating invoice total:', error);
+            }
+        }
+
+        function saveInvoice(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            try {
+                console.log('Starting saveInvoice function');
+                const form = document.getElementById('createInvoiceForm');
+                if (!form) {
+                    console.error('Create invoice form not found');
+                    return;
+                }
+
+                console.log('Form validation check');
+                if (!form.checkValidity()) {
+                    console.log('Form validation failed');
+                    form.reportValidity();
+                    return;
+                }
+
+                // Get required form elements
+                console.log('Getting form elements');
+                const organizationName = document.getElementById('organizationName');
+                const organizationAddress = document.getElementById('organizationAddress');
+                const attention = document.getElementById('attention');
+                const invoiceDate = document.getElementById('invoiceDate');
+                const dueDate = document.getElementById('dueDate');
+                const paymentTerms = document.getElementById('paymentTerms');
+                const notes = document.getElementById('notes');
+                const subtotal = document.getElementById('subtotal');
+                const discount = document.getElementById('discount');
+                const totalAmount = document.getElementById('totalAmount');
+
+                console.log('Form elements found:', {
+                    organizationName: !!organizationName,
+                    organizationAddress: !!organizationAddress,
+                    attention: !!attention,
+                    invoiceDate: !!invoiceDate,
+                    dueDate: !!dueDate,
+                    paymentTerms: !!paymentTerms,
+                    notes: !!notes,
+                    subtotal: !!subtotal,
+                    discount: !!discount,
+                    totalAmount: !!totalAmount
+                });
+
+                // Validate required fields
+                console.log('Validating required fields');
+                const requiredFields = {
+                    organizationName: 'Organization Name',
+                    organizationAddress: 'Organization Address',
+                    attention: 'Attention',
+                    invoiceDate: 'Invoice Date',
+                    dueDate: 'Due Date',
+                    paymentTerms: 'Payment Terms'
+                };
+
+                let missingFields = [];
+                for (const [fieldId, fieldName] of Object.entries(requiredFields)) {
+                    const field = document.getElementById(fieldId);
+                    if (!field || !field.value.trim()) {
+                        missingFields.push(fieldName);
+                    }
+                }
+
+                if (missingFields.length > 0) {
+                    console.error('Missing required fields:', missingFields);
+                    showNotification(`Please fill in the following required fields: ${missingFields.join(', ')}`, 'error');
+                    return;
+                }
+
+                // Get line items
+                console.log('Getting line items');
+                const lineItems = [];
+                const lineItemElements = document.querySelectorAll('.line-item');
+                
+                if (lineItemElements.length === 0) {
+                    console.error('No line items found');
+                    showNotification('Please add at least one line item', 'error');
+                    return;
+                }
+
+                for (const item of lineItemElements) {
+                    console.log('Processing line item:', item);
+                    const dateInput = item.querySelector('.line-item-date');
+                    const descriptionInput = item.querySelector('.line-item-description');
+                    const amountInput = item.querySelector('.line-item-amount');
+
+                    if (!dateInput || !descriptionInput || !amountInput) {
+                        console.error('Missing line item input elements');
+                        continue;
+                    }
+
+                    const date = dateInput.value.trim();
+                    const description = descriptionInput.value.trim();
+                    const amount = parseFloat(amountInput.value) || 0;
+
+                    console.log('Line item values:', { date, description, amount });
+
+                    if (!date || !description || amount <= 0) {
+                        console.error('Invalid line item:', { date, description, amount });
+                        showNotification('Please fill in all required fields for each line item (date, description, and amount)', 'error');
+                        return;
+                    }
+
+                    lineItems.push({
+                        date,
+                        description,
+                        amount
+                    });
+                }
+
+                if (lineItems.length === 0) {
+                    console.error('No valid line items found');
+                    showNotification('Please add at least one valid line item', 'error');
+                    return;
+                }
+
+                console.log('Found valid line items:', lineItems);
+
+                // Create invoice object
+                console.log('Creating invoice object');
+                const invoice = {
+                    id: 'INV-' + Date.now(),
+                    organizationName: organizationName.value.trim(),
+                    organizationAddress: organizationAddress.value.trim(),
+                    attention: attention.value.trim(),
+                    invoiceDate: invoiceDate.value,
+                    dueDate: dueDate.value,
+                    paymentTerms: paymentTerms.value,
+                    notes: notes?.value?.trim() || '',
+                    lineItems: lineItems,
+                    subtotal: parseFloat(subtotal?.value || 0),
+                    discount: parseFloat(discount?.value || 0),
+                    totalAmount: parseFloat(totalAmount?.value || 0),
+                    status: 'Pending',
+                    createdAt: new Date().toISOString()
+                };
+
+                console.log('Created invoice object:', invoice);
+
+                // Save to localStorage
+                console.log('Saving to localStorage');
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                invoices.push(invoice);
+                localStorage.setItem('invoices', JSON.stringify(invoices));
+                console.log('Saved to localStorage successfully');
+
+                // Update the table
+                console.log('Updating invoices table');
+                updateInvoicesTable();
+
+                // Close the modal
+                console.log('Closing modal');
+                const modal = document.querySelector('.modal');
+                if (modal) {
+                    modal.remove();
+                    console.log('Modal removed');
+                }
+
+                showNotification('Invoice created successfully', 'success');
+                console.log('Invoice creation completed successfully');
+            } catch (error) {
+                console.error('Error in saveInvoice:', error);
+                console.error('Error stack:', error.stack);
+                showNotification('Error saving invoice: ' + error.message, 'error');
+            }
+        }
+
+        // Add event listeners for automatic calculations
+        document.getElementById('studentsAttended').addEventListener('input', calculateTotals);
+        document.getElementById('unitPrice').addEventListener('input', calculateTotals);
+        document.getElementById('discount').addEventListener('input', calculateTotals);
+
+        function calculateTotals() {
+            const studentsAttended = parseInt(document.getElementById('studentsAttended').value) || 0;
+            const unitPrice = parseFloat(document.getElementById('unitPrice').value) || 0;
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+
+            const subtotal = studentsAttended * unitPrice;
+            document.getElementById('subtotal').value = subtotal.toFixed(2);
+
+            const total = subtotal * (1 - discount / 100);
+            document.getElementById('totalAmount').value = total.toFixed(2);
+        }
+
+        function updateInvoicesTable() {
+            try {
+                console.log('Starting updateInvoicesTable function');
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                
+                console.log('Found invoices:', invoices);
+                
+                const tableBody = document.querySelector('#invoicesTable tbody');
+                if (!tableBody) {
+                    console.error('Invoices table body not found');
+                    return;
+                }
+
+                tableBody.innerHTML = invoices.length ? 
+                    invoices.map(invoice => {
+                        const course = courses.find(c => c.id === invoice.courseId);
+                        const organization = organizations.find(org => org.name === invoice.organizationName);
+                        
+                        return `
+                            <tr>
+                                <td>${invoice.id}</td>
+                                <td>${formatDate(invoice.invoiceDate)}</td>
+                                <td>${invoice.organizationName}</td>
+                                <td>${course ? course.classType : 'N/A'}</td>
+                                <td>$${invoice.totalAmount.toFixed(2)}</td>
+                                <td><span class="status-badge status-${invoice.status.toLowerCase()}">${invoice.status}</span></td>
+                                <td>${formatDate(invoice.dueDate)}</td>
+                                <td>
+                                    <button class="btn btn-primary" onclick="viewInvoice('${invoice.id}')">View</button>
+                                    <button class="btn btn-success" onclick="sendInvoice('${invoice.id}')">Send</button>
+                                    <button class="btn btn-info" onclick="markAsPaid('${invoice.id}')">Mark as Paid</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('') :
+                    '<tr><td colspan="8" style="text-align: center;">No invoices found</td></tr>';
+
+                console.log('Updated invoices table HTML');
+            } catch (error) {
+                console.error('Error updating invoices table:', error);
+                showNotification('Error updating invoices table: ' + error.message, 'error');
+            }
+        }
+
+        function viewInvoice(invoiceId) {
+            try {
+                console.log('Viewing invoice:', invoiceId);
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                const invoice = invoices.find(inv => inv.id === invoiceId);
+                
+                if (!invoice) {
+                    showNotification('Invoice not found', 'error');
+                    return;
+                }
+
+                // Create invoice view modal content
+                const modalContent = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Invoice Details</h3>
+                            <span class="close" onclick="closeModal('invoiceViewModal')">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="invoice-details">
+                                <h4>Organization Information</h4>
+                                <p><strong>Organization:</strong> ${invoice.organizationName}</p>
+                                <p><strong>Address:</strong> ${invoice.organizationAddress}</p>
+                                <p><strong>Attention:</strong> ${invoice.attention}</p>
+                                
+                                <h4>Invoice Information</h4>
+                                <p><strong>Invoice Date:</strong> ${formatDate(invoice.invoiceDate)}</p>
+                                <p><strong>Due Date:</strong> ${formatDate(invoice.dueDate)}</p>
+                                <p><strong>Status:</strong> <span class="status-badge status-${invoice.status.toLowerCase()}">${invoice.status}</span></p>
+                                
+                                <h4>Course Details</h4>
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Course Type</th>
+                                            <th>Students Attended</th>
+                                            <th>Unit Price</th>
+                                            <th>Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${invoice.lineItems.map(item => `
+                                            <tr>
+                                                <td>${formatDate(item.date)}</td>
+                                                <td>${item.courseType}</td>
+                                                <td>${item.studentsAttended}</td>
+                                                <td>$${item.unitPrice.toFixed(2)}</td>
+                                                <td>$${(item.studentsAttended * item.unitPrice).toFixed(2)}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                                
+                                <div class="invoice-totals">
+                                    <p><strong>Subtotal:</strong> $${invoice.subtotal.toFixed(2)}</p>
+                                    <p><strong>Discount:</strong> ${invoice.discount}%</p>
+                                    <p><strong>Total Amount:</strong> $${invoice.totalAmount.toFixed(2)}</p>
+                                </div>
+                                
+                                ${invoice.notes ? `<h4>Notes</h4><p>${invoice.notes}</p>` : ''}
+                                
+                                <h4>Payment Terms</h4>
+                                <p>${invoice.paymentTerms}</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeModal('invoiceViewModal')">Close</button>
+                            <button class="btn btn-primary" onclick="printInvoice('${invoiceId}')">Print</button>
+                        </div>
+                    </div>
+                `;
+
+                // Create or update the view modal
+                let modal = document.getElementById('invoiceViewModal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'invoiceViewModal';
+                    modal.className = 'modal';
+                    document.body.appendChild(modal);
+                }
+                modal.innerHTML = modalContent;
+                modal.style.display = 'flex';
+                
+                console.log('Invoice view modal displayed');
+            } catch (error) {
+                console.error('Error viewing invoice:', error);
+                showNotification('Error viewing invoice: ' + error.message, 'error');
+            }
+        }
+
+        async function sendInvoice(invoiceId) {
+            try {
+                console.log('Sending invoice:', invoiceId);
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                const invoice = invoices.find(inv => inv.id === invoiceId);
+                
+                if (!invoice) {
+                    showNotification('Invoice not found', 'error');
+                    return;
+                }
+
+                // Get organization email
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const organization = organizations.find(org => org.name === invoice.organizationName);
+                
+                if (!organization || !organization.email) {
+                    showNotification('Organization email not found', 'error');
+                    return;
+                }
+
+                // Show loading state
+                const sendButton = document.querySelector(`button[onclick="sendInvoice('${invoiceId}')"]`);
+                if (sendButton) {
+                    sendButton.disabled = true;
+                    sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+                }
+
+                // Send invoice via email service
+                const response = await fetch('http://localhost:3000/api/send-invoice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: organization.email,
+                        invoice: invoice,
+                        organization: organization
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to send invoice');
+                }
+
+                const result = await response.json();
+                
+                // Update invoice status
+                invoice.emailSent = true;
+                invoice.emailSentDate = new Date().toISOString();
+                localStorage.setItem('invoices', JSON.stringify(invoices));
+
+                // Update the table
+                updateInvoicesTable();
+                
+                // Reset button state
+                if (sendButton) {
+                    sendButton.disabled = false;
+                    sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send';
+                }
+
+                showNotification('Invoice sent successfully', 'success');
+            } catch (error) {
+                console.error('Error sending invoice:', error);
+                showNotification('Error sending invoice: ' + error.message, 'error');
+                
+                // Reset button state on error
+                const sendButton = document.querySelector(`button[onclick="sendInvoice('${invoiceId}')"]`);
+                if (sendButton) {
+                    sendButton.disabled = false;
+                    sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send';
+                }
+            }
+        }
+
+        function printInvoice(invoiceId) {
+            try {
+                console.log('Printing invoice:', invoiceId);
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                const invoice = invoices.find(inv => inv.id === invoiceId);
+                
+                if (!invoice) {
+                    showNotification('Invoice not found', 'error');
+                    return;
+                }
+
+                // Create a new window for printing
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Invoice ${invoice.id}</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; }
+                                .invoice-header { text-align: center; margin-bottom: 20px; }
+                                .invoice-details { margin-bottom: 20px; }
+                                table { width: 100%; border-collapse: collapse; }
+                                th, td { padding: 8px; border: 1px solid #ddd; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="invoice-header">
+                                <h1>Invoice</h1>
+                                <p>Invoice #: ${invoice.id}</p>
+                            </div>
+                            <div class="invoice-details">
+                                <p><strong>Organization:</strong> ${invoice.organizationName}</p>
+                                <p><strong>Address:</strong> ${invoice.organizationAddress}</p>
+                                <p><strong>Attention:</strong> ${invoice.attention}</p>
+                                <p><strong>Date:</strong> ${formatDate(invoice.invoiceDate)}</p>
+                                <p><strong>Due Date:</strong> ${formatDate(invoice.dueDate)}</p>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Course Type</th>
+                                        <th>Students</th>
+                                        <th>Unit Price</th>
+                                        <th>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${invoice.lineItems.map(item => `
+                                        <tr>
+                                            <td>${formatDate(item.date)}</td>
+                                            <td>${item.courseType}</td>
+                                            <td>${item.studentsAttended}</td>
+                                            <td>$${item.unitPrice.toFixed(2)}</td>
+                                            <td>$${(item.studentsAttended * item.unitPrice).toFixed(2)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            <div class="invoice-totals">
+                                <p><strong>Subtotal:</strong> $${invoice.subtotal.toFixed(2)}</p>
+                                <p><strong>Discount:</strong> ${invoice.discount}%</p>
+                                <p><strong>Total Amount:</strong> $${invoice.totalAmount.toFixed(2)}</p>
+                            </div>
+                            <div class="payment-terms">
+                                <h3>Payment Terms</h3>
+                                <p>${invoice.paymentTerms}</p>
+                            </div>
+                        </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.print();
+                printWindow.close();
+            } catch (error) {
+                console.error('Error printing invoice:', error);
+                showNotification('Error printing invoice: ' + error.message, 'error');
+            }
+        }
+
+        function showAddRateModal() {
+            try {
+                console.log('Starting showAddRateModal function');
+                document.getElementById('rateModalTitle').textContent = 'Add New Rate';
+                document.getElementById('rateId').value = '';
+                document.getElementById('rateForm').reset();
+                
+                // Get organizations from localStorage
+                const organizationsStr = localStorage.getItem('organizations');
+                console.log('Raw organizations from localStorage:', organizationsStr);
+                
+                if (!organizationsStr) {
+                    console.error('No organizations found in localStorage');
+                    showNotification('No organizations found. Please add organizations in the Admin portal first.', 'error');
+                    return;
+                }
+
+                const organizations = JSON.parse(organizationsStr);
+                console.log('Parsed organizations:', organizations);
+                
+                if (!Array.isArray(organizations) || organizations.length === 0) {
+                    console.error('Organizations is not an array or is empty:', organizations);
+                    showNotification('No organizations found. Please add organizations in the Admin portal first.', 'error');
+                    return;
+                }
+
+                const organizationSelect = document.getElementById('rateOrganization');
+                if (!organizationSelect) {
+                    console.error('Organization select element not found');
+                    showNotification('Error loading organization dropdown', 'error');
+                    return;
+                }
+
+                // Clear and populate organization dropdown
+                organizationSelect.innerHTML = '<option value="">Select Organization</option>';
+                
+                // Sort organizations alphabetically by name
+                organizations.sort((a, b) => a.name.localeCompare(b.name));
+                
+                organizations.forEach(org => {
+                    console.log('Adding organization to dropdown:', org);
+                    if (!org.id || !org.name) {
+                        console.warn('Invalid organization data:', org);
+                        return;
+                    }
+                    organizationSelect.innerHTML += `<option value="${org.id}">${org.name}</option>`;
+                });
+
+                // Populate course type dropdown
+                const courseTypeSelect = document.getElementById('rateCourseType');
+                if (!courseTypeSelect) {
+                    console.error('Course type select element not found');
+                    showNotification('Error loading course type dropdown', 'error');
+                    return;
+                }
+
+                courseTypeSelect.innerHTML = '<option value="">Select Course Type</option>';
+                courseTypeSelect.innerHTML += `
+                    <option value="BLS">BLS - Basic Life Support</option>
+                    <option value="ACLS">ACLS - Advanced Cardiac Life Support</option>
+                    <option value="PALS">PALS - Pediatric Advanced Life Support</option>
+                    <option value="CPR">CPR - Cardiopulmonary Resuscitation</option>
+                    <option value="First Aid">First Aid</option>
+                    <option value="AED">AED - Automated External Defibrillator</option>
+                `;
+                
+                // Show the modal
+                const modal = document.getElementById('rateModal');
+                if (!modal) {
+                    console.error('Rate modal element not found');
+                    showNotification('Error showing rate modal', 'error');
+                    return;
+                }
+
+                modal.style.display = 'flex';
+                console.log('Rate modal displayed successfully');
+            } catch (error) {
+                console.error('Error in showAddRateModal:', error);
+                showNotification('Error loading organizations: ' + error.message, 'error');
+            }
+        }
+
+        // Add event listener for rate type change
+        document.getElementById('rateType').addEventListener('change', function() {
+            toggleRateFields();
+        });
+
+        function toggleRateFields() {
+            const rateType = document.getElementById('rateType').value;
+            const baseRateGroup = document.getElementById('baseRateGroup');
+            const perStudentRateGroup = document.getElementById('perStudentRateGroup');
+            
+            baseRateGroup.style.display = rateType === 'Flat' || rateType === 'Hybrid' ? 'block' : 'none';
+            perStudentRateGroup.style.display = rateType === 'Per Student' || rateType === 'Hybrid' ? 'block' : 'none';
+        }
+
+        function closeRateModal() {
+            const modal = document.getElementById('rateModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.getElementById('rateForm').reset();
+            }
+        }
+
+        // Add event listener for rate modal close button
+        document.querySelector('#rateModal .close').addEventListener('click', closeRateModal);
+
+        // Initialize rates table when the rates section is shown
+        document.querySelector('a[href="#rates"]').addEventListener('click', updateRatesTable);
+
+        // Add missing functions that were in accounting.js
+        function updateDashboardData() {
+            try {
+                // Update revenue chart
+                const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                
+                // Group invoices by month
+                const monthlyRevenue = {};
+                invoices.forEach(invoice => {
+                    if (invoice.status === 'Paid') {
+                        const date = new Date(invoice.invoiceDate);
+                        const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+                        monthlyRevenue[monthYear] = (monthlyRevenue[monthYear] || 0) + invoice.amount;
+                    }
+                });
+
+                new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: Object.keys(monthlyRevenue),
+                        datasets: [{
+                            label: 'Monthly Revenue',
+                            data: Object.values(monthlyRevenue),
+                            borderColor: '#3498db',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+
+                // Update payment distribution chart
+                const paymentCtx = document.getElementById('paymentDistributionChart').getContext('2d');
+                const paymentStatus = {
+                    'Paid': invoices.filter(inv => inv.status === 'Paid').length,
+                    'Pending': invoices.filter(inv => inv.status === 'Pending').length,
+                    'Overdue': invoices.filter(inv => {
+                        if (inv.status === 'Pending') {
+                            const dueDate = new Date(inv.dueDate);
+                            return dueDate < new Date();
+                        }
+                        return false;
+                    }).length
+                };
+
+                new Chart(paymentCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(paymentStatus),
+                        datasets: [{
+                            data: Object.values(paymentStatus),
+                            backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+
+                // Update analytics data
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const totalClassesScheduled = courses.length;
+                const totalClassesCompleted = courses.filter(c => c.completionStatus === 'Complete').length;
+                const totalClassesCancelled = courses.filter(c => c.status === 'Cancelled').length;
+                const averageAttendanceRate = courses.reduce((acc, course) => {
+                    if (course.studentsRegistered && course.studentsAttended) {
+                        return acc + (course.studentsAttended / course.studentsRegistered);
+                    }
+                    return acc;
+                }, 0) / totalClassesScheduled * 100 || 0;
+
+                document.getElementById('totalClassesScheduled').textContent = totalClassesScheduled;
+                document.getElementById('totalClassesCompleted').textContent = totalClassesCompleted;
+                document.getElementById('totalClassesCancelled').textContent = totalClassesCancelled;
+                document.getElementById('averageAttendanceRate').textContent = `${averageAttendanceRate.toFixed(1)}%`;
+
+                // Update organization analytics
+                updateOrganizationAnalytics();
+                // Update instructor analytics
+                updateInstructorAnalytics();
+
+            } catch (error) {
+                console.error('Error updating dashboard data:', error);
+            }
+        }
+
+        function updateOrganizationAnalytics() {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                
+                const orgAnalytics = {};
+                
+                organizations.forEach(org => {
+                    orgAnalytics[org.id] = {
+                        name: org.name,
+                        totalClasses: 0,
+                        completed: 0,
+                        cancelled: 0,
+                        totalRevenue: 0,
+                        totalStudents: 0,
+                        attendedStudents: 0
+                    };
+                });
+
+                courses.forEach(course => {
+                    if (orgAnalytics[course.organizationId]) {
+                        orgAnalytics[course.organizationId].totalClasses++;
+                        if (course.completionStatus === 'Complete') {
+                            orgAnalytics[course.organizationId].completed++;
+                        }
+                        if (course.status === 'Cancelled') {
+                            orgAnalytics[course.organizationId].cancelled++;
+                        }
+                        orgAnalytics[course.organizationId].totalStudents += course.studentsRegistered || 0;
+                        orgAnalytics[course.organizationId].attendedStudents += course.studentsAttended || 0;
+                    }
+                });
+
+                invoices.forEach(invoice => {
+                    if (invoice.status === 'Paid' && orgAnalytics[invoice.organizationId]) {
+                        orgAnalytics[invoice.organizationId].totalRevenue += invoice.amount;
+                    }
+                });
+
+                const tableBody = document.getElementById('orgAnalyticsTable');
+                if (tableBody) {
+                    tableBody.innerHTML = Object.values(orgAnalytics).map(org => `
+                        <tr>
+                            <td>${org.name}</td>
+                            <td>${org.totalClasses}</td>
+                            <td>${org.completed}</td>
+                            <td>${org.cancelled}</td>
+                            <td>$${org.totalRevenue.toFixed(2)}</td>
+                            <td>${org.totalStudents ? ((org.attendedStudents / org.totalStudents) * 100).toFixed(1) : 0}%</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error updating organization analytics:', error);
+            }
+        }
+
+        function updateInstructorAnalytics() {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                
+                const instructorAnalytics = {};
+                
+                instructors.forEach(instructor => {
+                    instructorAnalytics[instructor.id] = {
+                        name: instructor.name,
+                        classesTaught: 0,
+                        totalStudents: 0,
+                        attendedStudents: 0,
+                        revenueGenerated: 0
+                    };
+                });
+
+                courses.forEach(course => {
+                    if (instructorAnalytics[course.instructorId]) {
+                        instructorAnalytics[course.instructorId].classesTaught++;
+                        instructorAnalytics[course.instructorId].totalStudents += course.studentsRegistered || 0;
+                        instructorAnalytics[course.instructorId].attendedStudents += course.studentsAttended || 0;
+                    }
+                });
+
+                invoices.forEach(invoice => {
+                    if (invoice.status === 'Paid') {
+                        const course = courses.find(c => c.id === invoice.courseId);
+                        if (course && instructorAnalytics[course.instructorId]) {
+                            instructorAnalytics[course.instructorId].revenueGenerated += invoice.amount;
+                        }
+                    }
+                });
+
+                const tableBody = document.getElementById('instructorAnalyticsTable');
+                if (tableBody) {
+                    tableBody.innerHTML = Object.values(instructorAnalytics).map(instructor => `
+                        <tr>
+                            <td>${instructor.name}</td>
+                            <td>${instructor.classesTaught}</td>
+                            <td>${instructor.totalStudents}</td>
+                            <td>${instructor.totalStudents ? ((instructor.attendedStudents / instructor.totalStudents) * 100).toFixed(1) : 0}%</td>
+                            <td>$${instructor.revenueGenerated.toFixed(2)}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error updating instructor analytics:', error);
+            }
+        }
+
+        // Add event listener for analytics section
+        document.querySelector('a[href="#analytics"]').addEventListener('click', () => {
+            updateDashboardData();
+            updateOrganizationAnalytics();
+            updateInstructorAnalytics();
+        });
+
+        // Add helper function to get course type label
+        function getCourseTypeLabel(value) {
+            const courseTypes = {
+                'BLS': 'BLS - Basic Life Support',
+                'ACLS': 'ACLS - Advanced Cardiac Life Support',
+                'PALS': 'PALS - Pediatric Advanced Life Support',
+                'CPR': 'CPR - Cardiopulmonary Resuscitation',
+                'First Aid': 'First Aid',
+                'AED': 'AED - Automated External Defibrillator'
+            };
+            return courseTypes[value] || value;
+        }
+
+        function saveRate() {
+            try {
+                console.log('Starting saveRate function');
+                const rateId = document.getElementById('rateId').value;
+                const organizationId = document.getElementById('rateOrganization').value;
+                const courseType = document.getElementById('rateCourseType').value;
+                const rateType = document.getElementById('rateType').value;
+                const baseRate = parseFloat(document.getElementById('baseRate').value) || 0;
+                const perStudentRate = parseFloat(document.getElementById('perStudentRate').value) || 0;
+                const minStudents = parseInt(document.getElementById('minStudents').value) || 0;
+                const maxStudents = parseInt(document.getElementById('maxStudents').value) || 0;
+                const discount = parseFloat(document.getElementById('discount').value) || 0;
+                const notes = document.getElementById('rateNotes').value;
+
+                // Validate required fields
+                if (!organizationId || !courseType || !rateType) {
+                    showNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+
+                // Validate rate-specific fields
+                if (rateType === 'Flat' && baseRate <= 0) {
+                    showNotification('Please enter a valid base rate for flat rate type', 'error');
+                    return;
+                }
+                if (rateType === 'Per Student' && perStudentRate <= 0) {
+                    showNotification('Please enter a valid per student rate', 'error');
+                    return;
+                }
+                if (rateType === 'Hybrid' && (baseRate <= 0 || perStudentRate <= 0)) {
+                    showNotification('Please enter valid base rate and per student rate for hybrid type', 'error');
+                    return;
+                }
+
+                // Create rate object
+                const rate = {
+                    id: rateId || 'rate_' + Date.now(),
+                    organizationId,
+                    courseType,
+                    rateType,
+                    baseRate,
+                    perStudentRate,
+                    minStudents,
+                    maxStudents,
+                    discount,
+                    notes,
+                    createdAt: new Date().toISOString()
+                };
+
+                console.log('Created rate object:', rate);
+
+                // Get existing rates
+                const rates = JSON.parse(localStorage.getItem('organizationRates') || '[]');
+                console.log('Existing rates:', rates);
+
+                // Check for duplicate rate
+                const existingRateIndex = rates.findIndex(r => 
+                    r.organizationId === organizationId && 
+                    r.courseType === courseType
+                );
+
+                if (existingRateIndex !== -1) {
+                    if (!rateId) {
+                        showNotification('A rate already exists for this organization and course type', 'error');
+                        return;
+                    }
+                    // Update existing rate
+                    rates[existingRateIndex] = rate;
+                } else {
+                    // Add new rate
+                    rates.push(rate);
+                }
+
+                // Save to localStorage
+                localStorage.setItem('organizationRates', JSON.stringify(rates));
+                console.log('Saved rates to localStorage:', rates);
+
+                // Update UI
+                updateRatesTable();
+                closeRateModal();
+                showNotification('Rate saved successfully', 'success');
+            } catch (error) {
+                console.error('Error saving rate:', error);
+                showNotification('Error saving rate: ' + error.message, 'error');
+            }
+        }
+
+        function updateRatesTable() {
+            try {
+                console.log('Updating rates table');
+                const rates = JSON.parse(localStorage.getItem('organizationRates') || '[]');
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const tbody = document.getElementById('ratesTable').querySelector('tbody');
+                
+                console.log('Found rates:', rates);
+                console.log('Found organizations:', organizations);
+                
+                tbody.innerHTML = rates.map(rate => {
+                    const organization = organizations.find(org => org.id === rate.organizationId);
+                    console.log('Rate:', rate);
+                    console.log('Found organization:', organization);
+                    
+                    return `
+                        <tr>
+                            <td>${organization ? organization.name : 'Unknown Organization'}</td>
+                            <td>${getCourseTypeLabel(rate.courseType)}</td>
+                            <td>${rate.rateType}</td>
+                            <td>${rate.baseRate ? `$${rate.baseRate.toFixed(2)}` : '-'}</td>
+                            <td>${rate.perStudentRate ? `$${rate.perStudentRate.toFixed(2)}` : '-'}</td>
+                            <td>${rate.minStudents || '-'}</td>
+                            <td>${rate.maxStudents || '-'}</td>
+                            <td>${rate.discount || '0'}%</td>
+                            <td>
+                                <button class="btn btn-primary" onclick="editRate('${rate.id}')">Edit</button>
+                                <button class="btn btn-danger" onclick="deleteRate('${rate.id}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                console.log('Updated rates table HTML');
+            } catch (error) {
+                console.error('Error updating rates table:', error);
+                showNotification('Error updating rates table: ' + error.message, 'error');
+            }
+        }
+
+        function showCreateInvoiceModal() {
+            try {
+                console.log('Showing create invoice modal');
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                
+                // Get organizations from localStorage
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                console.log('Found organizations:', organizations);
+                
+                // Create organization options
+                const organizationOptions = organizations.map(org => 
+                    `<option value="${org.id}">${org.name}</option>`
+                ).join('');
+                
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Create New Invoice</h3>
+                            <span class="close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <form id="createInvoiceForm">
+                                <div class="form-group">
+                                    <label for="organizationSelect">Organization*</label>
+                                    <select id="organizationSelect" class="form-control" required onchange="updateOrganizationDetails()">
+                                        <option value="">Select Organization</option>
+                                        ${organizationOptions}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="organizationName">Organization Name*</label>
+                                    <input type="text" id="organizationName" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="organizationAddress">Organization Address*</label>
+                                    <textarea id="organizationAddress" class="form-control" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="attention">Attention*</label>
+                                    <input type="text" id="attention" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="invoiceDate">Invoice Date*</label>
+                                    <input type="date" id="invoiceDate" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="dueDate">Due Date*</label>
+                                    <input type="date" id="dueDate" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="paymentTerms">Payment Terms*</label>
+                                    <select id="paymentTerms" class="form-control" required>
+                                        <option value="Net 30">Net 30</option>
+                                        <option value="Net 15">Net 15</option>
+                                        <option value="Net 60">Net 60</option>
+                                        <option value="Due on Receipt">Due on Receipt</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="notes">Notes</label>
+                                    <textarea id="notes" class="form-control"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Line Items*</label>
+                                    <div id="lineItems">
+                                        <div class="line-item">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <input type="date" class="line-item-date form-control" required>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="text" class="line-item-description form-control" placeholder="Description" required>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <input type="number" class="line-item-amount form-control" placeholder="Amount" step="0.01" required>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <button type="button" class="btn btn-danger" onclick="this.parentElement.parentElement.parentElement.remove(); calculateInvoiceTotal();">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-secondary mt-2" onclick="addLineItem()">
+                                        <i class="fas fa-plus"></i> Add Line Item
+                                    </button>
+                                </div>
+                                <div class="form-group">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="subtotal">Subtotal</label>
+                                            <input type="number" id="subtotal" class="form-control" readonly>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="discount">Discount (%)</label>
+                                            <input type="number" id="discount" class="form-control" value="0" min="0" max="100" onchange="calculateInvoiceTotal()">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="totalAmount">Total Amount</label>
+                                    <input type="number" id="totalAmount" class="form-control" readonly>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
+                            <button class="btn btn-primary" onclick="saveInvoice()">Create Invoice</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                modal.style.display = 'flex';
+
+                // Set default dates
+                const today = new Date();
+                document.getElementById('invoiceDate').value = today.toISOString().split('T')[0];
+                
+                const dueDate = new Date();
+                dueDate.setDate(dueDate.getDate() + 30);
+                document.getElementById('dueDate').value = dueDate.toISOString().split('T')[0];
+
+                // Add event listeners for calculations
+                document.querySelectorAll('.line-item-amount').forEach(input => {
+                    input.addEventListener('change', calculateInvoiceTotal);
+                });
+
+                console.log('Create invoice modal displayed');
+            } catch (error) {
+                console.error('Error showing create invoice modal:', error);
+                showNotification('Error creating invoice: ' + error.message, 'error');
+            }
+        }
+
+        function updateOrganizationDetails() {
+            try {
+                console.log('Updating organization details');
+                const organizationSelect = document.getElementById('organizationSelect');
+                const organizationId = organizationSelect.value;
+                
+                if (!organizationId) {
+                    console.log('No organization selected');
+                    // Clear the fields if no organization is selected
+                    document.getElementById('organizationName').value = '';
+                    document.getElementById('organizationAddress').value = '';
+                    document.getElementById('attention').value = '';
+                    return;
+                }
+
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const organization = organizations.find(org => org.id === organizationId);
+                
+                if (organization) {
+                    console.log('Found organization:', organization);
+                    
+                    // Set required fields with proper null checks and defaults
+                    const organizationName = document.getElementById('organizationName');
+                    const organizationAddress = document.getElementById('organizationAddress');
+                    const attention = document.getElementById('attention');
+                    
+                    if (organizationName) {
+                        organizationName.value = organization.name || '';
+                        organizationName.readOnly = true; // Make it read-only since it's from the organization
+                    }
+                    
+                    if (organizationAddress) {
+                        organizationAddress.value = organization.address || '';
+                        if (!organization.address) {
+                            console.warn('Organization address is missing');
+                            showNotification('Please add an address for this organization', 'warning');
+                        }
+                    }
+                    
+                    if (attention) {
+                        attention.value = organization.contactPerson || '';
+                        if (!organization.contactPerson) {
+                            console.warn('Organization contact person is missing');
+                            showNotification('Please add a contact person for this organization', 'warning');
+                        }
+                    }
+                    
+                    // Validate that required fields are populated
+                    const requiredFields = {
+                        'organizationName': 'Organization Name',
+                        'organizationAddress': 'Organization Address',
+                        'attention': 'Attention'
+                    };
+                    
+                    let missingFields = [];
+                    for (const [fieldId, fieldName] of Object.entries(requiredFields)) {
+                        const field = document.getElementById(fieldId);
+                        if (!field || !field.value.trim()) {
+                            missingFields.push(fieldName);
+                        }
+                    }
+                    
+                    if (missingFields.length > 0) {
+                        console.warn('Missing required fields:', missingFields);
+                        showNotification(`Please complete the following fields: ${missingFields.join(', ')}`, 'warning');
+                        
+                        // If organization address or attention is missing, show a modal to update organization details
+                        if (missingFields.includes('Organization Address') || missingFields.includes('Attention')) {
+                            showUpdateOrganizationModal(organizationId);
+                        }
+                    }
+                } else {
+                    console.error('Organization not found:', organizationId);
+                    showNotification('Organization not found', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating organization details:', error);
+                showNotification('Error updating organization details: ' + error.message, 'error');
+            }
+        }
+
+        function showUpdateOrganizationModal(organizationId) {
+            try {
+                console.log('Showing update organization modal for:', organizationId);
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const organization = organizations.find(org => org.id === organizationId);
+                
+                if (!organization) {
+                    showNotification('Organization not found', 'error');
+                    return;
+                }
+
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Update Organization Details</h3>
+                            <span class="close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <form id="updateOrganizationForm">
+                                <div class="form-group">
+                                    <label for="updateOrgName">Organization Name</label>
+                                    <input type="text" id="updateOrgName" class="form-control" value="${organization.name || ''}" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label for="updateOrgAddress">Organization Address*</label>
+                                    <textarea id="updateOrgAddress" class="form-control" required>${organization.address || ''}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="updateOrgContact">Contact Person*</label>
+                                    <input type="text" id="updateOrgContact" class="form-control" value="${organization.contactPerson || ''}" required>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
+                            <button class="btn btn-primary" onclick="saveOrganizationUpdate('${organizationId}')">Save Changes</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                modal.style.display = 'flex';
+            } catch (error) {
+                console.error('Error showing update organization modal:', error);
+                showNotification('Error updating organization details: ' + error.message, 'error');
+            }
+        }
+
+        function saveOrganizationUpdate(organizationId) {
+            try {
+                console.log('Saving organization update for:', organizationId);
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const organizationIndex = organizations.findIndex(org => org.id === organizationId);
+                
+                if (organizationIndex === -1) {
+                    showNotification('Organization not found', 'error');
+                    return;
+                }
+
+                const address = document.getElementById('updateOrgAddress').value.trim();
+                const contactPerson = document.getElementById('updateOrgContact').value.trim();
+
+                if (!address || !contactPerson) {
+                    showNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+
+                // Update organization details
+                organizations[organizationIndex].address = address;
+                organizations[organizationIndex].contactPerson = contactPerson;
+
+                // Save to localStorage
+                localStorage.setItem('organizations', JSON.stringify(organizations));
+
+                // Update the invoice form
+                document.getElementById('organizationAddress').value = address;
+                document.getElementById('attention').value = contactPerson;
+
+                // Close the modal
+                const modal = document.querySelector('.modal');
+                if (modal) {
+                    modal.remove();
+                }
+
+                showNotification('Organization details updated successfully', 'success');
+            } catch (error) {
+                console.error('Error saving organization update:', error);
+                showNotification('Error saving organization details: ' + error.message, 'error');
+            }
+        }
+
+        function addLineItem() {
+            const lineItems = document.getElementById('lineItems');
+            const newLineItem = document.createElement('div');
+            newLineItem.className = 'line-item';
+            newLineItem.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="date" class="line-item-date form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="line-item-description form-control" placeholder="Description" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" class="line-item-amount form-control" placeholder="Amount" step="0.01" required>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-danger" onclick="this.parentElement.parentElement.parentElement.remove(); calculateInvoiceTotal();">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            lineItems.appendChild(newLineItem);
+
+            // Add event listener for calculations
+            newLineItem.querySelector('.line-item-amount').addEventListener('change', calculateInvoiceTotal);
+        }
+
+        // Date handling functions
+        function formatDateForStorage(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDateForDisplay(dateString) {
+            if (!dateString) return '-';
+            const [year, month, day] = dateString.split('-');
+            return `${month}/${day}/${year}`;
+        }
+
+        function getCurrentDate() {
+            const now = new Date();
+            return formatDateForStorage(now);
+        }
+
+        function getFutureDate(daysToAdd) {
+            const date = new Date();
+            date.setDate(date.getDate() + daysToAdd);
+            return formatDateForStorage(date);
+        }
+
+        // Update invoice creation
+        function createInvoice(invoiceData) {
+            try {
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                const newInvoice = {
+                    ...invoiceData,
+                    id: 'inv_' + Date.now(),
+                    createdAt: getCurrentDate(),
+                    status: 'Pending'
+                };
+                
+                invoices.push(newInvoice);
+                localStorage.setItem('invoices', JSON.stringify(invoices));
+                return true;
+            } catch (error) {
+                console.error('Error creating invoice:', error);
+                return false;
+            }
+        }
+
+        // Update invoice date handling
+        function initializeInvoiceDates() {
+            const today = getCurrentDate();
+            document.getElementById('invoiceDate').value = today;
+            document.getElementById('dueDate').value = getFutureDate(30); // 30 days from now
+        }
+
+        // Update invoice sorting
+        function sortInvoices(invoices) {
+            return invoices.sort((a, b) => {
+                const [yearA, monthA, dayA] = a.invoiceDate.split('-');
+                const [yearB, monthB, dayB] = b.invoiceDate.split('-');
+                return new Date(yearB, monthB - 1, dayB).getTime() - new Date(yearA, monthA - 1, dayA).getTime();
+            });
+        }
+
+        // Update overdue check
+        function isInvoiceOverdue(invoice) {
+            if (!invoice.dueDate) return false;
+            const today = getCurrentDate();
+            return invoice.dueDate < today;
+        }
+
+        // Update payment recording
+        function recordPayment(invoiceId) {
+            try {
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                const invoiceIndex = invoices.findIndex(inv => inv.id === invoiceId);
+                
+                if (invoiceIndex === -1) return false;
+                
+                invoices[invoiceIndex].status = 'Paid';
+                invoices[invoiceIndex].paymentDate = getCurrentDate();
+                
+                localStorage.setItem('invoices', JSON.stringify(invoices));
+                return true;
+            } catch (error) {
+                console.error('Error recording payment:', error);
+                return false;
+            }
+        }
+
+        // Update email sending
+        function sendInvoice(invoiceId) {
+            try {
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                const invoiceIndex = invoices.findIndex(inv => inv.id === invoiceId);
+                
+                if (invoiceIndex === -1) return false;
+                
+                invoices[invoiceIndex].emailSentDate = getCurrentDate();
+                invoices[invoiceIndex].status = 'Sent';
+                
+                localStorage.setItem('invoices', JSON.stringify(invoices));
+                return true;
+            } catch (error) {
+                console.error('Error sending invoice:', error);
+                return false;
+            }
+        }
+    </script>
+</body>
+</html> 

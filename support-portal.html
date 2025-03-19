@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA CPR - Support Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --background-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --border-color: #bdc3c7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .main-nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .main-nav a:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .dashboard {
+            padding: 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .dashboard-title {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .btn {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-danger {
+            background-color: var(--accent-color);
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .storage-display {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            color: white;
+            display: none;
+            z-index: 1001;
+        }
+
+        .notification-success {
+            background-color: #2ecc71;
+        }
+
+        .notification-error {
+            background-color: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                padding: 1rem;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .upload-info {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            margin: 1rem 0;
+        }
+
+        .upload-info p {
+            margin: 0.5rem 0;
+            color: #666;
+        }
+
+        .preview-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .preview-table th,
+        .preview-table td {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .preview-table th {
+            background: var(--primary-color);
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+
+        .preview-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .status-cell {
+            font-weight: 500;
+        }
+
+        .status-available { color: #3498db; }
+        .status-scheduled { color: #f39c12; }
+        .status-confirmed { color: #2ecc71; }
+        .status-pending { color: #95a5a6; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="logo">GTA CPR</div>
+        <nav class="main-nav">
+            <a href="index.html">Home</a>
+            <a href="instructor-portal.html">Instructors</a>
+            <a href="organization-portal.html">Organizations</a>
+            <a href="admin-portal.html">Admin</a>
+            <a href="support-portal.html">Support</a>
+        </nav>
+    </header>
+
+    <div class="dashboard">
+        <h1 class="dashboard-title">Support Dashboard</h1>
+
+        <section class="card">
+            <h2>Storage Management</h2>
+            <div class="btn-group">
+                <button class="btn btn-danger" onclick="clearStorage()">
+                    <i class="fas fa-trash-alt"></i> Clear Storage
+                </button>
+                <button class="btn" onclick="dumpStorage()">
+                    <i class="fas fa-download"></i> Dump Storage
+                </button>
+                <button class="btn" onclick="displayStorage()">
+                    <i class="fas fa-eye"></i> View Storage
+                </button>
+            </div>
+            <div id="storageContent" class="storage-display"></div>
+        </section>
+
+        <section class="card">
+            <h2>Data Import</h2>
+            <div class="upload-section">
+                <div class="btn-group">
+                    <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelUpload(event)">
+                    <button class="btn" onclick="document.getElementById('excelFile').click()">
+                        <i class="fas fa-file-excel"></i> Upload Excel File
+                    </button>
+                </div>
+                <div class="upload-info">
+                    <p>Supported formats: .xlsx, .xls, .csv</p>
+                    <p>Expected columns: User, Action, Instructor Portal, Organization Portal, Admin Portal</p>
+                </div>
+                <div id="uploadPreview" class="preview-table-container"></div>
+            </div>
+        </section>
+
+        <div id="notification" class="notification"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        function clearStorage() {
+            try {
+                if (confirm('Are you sure you want to clear all storage? This action cannot be undone.')) {
+                    localStorage.clear();
+                    showNotification('Storage cleared successfully', 'success');
+                    displayStorage(); // Update the display
+                }
+            } catch (error) {
+                console.error('Error clearing storage:', error);
+                showNotification('Error clearing storage', 'error');
+            }
+        }
+
+        function dumpStorage() {
+            try {
+                const storage = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    storage[key] = JSON.parse(localStorage.getItem(key));
+                }
+
+                const dataStr = JSON.stringify(storage, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+                
+                const exportName = 'storage_dump_' + new Date().toISOString().split('T')[0] + '.json';
+                
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportName);
+                linkElement.click();
+                
+                showNotification('Storage dumped successfully', 'success');
+            } catch (error) {
+                console.error('Error dumping storage:', error);
+                showNotification('Error dumping storage', 'error');
+            }
+        }
+
+        function displayStorage() {
+            try {
+                const storageContent = document.getElementById('storageContent');
+                const storage = {};
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    storage[key] = JSON.parse(localStorage.getItem(key));
+                }
+
+                storageContent.textContent = JSON.stringify(storage, null, 2);
+                
+                if (Object.keys(storage).length === 0) {
+                    storageContent.textContent = 'Storage is empty';
+                }
+            } catch (error) {
+                console.error('Error displaying storage:', error);
+                showNotification('Error displaying storage', 'error');
+            }
+        }
+
+        async function handleExcelUpload(event) {
+            try {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // Get first sheet
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        
+                        // Convert to JSON
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                        // Display as formatted table
+                        displayWorkflowTable(jsonData);
+                        
+                        // Store the data
+                        localStorage.setItem('workflowData', JSON.stringify(jsonData));
+                        
+                        showNotification('Excel file imported successfully', 'success');
+                    } catch (error) {
+                        console.error('Error processing Excel file:', error);
+                        showNotification('Error processing Excel file', 'error');
+                    }
+                };
+
+                reader.onerror = function(error) {
+                    console.error('Error reading file:', error);
+                    showNotification('Error reading file', 'error');
+                };
+
+                reader.readAsArrayBuffer(file);
+            } catch (error) {
+                console.error('Error handling Excel upload:', error);
+                showNotification('Error handling Excel upload', 'error');
+            }
+        }
+
+        function displayWorkflowTable(data) {
+            const container = document.getElementById('uploadPreview');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p>No data to display</p>';
+                return;
+            }
+
+            const headers = Object.keys(data[0]);
+            const table = document.createElement('table');
+            table.className = 'preview-table';
+
+            // Create header row
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create body rows
+            const tbody = document.createElement('tbody');
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    td.textContent = row[header] || '';
+                    
+                    // Add status styling
+                    if (row[header] && typeof row[header] === 'string') {
+                        const text = row[header].toLowerCase();
+                        if (text.includes('status')) {
+                            td.className = 'status-cell';
+                            if (text.includes('available')) td.classList.add('status-available');
+                            if (text.includes('scheduled')) td.classList.add('status-scheduled');
+                            if (text.includes('confirmed')) td.classList.add('status-confirmed');
+                            if (text.includes('pending')) td.classList.add('status-pending');
+                        }
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            container.innerHTML = '';
+            container.appendChild(table);
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification notification-${type}`;
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Display storage content on page load
+        document.addEventListener('DOMContentLoaded', displayStorage);
+    </script>
+</body>
+</html> 
