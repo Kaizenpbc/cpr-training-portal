@@ -493,6 +493,81 @@
             word-wrap: break-word;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
+
+        .course-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .course-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .course-header h3 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        .course-details {
+            margin-bottom: 15px;
+        }
+
+        .course-details p {
+            margin: 8px 0;
+        }
+
+        .course-details strong {
+            color: var(--primary-color);
+        }
+
+        .course-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .status-complete {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .status-confirmed {
+            background-color: #17a2b8;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .status-scheduled {
+            background-color: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .status-pending {
+            background-color: #ffc107;
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -806,84 +881,73 @@
 
                 function updateMyCoursesTable() {
                     try {
-                        const currentOrganization = JSON.parse(localStorage.getItem('currentOrganization'));
-                        if (!currentOrganization) {
-                            showNotification('Please log in as an organization', 'error');
+                        const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
+                        if (!currentOrg) {
+                            showNotification('Please log in to view courses', 'error');
                             return;
                         }
 
                         const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const orgCourses = courses.filter(course => 
-                            course.organizationId === currentOrganization.id
-                        );
+                        const tbody = document.getElementById('coursesTableBody');
+                        
+                        if (!tbody) return;
 
-                        const tableBody = document.getElementById('coursesTableBody');
-                        if (!tableBody) return;
+                        // Filter courses for current organization
+                        const orgCourses = courses.filter(course => course.organizationId === currentOrg.id);
 
                         if (orgCourses.length === 0) {
-                            tableBody.innerHTML = `
+                            tbody.innerHTML = `
                                 <tr>
-                                    <td colspan="9" style="text-align: center;">No courses found</td>
+                                    <td colspan="9" style="text-align: center;">No courses found. Schedule a course to get started.</td>
                                 </tr>
                             `;
                             return;
                         }
 
-                        let rows = [];
-                        orgCourses.forEach(course => {
-                            // Determine course status
-                            let status, statusClass;
-                            if (course.completionStatus === 'Complete') {
-                                status = 'Complete';
-                                statusClass = 'complete';
-                            } else if (course.adminConfirmed) {
-                                status = 'CONFIRMED';
-                                statusClass = 'confirmed';
-                            } else if (course.instructorId) {
-                                status = 'Pending';
-                                statusClass = 'pending';
-                            } else {
-                                status = 'Scheduled';
-                                statusClass = 'scheduled';
-                            }
+                        // Generate table rows
+                        tbody.innerHTML = orgCourses.map(course => {
+                            const statusClass = course.completionStatus === 'COMPLETED' ? 'complete' :
+                                course.adminConfirmed ? 'confirmed' :
+                                course.instructorId ? 'scheduled' : 'pending';
 
-                            // Format attendance information
-                            let attendanceInfo = 'Not Taken';
-                            if (course.studentsAttended !== undefined) {
-                                attendanceInfo = `${course.studentsAttended}/${course.studentsRegistered || 0} Present`;
-                            }
+                            const statusText = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
+                                course.adminConfirmed ? 'CONFIRMED' :
+                                course.instructorId ? 'SCHEDULED' : 'PENDING';
 
-                            // Format notes with truncation
-                            const truncatedNotes = course.notes && course.notes.length > 50 
-                                ? course.notes.substring(0, 50) + '...' 
-                                : course.notes || '-';
+                            const attendanceText = course.studentsAttended ? 
+                                `${course.studentsAttended}/${course.studentsRegistered} Present` : 
+                                'Not Taken';
 
-                            rows.push(`
+                            const notes = course.notes || '';
+                            const truncatedNotes = notes.length > 50 ? notes.substring(0, 50) + '...' : notes;
+
+                            return `
                                 <tr>
                                     <td>${formatDate(course.courseDate)}</td>
-                                    <td>${course.location || '-'}</td>
-                                    <td>${course.classType || '-'}</td>
+                                    <td>${course.location}</td>
+                                    <td>${course.classType}</td>
                                     <td>${course.studentsRegistered || 0}</td>
-                                    <td>${attendanceInfo}</td>
+                                    <td>${attendanceText}</td>
+                                    <td><span class="status-${statusClass}">${statusText}</span></td>
+                                    <td>${course.instructorName || 'Not Assigned'}</td>
+                                    <td><span title="${notes}">${truncatedNotes}</span></td>
                                     <td>
-                                        <span class="status-${statusClass}">${status}</span>
-                                    </td>
-                                    <td>${course.adminConfirmed ? course.instructorName : (course.instructorId ? 'Pending Confirmation' : 'Not Assigned')}</td>
-                                    <td class="truncated-note" data-full-note="${course.notes || '-'}">${truncatedNotes}</td>
-                                    <td>
-                                        <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                                        ${course.completionStatus === 'Complete' ? 
-                                            `<button class="btn btn-primary" onclick="viewCertificates('${course.id}')">View Certificates</button>` : ''
+                                        <button class="btn btn-primary" onclick="viewStudentList('${course.id}')">
+                                            View Student List
+                                        </button>
+                                        ${course.completionStatus === 'COMPLETED' ? 
+                                            `<button class="btn btn-success" onclick="viewCertificates('${course.id}')">
+                                                View Certificates
+                                            </button>` : 
+                                            ''
                                         }
                                     </td>
                                 </tr>
-                            `);
-                        });
-
-                        tableBody.innerHTML = rows.join('');
+                            `;
+                        }).join('');
                     } catch (error) {
-                        console.error('Error updating my courses:', error);
-                        showNotification('Error updating my courses', 'error');
+                        console.error('Error updating course list:', error);
+                        showNotification('Error loading courses', 'error');
                     }
                 }
 
