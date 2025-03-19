@@ -820,10 +820,10 @@
                 
                 <!-- Today's Courses List -->
                 <div id="todayCourses" class="today-courses">
-                    <div class="no-courses" style="display: none;">
+                    <div id="noCourses" class="no-courses" style="display: none;">
                         <p>No courses scheduled for today</p>
                     </div>
-                    <div class="course-list"></div>
+                    <div id="courseList" class="course-list"></div>
                 </div>
 
                 <!-- Attendance Modal -->
@@ -842,28 +842,18 @@
                                     <tr>
                                         <th>Name</th>
                                         <th>Email</th>
-                            <th>Status</th>
+                                        <th>Status</th>
                                         <th>Attendance</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendanceTableBody"></tbody>
-                </table>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendanceTableBody"></tbody>
+                            </table>
                         </div>
                         <div class="attendance-summary">
                             <p>Present: <span id="presentCount">0</span> / <span id="totalCount">0</span></p>
                         </div>
                         <div class="add-unregistered">
                             <button class="btn btn-secondary" onclick="showAddUnregisteredModal()">Add Unregistered Student</button>
-                        </div>
-                        <div class="completion-section" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 4px;">
-                            <label style="display: block; margin-bottom: 10px;">
-                                <input type="checkbox" id="markAsComplete" style="margin-right: 5px;">
-                                Mark Course as Complete
-                            </label>
-                            <div id="completionNotes" style="display: none;">
-                                <textarea id="completionNotesText" placeholder="Add any completion notes (optional)" 
-                                    style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
-                            </div>
                         </div>
                         <div class="modal-buttons">
                             <button class="btn btn-primary" onclick="saveAttendance()">Save Attendance</button>
@@ -1317,6 +1307,9 @@
                 
                 if (!tbody) return;
 
+                // Get today's date in YYYY-MM-DD format
+                const today = new Date().toISOString().split('T')[0];
+
                 // Get all dates where the instructor is available
                 const availableDates = new Set(instructor.availability || []);
 
@@ -1341,8 +1334,8 @@
                         let status, statusClass;
                         let showOrgDetails = course.displayOrgDetails;
                         
-                        if (course.completionStatus === 'Complete') {
-                            status = 'Complete';
+                        if (course.completionStatus === 'COMPLETED') {
+                            status = 'COMPLETED';
                             statusClass = 'complete';
                             showOrgDetails = true;
                         } else if (course.adminConfirmed) {
@@ -1359,6 +1352,10 @@
                             showOrgDetails = false;
                         }
 
+                        // Check if this is today's course and not completed
+                        const isToday = date === today;
+                        const canComplete = isToday && course.completionStatus !== 'COMPLETED' && course.adminConfirmed;
+
                         return `
                             <tr>
                                 <td>${formatDate(date)}</td>
@@ -1369,11 +1366,12 @@
                                 <td>${showOrgDetails ? (course.studentsAttended || 0) : '-'}</td>
                                 <td><span class="status-${statusClass}">${status}</span></td>
                                 <td>
-                                    ${course.completionStatus === 'Complete' ? 
-                                        `<button class="btn btn-info" onclick="viewCourseDetails('${course.id}')">View Details</button>` :
-                                        course.adminConfirmed ?
-                                            `<button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">View Details</button>` :
-                                            '-'
+                                    ${course.completionStatus !== 'COMPLETED' && course.adminConfirmed ?
+                                        `<button class="btn btn-success" onclick="completeCourse('${course.id}')" 
+                                            ${!canComplete ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                                            Complete Course
+                                        </button>` :
+                                        '-'
                                     }
                                 </td>
                             </tr>
@@ -1576,55 +1574,99 @@
 
         function updateTodaysCourses() {
             try {
-                const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
-                if (!instructor) return;
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!currentInstructor) {
+                    showNotification('Please log in as an instructor', 'error');
+                    return;
+                }
 
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const courseList = document.querySelector('.course-list');
-                const noCourses = document.querySelector('.no-courses');
-                
-                if (!courseList || !noCourses) return;
-
-                // Get today's date in YYYY-MM-DD format
                 const today = new Date().toISOString().split('T')[0];
                 
-                // Filter for today's courses assigned to this instructor
-                const todayCourses = courses.filter(course => 
+                // Update today's date display
+                document.getElementById('todayDate').textContent = formatDate(today);
+                
+                // Filter courses for today and this instructor, excluding completed courses
+                const todaysCourses = courses.filter(course => 
                     course.courseDate === today && 
-                    course.instructorId === instructor.id &&
+                    course.instructorId === currentInstructor.id &&
+                    course.completionStatus !== 'COMPLETED' &&
                     course.adminConfirmed // Only show confirmed courses
                 );
 
-                // Update today's date display
-                document.getElementById('todayDate').textContent = formatDate(today);
+                const courseList = document.getElementById('courseList');
+                const noCourses = document.getElementById('noCourses');
+                
+                if (!courseList || !noCourses) return;
 
                 // Show/hide no courses message
-                noCourses.style.display = todayCourses.length === 0 ? 'block' : 'none';
-                courseList.style.display = todayCourses.length === 0 ? 'none' : 'block';
+                noCourses.style.display = todaysCourses.length === 0 ? 'block' : 'none';
+                courseList.style.display = todaysCourses.length === 0 ? 'none' : 'block';
 
                 // Update course list
-                courseList.innerHTML = todayCourses.map(course => `
+                courseList.innerHTML = todaysCourses.map(course => `
                     <div class="course-card">
                         <div class="course-info">
                             <h4>${course.classType}</h4>
                             <p>Location: ${course.location}</p>
                             <p>Organization: ${course.organizationName}</p>
-                            <p>Students: ${course.studentsRegistered}</p>
-                            <p>Attendance Status: ${course.studentsAttended ? 
+                            <p>Students Registered: ${course.studentsRegistered || 0}</p>
+                            <p>Attendance: ${course.studentsAttended ? 
                                 `${course.studentsAttended}/${course.studentsRegistered} Present` : 
                                 'Not Taken'}</p>
                         </div>
                         <div class="course-actions">
-                            <button class="btn btn-primary" onclick="openAttendance('${course.id}')"
-                                ${course.studentsAttended ? 'title="Update Attendance"' : 'title="Take Attendance"'}>
-                                ${course.studentsAttended ? 'Update Attendance' : 'Take Attendance'}
+                            <button class="btn btn-primary" onclick="openAttendance('${course.id}')">
+                                Take Attendance
                             </button>
                         </div>
                     </div>
                 `).join('');
             } catch (error) {
                 console.error('Error updating today\'s courses:', error);
-                showNotification('Error loading today\'s courses', 'error');
+                showNotification('Error loading courses', 'error');
+            }
+        }
+
+        function completeCourse(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
+                if (courseIndex === -1) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Update course status across all portals
+                courses[courseIndex].completionStatus = 'COMPLETED';
+                courses[courseIndex].completedDate = new Date().toISOString();
+                courses[courseIndex].completedBy = JSON.parse(localStorage.getItem('currentInstructor')).id;
+                
+                // Update status for all portals
+                courses[courseIndex].status = 'COMPLETED';
+                courses[courseIndex].adminScheduledDashStatus = 'COMPLETED';
+                courses[courseIndex].adminInstructorDashStatus = 'COMPLETED';
+                courses[courseIndex].organizationStatus = 'COMPLETED';
+                courses[courseIndex].instructorStatus = 'COMPLETED';
+
+                // Set auto-archive date to one week from completion
+                const completionDate = new Date();
+                const archiveDate = new Date(completionDate);
+                archiveDate.setDate(archiveDate.getDate() + 7);
+                courses[courseIndex].autoArchiveDate = archiveDate.toISOString();
+
+                // Save changes
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                // Update display
+                updateTodaysCourses();
+                updateClassList();
+                
+                showNotification('Course marked as COMPLETED', 'success');
+            } catch (error) {
+                console.error('Error completing course:', error);
+                showNotification('Error completing course', 'error');
             }
         }
 
