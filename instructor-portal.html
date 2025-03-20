@@ -1433,9 +1433,9 @@
         function updateArchivedClassesList() {
             try {
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const archivedList = document.getElementById('archivedClassesList');
+                const tbody = document.getElementById('archivedClassesTableBody');
                 
-                if (!archivedList) return;
+                if (!tbody) return;
 
                 // Filter for completed courses only
                 const completedCourses = courses.filter(course => 
@@ -1443,7 +1443,7 @@
                 );
 
                 if (completedCourses.length === 0) {
-                    archivedList.innerHTML = '<p>No completed courses found</p>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No completed courses found</td></tr>';
                     return;
                 }
 
@@ -1452,22 +1452,20 @@
                     new Date(b.completedDate) - new Date(a.completedDate)
                 );
 
-                archivedList.innerHTML = completedCourses.map(course => `
-                    <div class="archived-course">
-                        <div class="course-info">
-                            <h4>${course.classType}</h4>
-                            <p><strong>Organization:</strong> ${course.organizationName}</p>
-                            <p><strong>Location:</strong> ${course.location}</p>
-                            <p><strong>Course Date:</strong> ${formatDate(course.courseDate)}</p>
-                            <p><strong>Completion Date:</strong> ${formatDate(course.completedDate)}</p>
-                            <p><strong>Attendance:</strong> ${course.studentsAttended}/${course.studentsRegistered} students</p>
-                        </div>
-                        <div class="course-actions">
-                            <button class="btn btn-info" onclick="viewArchivedCourseDetails('${course.id}')">
+                tbody.innerHTML = completedCourses.map(course => `
+                    <tr>
+                        <td>${formatDate(course.courseDate)}</td>
+                        <td>${course.organizationName}</td>
+                        <td>${course.location}</td>
+                        <td>${course.classType}</td>
+                        <td>${course.studentsAttended}/${course.studentsRegistered}</td>
+                        <td>${formatDate(course.completedDate)}</td>
+                        <td>
+                            <button class="btn btn-info btn-sm" onclick="viewArchivedCourseDetails('${course.id}')">
                                 View Details
                             </button>
-                        </div>
-                    </div>
+                        </td>
+                    </tr>
                 `).join('');
             } catch (error) {
                 console.error('Error updating archived courses:', error);
@@ -1659,6 +1657,69 @@
             }
         }
 
+        function generateCertificate(course, student) {
+            try {
+                // Generate a unique ID for the student if they don't have one
+                if (!student.id) {
+                    student.id = 'student_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                }
+
+                const certificates = JSON.parse(localStorage.getItem('certificates') || '[]');
+                
+                // Generate unique certificate number
+                const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Create certificate object
+                const certificate = {
+                    id: `cert_${Date.now()}`,
+                    courseId: course.id,
+                    organizationId: course.organizationId,
+                    studentId: student.id,  // Now we ensure this is set
+                    instructorId: course.instructorId,
+                    issueDate: new Date().toISOString().split('T')[0],
+                    expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0],
+                    certificateNumber: certificateNumber,
+                    status: 'ACTIVE',
+                    metadata: {
+                        courseName: course.classType,
+                        studentName: student.name,
+                        organizationName: course.organizationName,
+                        instructorName: course.instructorName,
+                        completionDate: course.completedDate
+                    }
+                };
+
+                // Add certificate to array
+                certificates.push(certificate);
+
+                // Save to localStorage
+                localStorage.setItem('certificates', JSON.stringify(certificates));
+
+                // Update student's certificate reference in the course
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === course.id);
+                if (courseIndex !== -1) {
+                    if (!courses[courseIndex].studentList) {
+                        courses[courseIndex].studentList = [];
+                    }
+                    const studentIndex = courses[courseIndex].studentList.findIndex(s => s.id === student.id);
+                    if (studentIndex !== -1) {
+                        if (!courses[courseIndex].studentList[studentIndex].certificates) {
+                            courses[courseIndex].studentList[studentIndex].certificates = [];
+                        }
+                        courses[courseIndex].studentList[studentIndex].certificates.push(certificate.id);
+                    }
+                    localStorage.setItem('courses', JSON.stringify(courses));
+                }
+
+                return certificate;
+            } catch (error) {
+                console.error('Error generating certificate:', error);
+                showNotification('Error generating certificate', 'error');
+                return null;
+            }
+        }
+
         function completeCourse() {
             try {
                 const courseId = localStorage.getItem('currentAttendanceCourseId');
@@ -1667,44 +1728,41 @@
                     return;
                 }
 
-                // Get courses from localStorage
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const courseIndex = courses.findIndex(course => course.id === courseId);
-
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
                 if (courseIndex === -1) {
                     showNotification('Course not found', 'error');
                     return;
                 }
 
-                // Update course status consistently across all views
-                courses[courseIndex].completionStatus = 'COMPLETED';
-                courses[courseIndex].status = 'COMPLETED';
-                courses[courseIndex].adminInstructorDashStatus = 'COMPLETED';
-                courses[courseIndex].adminScheduledDashStatus = 'COMPLETED';
-                courses[courseIndex].organizationStatus = 'COMPLETED';
-                courses[courseIndex].orgStatus = 'COMPLETED';
+                const course = courses[courseIndex];
                 
-                // Add completion metadata
-                courses[courseIndex].completedDate = new Date().toISOString().split('T')[0];
-                courses[courseIndex].completedBy = JSON.parse(localStorage.getItem('currentInstructor')).name;
-                
-                // Archive the course
-                courses[courseIndex].isArchived = true;
-                courses[courseIndex].archivedDate = new Date().toISOString().split('T')[0];
+                // Update all status fields for different views
+                course.completionStatus = 'COMPLETED';
+                course.completedDate = new Date().toISOString().split('T')[0];
+                course.status = 'COMPLETED';
+                course.adminInstructorDashStatus = 'COMPLETED';
+                course.adminScheduledDashStatus = 'COMPLETED';
+                course.organizationStatus = 'COMPLETED';
+                course.instructorStatus = 'COMPLETED';
+                course.isArchived = true;
+                course.archivedDate = new Date().toISOString().split('T')[0];
 
-                // Save changes
+                // Generate certificates for all students who attended
+                if (course.studentList && course.studentList.length > 0) {
+                    course.studentList.forEach(student => {
+                        if (student.attendance === 'present') {
+                            generateCertificate(course, student);
+                        }
+                    });
+                }
+
                 localStorage.setItem('courses', JSON.stringify(courses));
-
-                // Update all relevant sections
+                showNotification('Course completed successfully', 'success');
                 updateClassList();
-                updateTodaysCourses();
-                updateArchivedClassesList();
-                updateConfirmedCoursesDash();
-                updateCompletedCoursesDash();
-
-                // Close the modal and show success message
+                updateArchivedClassesList(); // Update archived classes list
                 closeModal('attendanceModal');
-                showNotification('Course marked as completed and archived successfully', 'success');
             } catch (error) {
                 console.error('Error completing course:', error);
                 showNotification('Error completing course', 'error');
@@ -1889,7 +1947,7 @@
                 showNotification('Attendance saved successfully', 'success');
 
                 // Refresh course list
-                updateAssignedCourses();
+                updateClassList();
             } catch (error) {
                 console.error('Error saving attendance:', error);
                 showNotification('Error saving attendance', 'error');
@@ -2445,6 +2503,42 @@
                 console.error('Error marking course as completed:', error);
                 showNotification('Error marking course as completed', 'error');
             }
+        }
+
+        function updateAssignedCourses() {
+            const assignedCoursesTable = document.getElementById('assignedCoursesTable');
+            if (!assignedCoursesTable) return;
+
+            const tbody = assignedCoursesTable.querySelector('tbody');
+            tbody.innerHTML = '';
+
+            const instructorId = localStorage.getItem('currentInstructorId');
+            if (!instructorId) return;
+
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const instructorCourses = courses.filter(course => 
+                course.instructorId === instructorId && 
+                course.instructorStatus !== 'COMPLETED'
+            );
+
+            instructorCourses.forEach(course => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${course.courseType}</td>
+                    <td>${course.organizationName}</td>
+                    <td>${course.date}</td>
+                    <td>${course.time}</td>
+                    <td>${course.location}</td>
+                    <td>${course.instructorStatus}</td>
+                    <td>
+                        <button onclick="viewCourseDetails('${course.id}')" class="btn btn-info btn-sm">View Details</button>
+                        ${course.instructorStatus === 'SCHEDULED' ? 
+                            `<button onclick="startCourse('${course.id}')" class="btn btn-success btn-sm">Start Course</button>` : 
+                            ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
         }
     </script>
 </body>

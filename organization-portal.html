@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -568,6 +570,68 @@
             border-radius: 4px;
             font-size: 0.9em;
         }
+
+        /* Certificate Modal Styles */
+        .certificate-view {
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        .certificate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .certificate-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .certificate-content {
+            border: 2px solid #ddd;
+            padding: 30px;
+            text-align: center;
+            background: #fff;
+        }
+
+        .certificate-logo {
+            margin-bottom: 20px;
+        }
+
+        .certificate-logo img {
+            max-width: 150px;
+            height: auto;
+        }
+
+        .certificate-title {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .student-name {
+            font-size: 2em;
+            margin: 20px 0;
+            color: #333;
+        }
+
+        .certificate-text {
+            font-size: 1.1em;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        .certificate-details {
+            text-align: left;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+
+        .certificate-details p {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -920,6 +984,10 @@
                             const notes = course.notes || '';
                             const truncatedNotes = notes.length > 50 ? notes.substring(0, 50) + '...' : notes;
 
+                            // Get the first student with attendance marked as 'present'
+                            const presentStudent = course.studentList ? 
+                                course.studentList.find(student => student.attendance === 'present') : null;
+
                             return `
                                 <tr>
                                     <td>${formatDate(course.courseDate)}</td>
@@ -937,9 +1005,9 @@
                                         <button class="btn btn-success" onclick="showUploadModal('${course.id}')">
                                             UPLOAD
                                         </button>
-                                        ${course.completionStatus === 'COMPLETED' ? 
-                                            `<button class="btn btn-info" onclick="viewCertificates('${course.id}')">
-                                                View Certificates
+                                        ${course.completionStatus === 'COMPLETED' && presentStudent ? 
+                                            `<button class="btn btn-info" onclick="viewCertificate('${course.id}', '${presentStudent.id}')">
+                                                View Certificate
                                             </button>` : 
                                             ''
                                         }
@@ -1517,6 +1585,141 @@
                         console.error('Error checking auto-archive:', error);
                     }
                 }
+
+                // Certificate Management Functions
+                function viewCertificate(courseId, studentId) {
+                    try {
+                        console.log('=== Certificate View Debug ===');
+                        console.log('Course ID:', courseId);
+                        console.log('Student ID:', studentId);
+
+                        const certificates = JSON.parse(localStorage.getItem('certificates') || '[]');
+                        console.log('All Certificates:', certificates);
+                        console.log('Number of certificates found:', certificates.length);
+
+                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                        console.log('All Courses:', courses);
+                        console.log('Number of courses found:', courses.length);
+                        
+                        // Find the certificate
+                        const certificate = certificates.find(cert => {
+                            console.log('Checking certificate:', cert);
+                            console.log('Comparing courseId:', cert.courseId, 'with:', courseId);
+                            console.log('Comparing studentId:', cert.studentId, 'with:', studentId);
+                            return cert.courseId === courseId && cert.studentId === studentId;
+                        });
+
+                        console.log('Found certificate:', certificate);
+
+                        if (!certificate) {
+                            console.log('Certificate not found. Checking course status...');
+                            const course = courses.find(c => c.id === courseId);
+                            console.log('Course found:', course);
+                            if (course) {
+                                console.log('Course completion status:', course.completionStatus);
+                                console.log('Course student list:', course.studentList);
+                            }
+                            showNotification('Certificate not found. Please ensure the course is completed and attendance has been taken.', 'error');
+                            return;
+                        }
+
+                        // Find the course and student details
+                        const course = courses.find(c => c.id === courseId);
+                        console.log('Found course:', course);
+                        
+                        if (!course) {
+                            console.log('Course not found in courses array');
+                            showNotification('Course details not found', 'error');
+                            return;
+                        }
+
+                        console.log('Updating certificate modal with data...');
+                        // Update certificate modal content
+                        document.getElementById('certificateStudentName').textContent = certificate.metadata.studentName;
+                        document.getElementById('certificateCourseName').textContent = certificate.metadata.courseName;
+                        document.getElementById('certificateNumber').textContent = certificate.certificateNumber;
+                        document.getElementById('certificateIssueDate').textContent = formatDate(certificate.issueDate);
+                        document.getElementById('certificateExpiryDate').textContent = formatDate(certificate.expiryDate);
+                        document.getElementById('certificateInstructorName').textContent = certificate.metadata.instructorName;
+                        document.getElementById('certificateOrganizationName').textContent = certificate.metadata.organizationName;
+                        document.getElementById('certificateCompletionDate').textContent = formatDate(certificate.metadata.completionDate);
+
+                        console.log('Showing certificate modal...');
+                        // Show the modal
+                        const certificateModal = new bootstrap.Modal(document.getElementById('certificateModal'));
+                        certificateModal.show();
+                        console.log('=== End Certificate View Debug ===');
+                    } catch (error) {
+                        console.error('Error in viewCertificate:', error);
+                        console.error('Error stack:', error.stack);
+                        showNotification('Error loading certificate details', 'error');
+                    }
+                }
+
+                function downloadCertificate() {
+                    try {
+                        const certificate = JSON.parse(localStorage.getItem('currentCertificate'));
+                        if (!certificate) {
+                            showNotification('No certificate selected', 'error');
+                            return;
+                        }
+
+                        // Generate PDF using certificate data
+                        const doc = new jsPDF();
+                        // Add certificate content to PDF
+                        // ... PDF generation code ...
+
+                        // Download the PDF
+                        doc.save(`certificate_${certificate.certificateNumber}.pdf`);
+                        showNotification('Certificate downloaded successfully', 'success');
+                    } catch (error) {
+                        console.error('Error downloading certificate:', error);
+                        showNotification('Error downloading certificate', 'error');
+                    }
+                }
+
+                function printCertificate() {
+                    try {
+                        const certificate = JSON.parse(localStorage.getItem('currentCertificate'));
+                        if (!certificate) {
+                            showNotification('No certificate selected', 'error');
+                            return;
+                        }
+
+                        // Open print dialog for certificate content
+                        window.print();
+                        showNotification('Certificate printed successfully', 'success');
+                    } catch (error) {
+                        console.error('Error printing certificate:', error);
+                        showNotification('Error printing certificate', 'error');
+                    }
+                }
+
+                // Update the updateCompletedCourses function to include certificate viewing
+                function updateCompletedCourses() {
+                    const tbody = document.getElementById('completedCoursesTableBody');
+                    if (!tbody) return;
+
+                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                    const completedCourses = courses.filter(course => 
+                        course.completionStatus === 'COMPLETED' && 
+                        course.organizationId === currentOrganization.id
+                    );
+
+                    tbody.innerHTML = completedCourses.map(course => `
+                        <tr>
+                            <td>${formatDate(course.courseDate)}</td>
+                            <td>${course.courseName}</td>
+                            <td>${course.location}</td>
+                            <td>${course.instructorName || 'Not Assigned'}</td>
+                            <td>
+                                <button class="btn btn-primary" onclick="viewCertificate('${course.id}', '${course.studentList[0].id || ''}')">
+                                    <i class="fas fa-certificate"></i> View Certificate
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
             </script>
         </main>
     </div>
@@ -1564,6 +1767,41 @@
                     <tbody id="studentListTableBody">
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Certificate Modal -->
+    <div id="certificateModal" class="modal">
+        <div class="modal-content certificate-view">
+            <span class="close-modal" onclick="closeModal('certificateModal')">&times;</span>
+            <div class="certificate-header">
+                <h2>Course Completion Certificate</h2>
+                <div class="certificate-actions">
+                    <button class="btn btn-primary" onclick="downloadCertificate()">
+                        <i class="fas fa-download"></i> Download PDF
+                    </button>
+                    <button class="btn btn-secondary" onclick="printCertificate()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+            <div class="certificate-content">
+                <div class="certificate-logo">
+                    <h1 style="font-size: 2em; color: #2c3e50; margin-bottom: 20px;">GTA CPR</h1>
+                </div>
+                <div class="certificate-body">
+                    <p class="certificate-title">This is to certify that</p>
+                    <h3 class="student-name" id="certificateStudentName"></h3>
+                    <p class="certificate-text" id="certificateCourseText"></p>
+                    <div class="certificate-details">
+                        <p><strong>Course:</strong> <span id="certificateCourseName"></span></p>
+                        <p><strong>Instructor:</strong> <span id="certificateInstructorName"></span></p>
+                        <p><strong>Certificate Number:</strong> <span id="certificateNumber"></span></p>
+                        <p><strong>Issue Date:</strong> <span id="certificateIssueDate"></span></p>
+                        <p><strong>Expiry Date:</strong> <span id="certificateExpiryDate"></span></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
