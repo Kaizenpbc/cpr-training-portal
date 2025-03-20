@@ -849,6 +849,7 @@
                         </div>
                         <div class="modal-buttons">
                             <button class="btn btn-primary" onclick="saveAttendance()">Save Attendance</button>
+                            <button class="btn btn-success" onclick="completeCourse()">COMPLETE</button>
                             <button class="btn btn-secondary" onclick="closeModal('attendanceModal')">Cancel</button>
                         </div>
                     </div>
@@ -943,6 +944,42 @@
                         </div>
                         <div class="metrics-details" id="organizationMetrics"></div>
                     </div>
+                </div>
+            </section>
+
+            <section id="confirmedCourses" class="section">
+                <h2>Confirmed Courses</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Course</th>
+                                <th>Organization</th>
+                                <th>Location</th>
+                                <th>Instructor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="confirmedCoursesTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="completedCourses" class="section">
+                <h2>Completed Courses</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Course</th>
+                                <th>Organization</th>
+                                <th>Location</th>
+                                <th>Instructor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="completedCoursesTableBody"></tbody>
+                    </table>
                 </div>
             </section>
         </main>
@@ -1309,16 +1346,16 @@
                 
                 if (!tbody) return;
 
-                // Filter for courses assigned to this instructor
+                // Filter for courses assigned to this instructor that are not archived or completed
                 const assignedCourses = courses.filter(course => 
                     course.instructorId === instructor.id && 
                     !course.isArchived && 
-                    !course.completionStatus
+                    course.completionStatus !== 'COMPLETED'
                 );
 
                 // Get instructor's availability dates
                 const availableDates = instructor.availability || [];
-                availableDates.sort(); // Sort dates chronologically
+                availableDates.sort();
 
                 if (assignedCourses.length === 0 && availableDates.length === 0) {
                     tbody.innerHTML = `
@@ -1351,7 +1388,7 @@
                                 <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
                                     View Students
                                 </button>
-                                ${course.adminConfirmed ? 
+                                ${course.adminConfirmed && course.courseDate === new Date().toISOString().split('T')[0] ? 
                                     `<button class="btn btn-primary" onclick="openAttendance('${course.id}')">
                                         Take Attendance
                                     </button>` : 
@@ -1395,45 +1432,46 @@
 
         function updateArchivedClassesList() {
             try {
-                const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
-                if (!instructor) return;
-
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const tbody = document.getElementById('archivedClassesTableBody');
+                const archivedList = document.getElementById('archivedClassesList');
                 
-                if (!tbody) return;
+                if (!archivedList) return;
 
-                // Filter for this instructor's archived courses
-                const archivedCourses = courses.filter(course => 
-                    course.instructorId === instructor.id && 
-                    course.isArchived
+                // Filter for completed courses only
+                const completedCourses = courses.filter(course => 
+                    course.completionStatus === 'COMPLETED'
                 );
 
-                tbody.innerHTML = archivedCourses.length ? 
-                    archivedCourses.map(course => `
-                        <tr>
-                            <td>${formatDate(course.courseDate)}</td>
-                            <td>${course.organizationName || '-'}</td>
-                            <td>${course.location || '-'}</td>
-                            <td>${course.classType || '-'}</td>
-                            <td>${course.studentsAttended || 0}/${course.studentsRegistered || 0}</td>
-                            <td>
-                                <span class="archived-date">${formatDate(course.archivedDate)}</span>
-                            </td>
-                            <td>
-                                <button class="btn btn-primary" onclick="viewArchivedCourseDetails('${course.id}')">
-                                    <i class="fas fa-eye"></i> View Details
-                                </button>
-                                <button class="btn btn-secondary" onclick="unarchiveCourse('${course.id}')">
-                                    <i class="fas fa-box-open"></i> Unarchive
-                                </button>
-                            </td>
-                    </tr>
-                    `).join('') :
-                    '<tr><td colspan="7" style="text-align: center;">No archived courses found</td></tr>';
+                if (completedCourses.length === 0) {
+                    archivedList.innerHTML = '<p>No completed courses found</p>';
+                    return;
+                }
+
+                // Sort by completion date (newest first)
+                completedCourses.sort((a, b) => 
+                    new Date(b.completedDate) - new Date(a.completedDate)
+                );
+
+                archivedList.innerHTML = completedCourses.map(course => `
+                    <div class="archived-course">
+                        <div class="course-info">
+                            <h4>${course.classType}</h4>
+                            <p><strong>Organization:</strong> ${course.organizationName}</p>
+                            <p><strong>Location:</strong> ${course.location}</p>
+                            <p><strong>Course Date:</strong> ${formatDate(course.courseDate)}</p>
+                            <p><strong>Completion Date:</strong> ${formatDate(course.completedDate)}</p>
+                            <p><strong>Attendance:</strong> ${course.studentsAttended}/${course.studentsRegistered} students</p>
+                        </div>
+                        <div class="course-actions">
+                            <button class="btn btn-info" onclick="viewArchivedCourseDetails('${course.id}')">
+                                View Details
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
             } catch (error) {
-                console.error('Error updating archived classes list:', error);
-                showNotification('Error updating archived classes list', 'error');
+                console.error('Error updating archived courses:', error);
+                showNotification('Error loading archived courses', 'error');
             }
         }
 
@@ -1621,44 +1659,97 @@
             }
         }
 
-        function completeCourse(courseId) {
+        function completeCourse() {
             try {
+                const courseId = localStorage.getItem('currentAttendanceCourseId');
+                if (!courseId) {
+                    showNotification('No course selected', 'error');
+                    return;
+                }
+
+                // Get courses from localStorage
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const courseIndex = courses.findIndex(c => c.id === courseId);
-                
+                const courseIndex = courses.findIndex(course => course.id === courseId);
+
                 if (courseIndex === -1) {
                     showNotification('Course not found', 'error');
                     return;
                 }
 
-                // Mark course as complete
+                // Update course status consistently across all views
                 courses[courseIndex].completionStatus = 'COMPLETED';
-                courses[courseIndex].completionDate = new Date().toISOString();
+                courses[courseIndex].status = 'COMPLETED';
+                courses[courseIndex].adminInstructorDashStatus = 'COMPLETED';
+                courses[courseIndex].adminScheduledDashStatus = 'COMPLETED';
+                courses[courseIndex].organizationStatus = 'COMPLETED';
+                courses[courseIndex].orgStatus = 'COMPLETED';
+                
+                // Add completion metadata
+                courses[courseIndex].completedDate = new Date().toISOString().split('T')[0];
                 courses[courseIndex].completedBy = JSON.parse(localStorage.getItem('currentInstructor')).name;
                 
-                // Set auto-archive date to 1 week from completion
-                const archiveDate = new Date();
-                archiveDate.setDate(archiveDate.getDate() + 7);
-                courses[courseIndex].autoArchiveDate = archiveDate.toISOString();
+                // Archive the course
+                courses[courseIndex].isArchived = true;
+                courses[courseIndex].archivedDate = new Date().toISOString().split('T')[0];
 
-                // Update status in all portals
-                courses[courseIndex].status = 'COMPLETED';
-                courses[courseIndex].instructorStatus = 'COMPLETED';
-                courses[courseIndex].adminStatus = 'COMPLETED';
-                courses[courseIndex].organizationStatus = 'COMPLETED';
-
-                // Update in localStorage
+                // Save changes
                 localStorage.setItem('courses', JSON.stringify(courses));
 
-                // Update display
-                updateTodaysCourses();
+                // Update all relevant sections
                 updateClassList();
+                updateTodaysCourses();
+                updateArchivedClassesList();
+                updateConfirmedCoursesDash();
+                updateCompletedCoursesDash();
 
-                showNotification('Course marked as completed', 'success');
+                // Close the modal and show success message
+                closeModal('attendanceModal');
+                showNotification('Course marked as completed and archived successfully', 'success');
             } catch (error) {
                 console.error('Error completing course:', error);
                 showNotification('Error completing course', 'error');
             }
+        }
+
+        function updateConfirmedCoursesDash() {
+            const confirmedCoursesTableBody = document.getElementById('confirmedCoursesTableBody');
+            if (!confirmedCoursesTableBody) return;
+
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const confirmedCourses = courses.filter(course => 
+                course.adminConfirmed && 
+                course.completionStatus !== 'COMPLETED'
+            );
+
+            confirmedCoursesTableBody.innerHTML = confirmedCourses.map(course => `
+                <tr>
+                    <td>${formatDate(course.courseDate)}</td>
+                    <td>${course.courseName}</td>
+                    <td>${course.organization}</td>
+                    <td>${course.location}</td>
+                    <td>${course.instructorName || 'Not Assigned'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateCompletedCoursesDash() {
+            const completedCoursesTableBody = document.getElementById('completedCoursesTableBody');
+            if (!completedCoursesTableBody) return;
+
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const completedCourses = courses.filter(course => 
+                course.completionStatus === 'COMPLETED'
+            );
+
+            completedCoursesTableBody.innerHTML = completedCourses.map(course => `
+                <tr>
+                    <td>${formatDate(course.courseDate)}</td>
+                    <td>${course.courseName}</td>
+                    <td>${course.organization}</td>
+                    <td>${course.location}</td>
+                    <td>${course.instructorName || 'Not Assigned'}</td>
+                </tr>
+            `).join('');
         }
 
         function openAttendance(courseId) {
@@ -1671,8 +1762,8 @@
                     return;
                 }
 
-                // Store current course ID for saving attendance
-                localStorage.setItem('currentAttendanceCourse', courseId);
+                // Store current course ID for saving attendance and completion
+                localStorage.setItem('currentAttendanceCourseId', courseId);
 
                 // Update course info in modal
                 document.getElementById('attendanceCourseInfo').textContent = course.classType;
@@ -1735,7 +1826,12 @@
 
         function saveAttendance() {
             try {
-                const courseId = localStorage.getItem('currentAttendanceCourse');
+                const courseId = localStorage.getItem('currentAttendanceCourseId');
+                if (!courseId) {
+                    showNotification('No course selected', 'error');
+                    return;
+                }
+
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                 const courseIndex = courses.findIndex(c => c.id === courseId);
 
@@ -1744,60 +1840,56 @@
                     return;
                 }
 
-                // Get all students and their attendance
-                const rows = document.querySelectorAll('#attendanceTableBody tr');
-                const updatedStudents = Array.from(rows).map((row, index) => {
-                    const radioButtons = row.querySelectorAll(`input[name="attendance_${index}"]`);
-                    const checkedRadio = Array.from(radioButtons).find(radio => radio.checked);
-                    const attendance = checkedRadio ? checkedRadio.value : 'absent';
-                    return {
-                        ...courses[courseIndex].studentList[index],
-                        attendance: attendance
-                    };
+                // Get attendance data
+                const tableBody = document.getElementById('attendanceTableBody');
+                const rows = tableBody.querySelectorAll('tr');
+                let presentCount = 0;
+                let totalCount = 0;
+
+                rows.forEach((row, index) => {
+                    const attendance = row.querySelector(`input[name="attendance_${index}"]:checked`)?.value || 'absent';
+                    if (attendance === 'present') presentCount++;
+                    totalCount++;
+
+                    // Update student attendance
+                    if (!courses[courseIndex].studentList) {
+                        courses[courseIndex].studentList = [];
+                    }
+                    if (!courses[courseIndex].studentList[index]) {
+                        courses[courseIndex].studentList[index] = {};
+                    }
+                    courses[courseIndex].studentList[index].attendance = attendance;
                 });
 
-                // Update course with attendance
-                const presentCount = updatedStudents.filter(s => s.attendance === 'present').length;
-                courses[courseIndex].studentList = updatedStudents;
+                // Update course attendance counts
                 courses[courseIndex].studentsAttended = presentCount;
+                courses[courseIndex].studentsRegistered = totalCount;
 
-                // Check if course should be marked as complete
+                // Get completion notes and mark complete status
                 const markCompleteCheckbox = document.getElementById('markAsComplete');
                 const markComplete = markCompleteCheckbox ? markCompleteCheckbox.checked : false;
-                if (markComplete) {
-                    const completionNotes = document.getElementById('completionNotesText')?.value.trim() || '';
-                    const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
-                    
-                    // Set completion details
-                    courses[courseIndex].completionStatus = 'Complete';
-                    courses[courseIndex].completedDate = new Date().toISOString();
-                    courses[courseIndex].completedBy = instructor.id;
-                    courses[courseIndex].completionNotes = completionNotes;
-                    
-                    // Update status across all portals
-                    courses[courseIndex].status = 'Complete';
-                    courses[courseIndex].adminScheduledDashStatus = 'Complete';
-                    courses[courseIndex].adminInstructorDashStatus = 'Complete';
-                    courses[courseIndex].organizationStatus = 'Complete';
+                const completionNotes = document.getElementById('completionNotesText')?.value.trim() || '';
 
-                    // Automatically archive the course
-                    courses[courseIndex].isArchived = true;
-                    courses[courseIndex].archivedDate = new Date().toISOString();
+                // Validate attendance before allowing completion
+                if (markComplete) {
+                    if (presentCount === 0) {
+                        showNotification('Cannot mark course as complete without taking attendance', 'error');
+                        return;
+                    }
+                    courses[courseIndex].completionStatus = 'COMPLETED';
+                    courses[courseIndex].completedDate = new Date().toISOString();
+                    courses[courseIndex].completionNotes = completionNotes;
                 }
 
-                // Save to localStorage
+                // Save changes
                 localStorage.setItem('courses', JSON.stringify(courses));
-                localStorage.removeItem('currentAttendanceCourse');
 
                 // Close modal and show success message
                 closeModal('attendanceModal');
-                showNotification(
-                    markComplete ? 'Course completed and automatically archived' : 'Attendance saved successfully', 
-                    'success'
-                );
-                updateTodaysCourses();
-                updateClassList();
-                updateArchivedClassesList(); // Update archived list if course was completed
+                showNotification('Attendance saved successfully', 'success');
+
+                // Refresh course list
+                updateAssignedCourses();
             } catch (error) {
                 console.error('Error saving attendance:', error);
                 showNotification('Error saving attendance', 'error');
@@ -1998,7 +2090,7 @@
                     return;
                 }
 
-                const courseId = localStorage.getItem('currentAttendanceCourse');
+                const courseId = localStorage.getItem('currentAttendanceCourseId');
                 if (!courseId) {
                     showNotification('No course selected', 'error');
                     return;
