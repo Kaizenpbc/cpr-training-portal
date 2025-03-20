@@ -1050,6 +1050,7 @@
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Status</th>
+                                    <th>Attendance</th>
                                     <th>Notes</th>
                                 </tr>
                             </thead>
@@ -1450,7 +1451,7 @@
                 // Update statuses for each portal view:
                 courses[courseIndex].status = 'PENDING';                    // Organization Portal view (hide instructor details)
                 courses[courseIndex].adminScheduledDashStatus = 'SCHEDULED';// Admin Portal Scheduled Courses view
-                courses[courseIndex].adminInstructorDashStatus = 'AVAILABLE';// Admin Portal Instructor Dashboard
+                courses[courseIndex].adminInstructorDashStatus = 'SCHEDULED';// Admin Portal Instructor Dashboard
                 courses[courseIndex].organizationStatus = 'PENDING';       // Organization Portal status
                 courses[courseIndex].instructorStatus = 'AVAILABLE';       // Instructor Portal status (stays AVAILABLE until confirmed)
                 courses[courseIndex].adminConfirmed = false;              // Not confirmed yet
@@ -2276,10 +2277,10 @@
                 // Save changes
                 localStorage.setItem('courses', JSON.stringify(courses));
                 
-                // Update all displays
-                updateScheduledCoursesList();  // This will remove the course from Scheduled section
-                updateConfirmedCoursesList();  // This will add the course to Confirmed section
-                updateInstructorDashboard();   // This will update the instructor's view
+                // Update displays
+                updateScheduledCoursesList();
+                updateConfirmedCoursesList();
+                updateInstructorDashboard();
                 
                 showNotification('Course confirmed successfully', 'success');
             } catch (error) {
@@ -2501,15 +2502,16 @@
                         course.studentList.forEach(student => {
                             const row = document.createElement('tr');
                             // Determine attendance status
-                            const attendanceStatus = student.attendance === 'present' ? 
-                                '<span style="color: green;">Present</span>' : 
-                                '<span style="color: red;">Absent</span>';
+                            const attendanceStatus = student.attendance ? 
+                                `<span class="status-${student.attendance}">${student.attendance.toUpperCase()}</span>` : 
+                                'Not Recorded';
                             
                             row.innerHTML = `
                                 <td>${student.name || '-'}</td>
                                 <td>${student.email || '-'}</td>
                                 <td>${student.status || 'Registered'}</td>
                                 <td>${attendanceStatus}</td>
+                                <td>${student.notes || '-'}</td>
                             `;
                             studentListTableBody.appendChild(row);
                         });

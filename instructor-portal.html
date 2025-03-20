@@ -1336,16 +1336,16 @@
 
                 // Add assigned courses
                 assignedCourses.forEach(course => {
-                    const status = course.adminConfirmed ? 'CONFIRMED' : 'PENDING';
-                    const statusClass = course.adminConfirmed ? 'confirmed' : 'pending';
+                    const status = course.adminConfirmed ? 'CONFIRMED' : 'AVAILABLE';
+                    const statusClass = course.adminConfirmed ? 'confirmed' : 'available';
 
                     tableRows.push(`
                         <tr>
                             <td>${formatDate(course.courseDate)}</td>
-                            <td>${course.organizationName || '-'}</td>
-                            <td>${course.location || '-'}</td>
-                            <td>${course.classType || '-'}</td>
-                            <td>${course.studentsRegistered || 0}</td>
+                            <td>${course.displayOrgDetails ? (course.organizationName || '-') : '-'}</td>
+                            <td>${course.displayOrgDetails ? (course.location || '-') : '-'}</td>
+                            <td>${course.displayOrgDetails ? (course.classType || '-') : '-'}</td>
+                            <td>${course.displayOrgDetails ? (course.studentsRegistered || 0) : '-'}</td>
                             <td><span class="status-${statusClass}">${status}</span></td>
                             <td>
                                 <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
@@ -1747,7 +1747,9 @@
                 // Get all students and their attendance
                 const rows = document.querySelectorAll('#attendanceTableBody tr');
                 const updatedStudents = Array.from(rows).map((row, index) => {
-                    const attendance = row.querySelector(`input[name="attendance_${index}"]:checked`)?.value || 'absent';
+                    const radioButtons = row.querySelectorAll(`input[name="attendance_${index}"]`);
+                    const checkedRadio = Array.from(radioButtons).find(radio => radio.checked);
+                    const attendance = checkedRadio ? checkedRadio.value : 'absent';
                     return {
                         ...courses[courseIndex].studentList[index],
                         attendance: attendance
@@ -1760,9 +1762,10 @@
                 courses[courseIndex].studentsAttended = presentCount;
 
                 // Check if course should be marked as complete
-                const markComplete = document.getElementById('markAsComplete').checked;
+                const markCompleteCheckbox = document.getElementById('markAsComplete');
+                const markComplete = markCompleteCheckbox ? markCompleteCheckbox.checked : false;
                 if (markComplete) {
-                    const completionNotes = document.getElementById('completionNotesText').value.trim();
+                    const completionNotes = document.getElementById('completionNotesText')?.value.trim() || '';
                     const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
                     
                     // Set completion details

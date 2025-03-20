@@ -907,11 +907,11 @@
                         tbody.innerHTML = orgCourses.map(course => {
                             const statusClass = course.completionStatus === 'COMPLETED' ? 'complete' :
                                 course.adminConfirmed ? 'confirmed' :
-                                course.instructorId ? 'scheduled' : 'pending';
+                                course.instructorId ? 'pending' : 'pending';
 
                             const statusText = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
                                 course.adminConfirmed ? 'CONFIRMED' :
-                                course.instructorId ? 'SCHEDULED' : 'PENDING';
+                                course.instructorId ? 'PENDING' : 'PENDING';
 
                             const attendanceText = course.studentsAttended ? 
                                 `${course.studentsAttended}/${course.studentsRegistered} Present` : 
@@ -928,7 +928,7 @@
                                     <td>${course.studentsRegistered || 0}</td>
                                     <td>${attendanceText}</td>
                                     <td><span class="status-${statusClass}">${statusText}</span></td>
-                                    <td>${course.instructorName || 'Not Assigned'}</td>
+                                    <td>${course.displayInstructorDetails ? (course.instructorName || 'Not Assigned') : '-'}</td>
                                     <td><span title="${notes}">${truncatedNotes}</span></td>
                                     <td>
                                         <button class="btn btn-primary" onclick="viewStudentList('${course.id}')">
@@ -985,12 +985,25 @@
                                 </tr>
                             `;
                         } else {
+                            studentListTableBody.innerHTML = `
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    ${course.adminConfirmed ? '<th>Attendance</th>' : ''}
+                                </tr>
+                            `;
                             course.studentList.forEach((student, index) => {
                                 const row = document.createElement('tr');
                                 row.innerHTML = `
                                     <td>${student.name || '-'}</td>
                                     <td>${student.email || '-'}</td>
                                     <td>${student.status || 'Registered'}</td>
+                                    ${course.adminConfirmed ? `
+                                        <td>${student.attendance ? 
+                                            `<span class="status-${student.attendance}">${student.attendance.toUpperCase()}</span>` : 
+                                            'Not Recorded'}</td>
+                                    ` : ''}
                                 `;
                                 studentListTableBody.appendChild(row);
                             });
@@ -1025,6 +1038,13 @@
                     console.log('Opening upload modal for course:', courseId);
                     currentCourseId = courseId;
                     const modal = document.getElementById('uploadModal');
+                    const fileInput = document.getElementById('studentListFileModal');
+                    
+                    // Reset the file input
+                    if (fileInput) {
+                        fileInput.value = '';
+                    }
+                    
                     if (modal) {
                         modal.style.display = 'block';
                     } else {
@@ -1038,10 +1058,12 @@
                     console.log('Current course ID updated:', currentCourseId);
                 }
 
-                function handleFileUpload() {
+                function handleFileUpload(event) {
+                    if (event) event.preventDefault();
                     console.log('handleFileUpload function started');
                     try {
-                        const fileInput = document.getElementById('studentListFile');
+                        // Get the file input from the modal
+                        const fileInput = document.getElementById('studentListFileModal');
                         console.log('File input element:', fileInput);
                         console.log('File input files:', fileInput.files);
                         
@@ -1062,90 +1084,94 @@
 
                         console.log('File selected successfully:', file.name);
 
-                        // Show upload progress
-                        const progressBar = document.getElementById('uploadProgress');
-                        const progressBarFill = progressBar.querySelector('.progress-bar-fill');
-                        console.log('Progress bar elements:', { progressBar, progressBarFill });
-                        
-                        progressBar.style.display = 'block';
+                        // Show progress bar
+                        const progressContainer = document.querySelector('.progress-container');
+                        const progressBarFill = document.querySelector('.progress-bar-fill');
+                        const progressPercentage = document.getElementById('progressPercentage');
+                        progressContainer.style.display = 'block';
                         progressBarFill.style.width = '0%';
+                        progressPercentage.textContent = '0%';
 
-                        // Simulate upload progress
-                        let progress = 0;
-                        const interval = setInterval(() => {
-                            progress += 10;
-                            progressBarFill.style.width = `${progress}%`;
-                            console.log('Upload progress:', progress);
-                            
-                            if (progress >= 100) {
-                                clearInterval(interval);
-                                console.log('Progress reached 100%, starting file processing');
-                                setTimeout(() => {
-                                    // Process the file
-                                    const reader = new FileReader();
-                                    console.log('FileReader created');
-                                    
-                                    reader.onload = function(e) {
-                                        console.log('FileReader onload triggered');
-                                        try {
-                                            const data = new Uint8Array(e.target.result);
-                                            console.log('File data read:', data.length, 'bytes');
-                                            
-                                            const workbook = XLSX.read(data, { type: 'array' });
-                                            console.log('Workbook read successfully');
-                                            
-                                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                                            console.log('First sheet:', workbook.SheetNames[0]);
-                                            
-                                            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                                            console.log('JSON data extracted:', jsonData.length, 'rows');
+                        // Process the file
+                        const reader = new FileReader();
+                        console.log('FileReader created');
+                        
+                        reader.onload = function(e) {
+                            console.log('FileReader onload triggered');
+                            try {
+                                const data = new Uint8Array(e.target.result);
+                                console.log('File data read:', data.length, 'bytes');
+                                
+                                const workbook = XLSX.read(data, { type: 'array' });
+                                console.log('Workbook read successfully');
+                                
+                                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                                console.log('First sheet:', workbook.SheetNames[0]);
+                                
+                                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                                console.log('JSON data extracted:', jsonData.length, 'rows');
 
-                                            // Update course with student list
-                                            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                                            console.log('Current courses:', courses.length);
-                                            
-                                            const courseIndex = courses.findIndex(c => c.id === currentCourseId);
-                                            console.log('Course index:', courseIndex);
-                                            
-                                            if (courseIndex !== -1) {
-                                                // Create student list with all fields
-                                                courses[courseIndex].studentList = jsonData.map(student => ({
-                                                    name: student.Name || '',
-                                                    email: student.Email || '',
-                                                    phone: student.Phone || '',
-                                                    status: student.Status || 'Registered',
-                                                    attendance: '' // Set attendance to blank initially
-                                                }));
-                                                
-                                                // Update the students registered count
-                                                courses[courseIndex].studentsRegistered = courses[courseIndex].studentList.length;
-                                                courses[courseIndex].studentsAttended = 0; // Reset attended count
-                                                
-                                                console.log('Updated course:', courses[courseIndex]);
-                                                localStorage.setItem('courses', JSON.stringify(courses));
-                                                showNotification('Student list uploaded successfully', 'success');
-                                                updateMyCoursesTable();
-                                                fileInput.value = ''; // Clear the file input
-                                            } else {
-                                                console.error('Course not found with ID:', currentCourseId);
-                                                showNotification('Course not found', 'error');
-                                            }
-                                        } catch (error) {
-                                            console.error('Error processing file:', error);
-                                            showNotification('Error processing file. Please check the format.', 'error');
-                                        }
-                                    };
+                                // Update course with student list
+                                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                                console.log('Current courses:', courses.length);
+                                
+                                const courseIndex = courses.findIndex(c => c.id === currentCourseId);
+                                console.log('Course index:', courseIndex);
+                                
+                                if (courseIndex !== -1) {
+                                    // Create student list with all fields
+                                    courses[courseIndex].studentList = jsonData.map(student => ({
+                                        name: student.Name || student.name || '',
+                                        email: student.Email || student.email || '',
+                                        phone: student.Phone || student.phone || '',
+                                        status: student.Status || student.status || 'Registered',
+                                        attendance: '' // Set attendance to blank initially
+                                    }));
                                     
-                                    reader.onerror = function(error) {
-                                        console.error('FileReader error:', error);
-                                        showNotification('Error reading file', 'error');
-                                    };
+                                    // Update the students registered count
+                                    courses[courseIndex].studentsRegistered = courses[courseIndex].studentList.length;
+                                    courses[courseIndex].studentsAttended = 0; // Reset attended count
                                     
-                                    console.log('Starting file read');
-                                    reader.readAsArrayBuffer(file);
-                                }, 500);
+                                    console.log('Updated course:', courses[courseIndex]);
+                                    localStorage.setItem('courses', JSON.stringify(courses));
+                                    
+                                    // Update progress bar to 100%
+                                    progressBarFill.style.width = '100%';
+                                    progressPercentage.textContent = '100%';
+                                    
+                                    // Show success message and close modal after a delay
+                                    setTimeout(() => {
+                                        showNotification('Student list uploaded successfully', 'success');
+                                        closeModal('uploadModal');
+                                        updateMyCoursesTable();
+                                        fileInput.value = ''; // Clear the file input
+                                    }, 500);
+                                } else {
+                                    console.error('Course not found with ID:', currentCourseId);
+                                    showNotification('Course not found', 'error');
+                                }
+                            } catch (error) {
+                                console.error('Error processing file:', error);
+                                showNotification('Error processing file. Please check the format.', 'error');
                             }
-                        }, 200);
+                        };
+                        
+                        reader.onerror = function(error) {
+                            console.error('FileReader error:', error);
+                            showNotification('Error reading file', 'error');
+                        };
+                        
+                        // Update progress as file is read
+                        reader.onprogress = function(e) {
+                            if (e.lengthComputable) {
+                                const progress = Math.round((e.loaded / e.total) * 100);
+                                progressBarFill.style.width = `${progress}%`;
+                                progressPercentage.textContent = `${progress}%`;
+                            }
+                        };
+                        
+                        console.log('Starting file read');
+                        reader.readAsArrayBuffer(file);
                     } catch (error) {
                         console.error('Error in handleFileUpload:', error);
                         showNotification('Error uploading file', 'error');
@@ -1498,23 +1524,23 @@
     <!-- Modal for uploading student list -->
     <div id="uploadModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('uploadModal')">&times;</span>
-            <h3>Upload Student List</h3>
+            <span class="close" onclick="closeModal('uploadModal')">&times;</span>
+            <h2>Upload Student List</h2>
             <form id="uploadForm" onsubmit="handleFileUpload(event)">
                 <div class="form-group">
-                    <label for="studentListFile">Select Excel File:</label>
-                    <input type="file" id="studentListFile" accept=".xlsx,.xls" required>
+                    <label for="studentListFileModal">Select Excel File:</label>
+                    <input type="file" id="studentListFileModal" accept=".xlsx,.xls" required>
                     <small>Accepted formats: .xlsx, .xls</small>
                 </div>
-                <div class="upload-progress" id="uploadProgress">
-                    <p>Uploading file...</p>
+                <div class="progress-container" style="display: none;">
                     <div class="progress-bar">
                         <div class="progress-bar-fill"></div>
                     </div>
+                    <div class="progress-text">Uploading: <span id="progressPercentage">0%</span></div>
                 </div>
-                <div class="form-group">
-                    <button type="button" class="btn btn-secondary" onclick="downloadTemplate()">Download Template</button>
+                <div class="button-group">
                     <button type="submit" class="btn btn-primary">Upload</button>
+                    <button type="button" class="btn btn-secondary" onclick="downloadTemplate()">Download Template</button>
                 </div>
             </form>
         </div>
@@ -1532,6 +1558,7 @@
                             <th>Name</th>
                             <th>Email</th>
                             <th>Status</th>
+                            ${course.adminConfirmed ? '<th>Attendance</th>' : ''}
                         </tr>
                     </thead>
                     <tbody id="studentListTableBody">
