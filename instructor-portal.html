@@ -721,14 +721,7 @@
                 <i class="fas fa-archive"></i>
                 <span>Archived Classes</span>
             </button>
-            <button class="btn-danger" onclick="handleNavClick('reset')" id="resetBtn">
-                <i class="fas fa-trash-alt"></i>
-                <span>Reset All Data</span>
-            </button>
-            <button onclick="handleLogout()" id="logoutBtn">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-            </button>
+            <button onclick="handleLogout()">Logout</button>
         </nav>
 
         <main class="main-content">
@@ -777,7 +770,6 @@
                             <th>Location</th>
                             <th>Class Type</th>
                             <th>Students Registered</th>
-                            <th>Students Attendance</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -958,24 +950,6 @@
 
     <div id="notification" class="notification"></div>
 
-    <!-- Add Reset Data Confirmation Modal -->
-    <div id="resetDataModal" class="modal">
-        <div class="modal-content">
-            <h2>Reset All Data</h2>
-            <p>Warning: This will permanently delete all data including:</p>
-            <ul>
-                <li>Your availability settings</li>
-                <li>All course assignments</li>
-                <li>All attendance records</li>
-            </ul>
-            <p>This action cannot be undone. Are you sure you want to continue?</p>
-            <div class="modal-buttons">
-                <button class="btn btn-danger" onclick="resetAllData()">Yes, Reset All Data</button>
-                <button class="btn btn-secondary" onclick="closeModal('resetDataModal')">Cancel</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Add Unregistered Student Modal -->
     <div id="addUnregisteredModal" class="modal">
         <div class="modal-content">
@@ -1100,6 +1074,15 @@
                 localStorage.setItem('currentInstructor', JSON.stringify(instructor));
                 console.log('Current instructor set in localStorage:', instructor);
                 
+                // Reset calendar before loading new instructor's availability
+                resetCalendar();
+                
+                // Load the instructor's availability into the calendar
+                if (instructor.availability) {
+                    selectedDates = new Set(instructor.availability);
+                    renderCalendar();
+                }
+                
                 showWelcomeBanner(instructor.name);
                 showSection('classes');
                 updateNavButtons();
@@ -1118,7 +1101,26 @@
             showWelcomeBanner('Welcome!');
             showSection('login');
             updateNavButtons();  // Update nav buttons after logout
+            resetCalendar();     // Reset calendar state
             showNotification('Logged out successfully', 'success');
+        }
+
+        // Reset calendar state
+        function resetCalendar() {
+            selectedDates = new Set(); // Clear selected dates
+            const calendar = document.getElementById('availabilityCalendar');
+            if (calendar) {
+                // Remove all available markers
+                const days = calendar.getElementsByClassName('calendar-day');
+                Array.from(days).forEach(day => {
+                    day.classList.remove('available');
+                });
+            }
+            // Reset to current month/year
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth();
+            renderCalendar();
         }
 
         // Section visibility
@@ -1307,93 +1309,84 @@
                 
                 if (!tbody) return;
 
-                // Get today's date in YYYY-MM-DD format
-                const today = new Date().toISOString().split('T')[0];
+                // Filter for courses assigned to this instructor
+                const assignedCourses = courses.filter(course => 
+                    course.instructorId === instructor.id && 
+                    !course.isArchived && 
+                    !course.completionStatus
+                );
 
-                // Get all dates where the instructor is available
-                const availableDates = new Set(instructor.availability || []);
+                // Get instructor's availability dates
+                const availableDates = instructor.availability || [];
+                availableDates.sort(); // Sort dates chronologically
 
-                // Create a map of dates to courses
-                const dateToCoursesMap = new Map();
-                courses.forEach(course => {
-                    if (course.instructorId === instructor.id) {
-                        dateToCoursesMap.set(course.courseDate, course);
-                    }
+                if (assignedCourses.length === 0 && availableDates.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center;">
+                                No classes assigned yet. Please set your availability in the "Set Availability" section.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                // Combine assigned courses and available dates
+                const tableRows = [];
+
+                // Add assigned courses
+                assignedCourses.forEach(course => {
+                    const status = course.adminConfirmed ? 'CONFIRMED' : 'PENDING';
+                    const statusClass = course.adminConfirmed ? 'confirmed' : 'pending';
+
+                    tableRows.push(`
+                        <tr>
+                            <td>${formatDate(course.courseDate)}</td>
+                            <td>${course.organizationName || '-'}</td>
+                            <td>${course.location || '-'}</td>
+                            <td>${course.classType || '-'}</td>
+                            <td>${course.studentsRegistered || 0}</td>
+                            <td><span class="status-${statusClass}">${status}</span></td>
+                            <td>
+                                <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
+                                    View Students
+                                </button>
+                                ${course.adminConfirmed ? 
+                                    `<button class="btn btn-primary" onclick="openAttendance('${course.id}')">
+                                        Take Attendance
+                                    </button>` : 
+                                    ''
+                                }
+                            </td>
+                        </tr>
+                    `);
                 });
 
-                // Combine both available dates and course dates
-                const allDates = new Set([...availableDates, ...dateToCoursesMap.keys()]);
-                const sortedDates = Array.from(allDates).sort();
-
-                // Generate table rows
-                const rows = sortedDates.map(date => {
-                    const course = dateToCoursesMap.get(date);
-                    
-                    if (course) {
-                        // If there's a course on this date
-                        let status, statusClass;
-                        let showOrgDetails = course.displayOrgDetails;
-                        
-                        if (course.completionStatus === 'COMPLETED') {
-                            status = 'COMPLETED';
-                            statusClass = 'complete';
-                            showOrgDetails = true;
-                        } else if (course.adminConfirmed) {
-                            status = 'CONFIRMED';
-                            statusClass = 'confirmed';
-                            showOrgDetails = true;
-                        } else if (course.instructorId === instructor.id) {
-                            status = course.instructorStatus || 'SCHEDULED';
-                            statusClass = (course.instructorStatus || 'SCHEDULED').toLowerCase();
-                            showOrgDetails = course.displayOrgDetails;
-                        } else {
-                            status = 'Available';
-                            statusClass = 'available';
-                            showOrgDetails = false;
-                        }
-
-                        // Check if this is today's course and not completed
-                        const isToday = date === today;
-                        const canComplete = isToday && course.completionStatus !== 'COMPLETED' && course.adminConfirmed;
-
-                        return `
-                            <tr>
-                                <td>${formatDate(date)}</td>
-                                <td>${showOrgDetails ? course.organizationName : '-'}</td>
-                                <td>${showOrgDetails ? course.location : '-'}</td>
-                                <td>${showOrgDetails ? course.classType : '-'}</td>
-                                <td>${showOrgDetails ? (course.studentsRegistered || 0) : '-'}</td>
-                                <td>${showOrgDetails ? (course.studentsAttended || 0) : '-'}</td>
-                                <td><span class="status-${statusClass}">${status}</span></td>
-                                <td>
-                                    ${course.completionStatus !== 'COMPLETED' && course.adminConfirmed ?
-                                        `<button class="btn btn-success" onclick="completeCourse('${course.id}')" 
-                                            ${!canComplete ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-                                            Complete Course
-                                        </button>` :
-                                        '-'
-                                    }
-                                </td>
-                            </tr>
-                        `;
-                    } else {
-                        // If the date is just available with no course
-                        return `
-                            <tr>
+                // Add available dates that don't have assigned courses
+                availableDates.forEach(date => {
+                    if (!assignedCourses.some(course => course.courseDate === date)) {
+                        tableRows.push(`
+                            <tr class="available-date">
                                 <td>${formatDate(date)}</td>
                                 <td>-</td>
                                 <td>-</td>
                                 <td>-</td>
                                 <td>-</td>
-                                <td>-</td>
-                                <td><span class="status-available">Available</span></td>
-                                <td>-</td>
+                                <td><span class="status-available">AVAILABLE</span></td>
+                                <td>Waiting for assignment</td>
                             </tr>
-                        `;
+                        `);
                     }
                 });
 
-                tbody.innerHTML = rows.join('');
+                // Sort all rows by date
+                tableRows.sort((a, b) => {
+                    const dateA = a.match(/\d{2}\/\d{2}\/\d{4}/)[0];
+                    const dateB = b.match(/\d{2}\/\d{2}\/\d{4}/)[0];
+                    return new Date(dateA) - new Date(dateB);
+                });
+
+                tbody.innerHTML = tableRows.join('');
             } catch (error) {
                 console.error('Error updating class list:', error);
                 showNotification('Error updating class list', 'error');
@@ -1870,28 +1863,6 @@
             } catch (error) {
                 // Fallback to alert if notification fails
                 alert(message);
-            }
-        }
-
-        function showResetDataConfirmation() {
-            document.getElementById('resetDataModal').style.display = 'block';
-        }
-
-        function resetAllData() {
-            try {
-                // Clear all data from localStorage
-                localStorage.clear();
-                
-                // Show success message
-                showNotification('All data has been reset successfully', 'success');
-                
-                // Redirect to login after a short delay
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } catch (error) {
-                console.error('Error resetting data:', error);
-                showNotification('Error resetting data', 'error');
             }
         }
 

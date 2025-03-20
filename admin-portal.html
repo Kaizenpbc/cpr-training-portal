@@ -1450,7 +1450,7 @@
                 // Update statuses for each portal view:
                 courses[courseIndex].status = 'PENDING';                    // Organization Portal view (hide instructor details)
                 courses[courseIndex].adminScheduledDashStatus = 'SCHEDULED';// Admin Portal Scheduled Courses view
-                courses[courseIndex].adminInstructorDashStatus = 'SCHEDULED';// Admin Portal Instructor Dashboard
+                courses[courseIndex].adminInstructorDashStatus = 'AVAILABLE';// Admin Portal Instructor Dashboard
                 courses[courseIndex].organizationStatus = 'PENDING';       // Organization Portal status
                 courses[courseIndex].instructorStatus = 'AVAILABLE';       // Instructor Portal status (stays AVAILABLE until confirmed)
                 courses[courseIndex].adminConfirmed = false;              // Not confirmed yet
@@ -1982,14 +1982,11 @@
         // Add closeModal function
         function closeModal(modalId) {
             try {
-                console.log('Closing modal:', modalId);
                 const modal = document.getElementById(modalId);
                 if (modal) {
                     modal.style.display = 'none';
-                    // Clear any stored IDs if necessary
-                    if (modalId === 'assignInstructorModal') {
-                        localStorage.removeItem('currentCourseId');
-                    }
+                } else {
+                    console.error(`Modal ${modalId} not found`);
                 }
             } catch (error) {
                 console.error('Error closing modal:', error);
@@ -2101,40 +2098,18 @@
 
         function updateScheduledCoursesList() {
             try {
-                console.log('Starting updateScheduledCoursesList function');
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                console.log('All courses:', courses);
-                
                 const tbody = document.getElementById('scheduledCoursesTableBody');
                 
-                if (!tbody) {
-                    console.warn('scheduledCoursesTableBody element not found');
-                    return;
-                }
-
-                // Filter for courses that are:
-                // 1. Not archived
-                // 2. Not completed
-                // 3. Not confirmed by admin
-                // 4. Either PENDING (no instructor) or SCHEDULED (has instructor)
-                const scheduledCourses = courses.filter(course => {
-                    console.log('Checking course:', course);
-                    console.log('Course status:', {
-                        notArchived: !course.isArchived,
-                        noCompletion: !course.completionStatus,
-                        notConfirmed: !course.adminConfirmed,
-                        status: course.adminScheduledDashStatus
-                    });
-                    
-                    return !course.isArchived && 
-                           !course.completionStatus && 
-                           !course.adminConfirmed &&
-                           (course.adminScheduledDashStatus === 'PENDING' || 
-                            course.adminScheduledDashStatus === 'SCHEDULED');
-                });
+                if (!tbody) return;
                 
-                console.log('Filtered scheduled courses:', scheduledCourses);
-
+                // Filter for unconfirmed and uncompleted courses
+                const scheduledCourses = courses.filter(course => 
+                    !course.isArchived && 
+                    !course.completionStatus && 
+                    !course.adminConfirmed
+                );
+                
                 tbody.innerHTML = scheduledCourses.length ? 
                     scheduledCourses.map(course => {
                         const isPending = course.adminScheduledDashStatus === 'PENDING';
@@ -2302,9 +2277,9 @@
                 localStorage.setItem('courses', JSON.stringify(courses));
                 
                 // Update all displays
-                updateScheduledCoursesList();
-                updateConfirmedCoursesList();
-                updateInstructorDashboard();
+                updateScheduledCoursesList();  // This will remove the course from Scheduled section
+                updateConfirmedCoursesList();  // This will add the course to Confirmed section
+                updateInstructorDashboard();   // This will update the instructor's view
                 
                 showNotification('Course confirmed successfully', 'success');
             } catch (error) {
@@ -2639,6 +2614,31 @@
             } catch (error) {
                 console.error('Error in updateCompletedCoursesList:', error);
                 showNotification('Error updating completed courses list', 'error');
+            }
+        }
+
+        function showResetDataConfirmation() {
+            document.getElementById('resetDataModal').style.display = 'block';
+        }
+
+        function resetAllData() {
+            try {
+                // Clear all data from localStorage
+                localStorage.clear();
+                
+                // Reinitialize default course types
+                initializeCourseTypes();
+                
+                // Show success message
+                showNotification('All data has been reset successfully', 'success');
+                
+                // Reload the page after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } catch (error) {
+                console.error('Error resetting data:', error);
+                showNotification('Error resetting data', 'error');
             }
         }
     </script>

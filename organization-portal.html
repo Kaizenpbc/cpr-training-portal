@@ -574,7 +574,7 @@
     <header class="main-header">
         <div class="logo">GTA CPR</div>
         <nav class="main-nav">
-            <a href="index.html">Home</a>
+            <a href="Index.html">Home</a>
             <a href="instructor-portal.html">Instructors</a>
             <a href="organization-portal.html">Organizations</a>
             <a href="admin-portal.html">Admin</a>
@@ -589,7 +589,6 @@
             <button onclick="showSection('courses')">My Courses</button>
             <button onclick="showSection('archivedCourses')">Archived Courses</button>
             <button onclick="showSection('students')">Student Lists</button>
-            <button class="btn-danger" onclick="showResetDataConfirmation()">Reset All Data</button>
             <button onclick="handleLogout()">Logout</button>
         </div>
 
@@ -695,7 +694,7 @@
                 <div class="upload-section">
                     <h3>Upload Student List</h3>
                     <p>Select a course to upload student list:</p>
-                    <select id="courseSelect">
+                    <select id="courseSelect" onchange="updateCurrentCourseId(this.value)">
                         <option value="">Select a course</option>
                     </select>
                     <div class="form-group">
@@ -908,11 +907,11 @@
                         tbody.innerHTML = orgCourses.map(course => {
                             const statusClass = course.completionStatus === 'COMPLETED' ? 'complete' :
                                 course.adminConfirmed ? 'confirmed' :
-                                course.adminScheduledDashStatus === 'SCHEDULED' ? 'scheduled' : 'pending';
+                                course.instructorId ? 'scheduled' : 'pending';
 
                             const statusText = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
                                 course.adminConfirmed ? 'CONFIRMED' :
-                                course.adminScheduledDashStatus === 'SCHEDULED' ? 'SCHEDULED' : 'PENDING';
+                                course.instructorId ? 'SCHEDULED' : 'PENDING';
 
                             const attendanceText = course.studentsAttended ? 
                                 `${course.studentsAttended}/${course.studentsRegistered} Present` : 
@@ -935,8 +934,11 @@
                                         <button class="btn btn-primary" onclick="viewStudentList('${course.id}')">
                                             View Student List
                                         </button>
+                                        <button class="btn btn-success" onclick="showUploadModal('${course.id}')">
+                                            UPLOAD
+                                        </button>
                                         ${course.completionStatus === 'COMPLETED' ? 
-                                            `<button class="btn btn-success" onclick="viewCertificates('${course.id}')">
+                                            `<button class="btn btn-info" onclick="viewCertificates('${course.id}')">
                                                 View Certificates
                                             </button>` : 
                                             ''
@@ -959,42 +961,47 @@
 
                 function viewStudentList(courseId) {
                     try {
-                        const courses = JSON.parse(localStorage.getItem('courses')) || [];
+                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                         const course = courses.find(c => c.id === courseId);
                         
-                        if (course) {
-                            const studentListTableBody = document.getElementById('studentListTableBody');
-                            if (!studentListTableBody) return;
-                            
-                            // Clear existing content
-                            studentListTableBody.innerHTML = '';
-                            
-                            if (!course.studentList || course.studentList.length === 0) {
-                                studentListTableBody.innerHTML = `
-                                    <tr>
-                                        <td colspan="4" style="text-align: center;">No students added yet</td>
-                                    </tr>
+                        if (!course) {
+                            showNotification('Course not found', 'error');
+                            return;
+                        }
+
+                        const studentListTableBody = document.getElementById('studentListTableBody');
+                        if (!studentListTableBody) {
+                            showNotification('Error: Student list table not found', 'error');
+                            return;
+                        }
+                        
+                        // Clear existing content
+                        studentListTableBody.innerHTML = '';
+                        
+                        if (!course.studentList || course.studentList.length === 0) {
+                            studentListTableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="3" style="text-align: center;">No students added yet</td>
+                                </tr>
+                            `;
+                        } else {
+                            course.studentList.forEach((student, index) => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${student.name || '-'}</td>
+                                    <td>${student.email || '-'}</td>
+                                    <td>${student.status || 'Registered'}</td>
                                 `;
-                            } else {
-                                course.studentList.forEach(student => {
-                                    const row = document.createElement('tr');
-                                    // Determine attendance status
-                                    const attendanceStatus = student.attendance === 'present' ? 
-                                        '<span style="color: green;">Present</span>' : 
-                                        '<span style="color: red;">Absent</span>';
-                                    
-                                    row.innerHTML = `
-                                        <td>${student.name || '-'}</td>
-                                        <td>${student.email || '-'}</td>
-                                        <td>${student.status || 'Registered'}</td>
-                                        <td>${attendanceStatus}</td>
-                                    `;
-                                    studentListTableBody.appendChild(row);
-                                });
-                            }
-                            
-                            // Show the modal
-                            document.getElementById('studentListModal').style.display = 'block';
+                                studentListTableBody.appendChild(row);
+                            });
+                        }
+                        
+                        // Show the modal
+                        const modal = document.getElementById('studentListModal');
+                        if (modal) {
+                            modal.style.display = 'block';
+                        } else {
+                            showNotification('Error: Student list modal not found', 'error');
                         }
                     } catch (error) {
                         console.error('Error viewing student list:', error);
@@ -1014,29 +1021,135 @@
                     }
                 }
 
-                function handleFileUpload() {
-                    const courseId = document.getElementById('courseSelect').value;
-                    const fileInput = document.getElementById('studentListFile');
-
-                    if (!courseId) {
-                        showNotification('Please select a course', 'error');
-                        return;
+                function showUploadModal(courseId) {
+                    console.log('Opening upload modal for course:', courseId);
+                    currentCourseId = courseId;
+                    const modal = document.getElementById('uploadModal');
+                    if (modal) {
+                        modal.style.display = 'block';
+                    } else {
+                        console.error('Upload modal not found');
+                        showNotification('Error: Upload modal not found', 'error');
                     }
-
-                    if (!fileInput.files.length) {
-                        showNotification('Please select a file', 'error');
-                        return;
-                    }
-
-                    // Here you would normally process the Excel file
-                    // For now, we'll simulate successful upload
-                    showNotification('Student list uploaded successfully', 'success');
-                    updateMyCoursesTable();
                 }
 
-                function showUploadModal(courseId) {
+                function updateCurrentCourseId(courseId) {
                     currentCourseId = courseId;
-                    document.getElementById('uploadModal').style.display = 'block';
+                    console.log('Current course ID updated:', currentCourseId);
+                }
+
+                function handleFileUpload() {
+                    console.log('handleFileUpload function started');
+                    try {
+                        const fileInput = document.getElementById('studentListFile');
+                        console.log('File input element:', fileInput);
+                        console.log('File input files:', fileInput.files);
+                        
+                        const file = fileInput.files[0];
+                        console.log('Selected file:', file);
+                        
+                        if (!file) {
+                            console.log('No file selected');
+                            showNotification('Please select a file', 'error');
+                            return;
+                        }
+
+                        if (!currentCourseId) {
+                            console.log('No course selected');
+                            showNotification('Please select a course first', 'error');
+                            return;
+                        }
+
+                        console.log('File selected successfully:', file.name);
+
+                        // Show upload progress
+                        const progressBar = document.getElementById('uploadProgress');
+                        const progressBarFill = progressBar.querySelector('.progress-bar-fill');
+                        console.log('Progress bar elements:', { progressBar, progressBarFill });
+                        
+                        progressBar.style.display = 'block';
+                        progressBarFill.style.width = '0%';
+
+                        // Simulate upload progress
+                        let progress = 0;
+                        const interval = setInterval(() => {
+                            progress += 10;
+                            progressBarFill.style.width = `${progress}%`;
+                            console.log('Upload progress:', progress);
+                            
+                            if (progress >= 100) {
+                                clearInterval(interval);
+                                console.log('Progress reached 100%, starting file processing');
+                                setTimeout(() => {
+                                    // Process the file
+                                    const reader = new FileReader();
+                                    console.log('FileReader created');
+                                    
+                                    reader.onload = function(e) {
+                                        console.log('FileReader onload triggered');
+                                        try {
+                                            const data = new Uint8Array(e.target.result);
+                                            console.log('File data read:', data.length, 'bytes');
+                                            
+                                            const workbook = XLSX.read(data, { type: 'array' });
+                                            console.log('Workbook read successfully');
+                                            
+                                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                                            console.log('First sheet:', workbook.SheetNames[0]);
+                                            
+                                            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                                            console.log('JSON data extracted:', jsonData.length, 'rows');
+
+                                            // Update course with student list
+                                            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                                            console.log('Current courses:', courses.length);
+                                            
+                                            const courseIndex = courses.findIndex(c => c.id === currentCourseId);
+                                            console.log('Course index:', courseIndex);
+                                            
+                                            if (courseIndex !== -1) {
+                                                // Create student list with all fields
+                                                courses[courseIndex].studentList = jsonData.map(student => ({
+                                                    name: student.Name || '',
+                                                    email: student.Email || '',
+                                                    phone: student.Phone || '',
+                                                    status: student.Status || 'Registered',
+                                                    attendance: '' // Set attendance to blank initially
+                                                }));
+                                                
+                                                // Update the students registered count
+                                                courses[courseIndex].studentsRegistered = courses[courseIndex].studentList.length;
+                                                courses[courseIndex].studentsAttended = 0; // Reset attended count
+                                                
+                                                console.log('Updated course:', courses[courseIndex]);
+                                                localStorage.setItem('courses', JSON.stringify(courses));
+                                                showNotification('Student list uploaded successfully', 'success');
+                                                updateMyCoursesTable();
+                                                fileInput.value = ''; // Clear the file input
+                                            } else {
+                                                console.error('Course not found with ID:', currentCourseId);
+                                                showNotification('Course not found', 'error');
+                                            }
+                                        } catch (error) {
+                                            console.error('Error processing file:', error);
+                                            showNotification('Error processing file. Please check the format.', 'error');
+                                        }
+                                    };
+                                    
+                                    reader.onerror = function(error) {
+                                        console.error('FileReader error:', error);
+                                        showNotification('Error reading file', 'error');
+                                    };
+                                    
+                                    console.log('Starting file read');
+                                    reader.readAsArrayBuffer(file);
+                                }, 500);
+                            }
+                        }, 200);
+                    } catch (error) {
+                        console.error('Error in handleFileUpload:', error);
+                        showNotification('Error uploading file', 'error');
+                    }
                 }
 
                 function closeModal(modalId) {
@@ -1389,9 +1502,9 @@
             <h3>Upload Student List</h3>
             <form id="uploadForm" onsubmit="handleFileUpload(event)">
                 <div class="form-group">
-                    <label for="studentList">Select Excel File:</label>
-                    <input type="file" id="studentList" accept=".xlsx,.xls,.csv" required>
-                    <small>Accepted formats: .xlsx, .xls, .csv</small>
+                    <label for="studentListFile">Select Excel File:</label>
+                    <input type="file" id="studentListFile" accept=".xlsx,.xls" required>
+                    <small>Accepted formats: .xlsx, .xls</small>
                 </div>
                 <div class="upload-progress" id="uploadProgress">
                     <p>Uploading file...</p>
@@ -1419,30 +1532,11 @@
                             <th>Name</th>
                             <th>Email</th>
                             <th>Status</th>
-                            <th>Attendance</th>
                         </tr>
                     </thead>
                     <tbody id="studentListTableBody">
                     </tbody>
                 </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Reset Data Confirmation Modal -->
-    <div id="resetDataModal" class="modal">
-        <div class="modal-content">
-            <h2>Reset All Data</h2>
-            <p>Warning: This will permanently delete all data including:</p>
-            <ul>
-                <li>All scheduled courses</li>
-                <li>All student lists</li>
-                <li>All course history</li>
-            </ul>
-            <p>This action cannot be undone. Are you sure you want to continue?</p>
-            <div class="modal-buttons">
-                <button class="btn btn-danger" onclick="resetAllData()">Yes, Reset All Data</button>
-                <button class="btn btn-secondary" onclick="closeModal('resetDataModal')">Cancel</button>
             </div>
         </div>
     </div>

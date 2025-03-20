@@ -46,4 +46,8 @@ Thumbs.db
 # coverage/
 # .nyc_output
 # cypress/videos/
-# cypress/screenshots/ 
+# cypress/screenshots/
+
+# Instructor Portal files
+No classes assigned yet. Your availability has been recorded for:
+2025-03-18, 2025-03-19, 2025-03-21
