@@ -1138,8 +1138,6 @@
                                 const sheetName = workbook.SheetNames[0];
                                 const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-                                // Get current course ID from localStorage
-                                const currentCourseId = localStorage.getItem('currentUploadCourseId');
                                 if (!currentCourseId) {
                                     showNotification('No course selected for upload', 'error');
                                     return;
@@ -1162,7 +1160,7 @@
                                     
                                     // Try to find existing student by email or phone
                                     let existingStudent = students.find(s => 
-                                        (studentEmail && s.email.toLowerCase() === studentEmail) || 
+                                        (studentEmail && s.email && s.email.toLowerCase() === studentEmail) || 
                                         (studentPhone && s.phone === studentPhone)
                                     );
 
@@ -1180,7 +1178,7 @@
                                         students.push(existingStudent);
                                     }
 
-                                    // Add course reference to student's record
+                                    // Add course reference to student's record if not already present
                                     if (!existingStudent.courses.includes(currentCourseId)) {
                                         existingStudent.courses.push(currentCourseId);
                                     }
