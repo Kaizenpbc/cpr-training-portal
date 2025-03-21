@@ -83,20 +83,41 @@
         }
 
         .left-nav button {
-            display: block;
+            display: flex;
+            align-items: center;
             width: 100%;
             padding: 10px;
             margin-bottom: 10px;
             border: none;
-            background-color: var(--secondary-color);
+            background-color: #ccc;
             color: white;
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.3s;
         }
 
+        .left-nav button i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .left-nav button.active {
+            background-color: var(--secondary-color);
+        }
+
         .left-nav button:hover {
             background-color: var(--primary-color);
+        }
+
+        .left-nav button.disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .left-nav button.disabled:hover {
+            background-color: #ccc;
         }
 
         .main-content {
@@ -357,6 +378,7 @@
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
+            max-width: 50%;  /* Reduce width by 50% */
         }
 
         .analytics-card {
@@ -365,28 +387,31 @@
             padding: 1.5rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: transform 0.3s ease;
+            border-left: 4px solid var(--secondary-color);  /* Add blue accent */
         }
 
         .analytics-card:hover {
             transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
         .analytics-card .card-header {
             display: flex;
             align-items: center;
             margin-bottom: 1rem;
+            color: var(--secondary-color);  /* Use blue color for header */
         }
 
         .analytics-card .card-header i {
             font-size: 1.5rem;
             margin-right: 0.5rem;
-            color: var(--primary-color);
+            color: var(--secondary-color);  /* Use blue color for icons */
         }
 
         .analytics-card .card-body {
             font-size: 2rem;
             font-weight: bold;
-            color: var(--dark-color);
+            color: var(--primary-color);  /* Use darker blue for numbers */
         }
 
         .analytics-charts {
@@ -645,6 +670,45 @@
         .certificate-details p {
             margin: 10px 0;
         }
+
+        /* Monthly Summary Box Styles */
+        .monthly-summary {
+            max-width: 50%;
+            margin-bottom: 20px;
+        }
+
+        .monthly-summary-content {
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            color: white;
+        }
+
+        .monthly-summary-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .monthly-summary-header i {
+            margin-right: 10px;
+            color: white;
+        }
+
+        .monthly-summary-header h3 {
+            margin: 0;
+            color: white;
+        }
+
+        .monthly-summary-body {
+            margin-top: 1rem;
+        }
+
+        .monthly-summary-body p {
+            margin: 5px 0;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -653,22 +717,41 @@
         <nav class="main-nav">
             <a href="Index.html">Home</a>
             <a href="instructor-portal.html">Instructors</a>
-            <a href="organization-portal.html">Organizations</a>
-            <a href="admin-portal.html">Admin</a>
-            <a href="accounting-portal.html">Accounting</a>
+            <a href="organization-portal.html" class="active">Organizations</a>
+            <a href="admin-portal.html">Course Management</a>
+            <a href="support-portal.html">Support</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </header>
 
     <div class="content-wrapper">
         <div class="left-nav">
-            <button onclick="showSection('login')">Login</button>
-            <button onclick="showSection('schedule')">Schedule Course</button>
-            <button onclick="showSection('courses')">My Courses</button>
-            <button onclick="showSection('archivedCourses')">Archived Courses</button>
-            <button onclick="showSection('students')">Student Lists</button>
-            <button onclick="handleLogout()">Logout</button>
-            <button onclick="checkDataIntegrity()">Check Data Integrity</button>
-            <button onclick="checkFileUploadState()">Check Upload State</button>
+            <nav class="left-nav">
+                <button onclick="showSection('login')" id="loginBtn" class="active">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Login</span>
+                </button>
+                <button onclick="showSection('schedule')" id="scheduleBtn">
+                    <i class="fas fa-calendar-plus"></i>
+                    <span>Schedule Course</span>
+                </button>
+                <button onclick="showSection('courses')" id="coursesBtn">
+                    <i class="fas fa-book"></i>
+                    <span>My Courses</span>
+                </button>
+                <button onclick="showSection('certificates')" id="certificatesBtn">
+                    <i class="fas fa-certificate"></i>
+                    <span>Certificates</span>
+                </button>
+                <button onclick="showSection('profile')" id="profileBtn">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </button>
+                <button onclick="handleLogout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </nav>
         </div>
 
         <main class="main-content">
@@ -727,6 +810,21 @@
 
             <section id="courses" class="section">
                 <h2>My Courses</h2>
+                <!-- Monthly Summary Box -->
+                <div style="max-width: 300px; margin-bottom: 20px;">
+                    <div style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="color: white; display: flex; align-items: center; margin-bottom: 10px;">
+                            <i class="fas fa-calendar-check" style="color: white; margin-right: 10px;"></i>
+                            <h3 style="margin: 0;">Monthly Summary</h3>
+                        </div>
+                        <div style="color: white; margin-top: 1rem;">
+                            <p style="margin: 5px 0;">Total Courses: <span id="totalCourses">0</span></p>
+                            <p style="margin: 5px 0;">Completed: <span id="completedCourses">0</span></p>
+                            <p style="margin: 5px 0;">Pending: <span id="pendingCourses">0</span></p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Course Table -->
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -789,6 +887,18 @@
                 // Initialize the application
                 document.addEventListener('DOMContentLoaded', function() {
                     console.log('=== Application Initialization ===');
+                    console.log('Checking monthly summary box styling...');
+                    
+                    // Add trace for monthly summary box
+                    const monthlyBox = document.querySelector('[style*="max-width: 300px"]');
+                    console.log('Monthly Summary Box:', monthlyBox);
+                    if (monthlyBox) {
+                        console.log('Monthly Box Current Styles:', {
+                            maxWidth: monthlyBox.style.maxWidth,
+                            background: monthlyBox.querySelector('div').style.background,
+                            color: monthlyBox.querySelector('div').style.color
+                        });
+                    }
                     
                     // Check if user is logged in
                     const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
@@ -1294,139 +1404,68 @@
                         progressBar.style.width = '0%';
                         progressText.textContent = '0%';
 
-                        // Update progress to 25%
-                        progressBar.style.width = '25%';
-                        progressText.textContent = '25%';
-
-                        // Read the file
                         const reader = new FileReader();
                         console.log('FileReader created');
 
                         reader.onload = function(e) {
                             try {
                                 console.log('FileReader onload triggered');
-                                // Update progress to 50%
                                 progressBar.style.width = '50%';
                                 progressText.textContent = '50%';
 
                                 const data = e.target.result;
-                                console.log('File data loaded, length:', data.length);
-
-                                // Process the Excel data
                                 const workbook = XLSX.read(data, { type: 'binary' });
-                                console.log('Workbook created, sheets:', workbook.SheetNames);
-                                
                                 const sheetName = workbook.SheetNames[0];
-                                console.log('Using first sheet:', sheetName);
-                                
                                 const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                                console.log('Excel data converted to JSON, rows:', jsonData.length);
-
+                                
                                 if (!currentCourseId) {
                                     console.log('No course ID found');
                                     showNotification('No course selected for upload', 'error');
                                     progressContainer.style.display = 'none';
-                            return;
-                        }
+                                    return;
+                                }
 
-                                console.log('Current course ID:', currentCourseId);
-
-                                // Load existing data
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                                let students = JSON.parse(localStorage.getItem('students') || '[]');
-                                console.log('Loaded existing data:', {
-                                    coursesCount: courses.length,
-                                    studentsCount: students.length
-                                });
-
+                                // Load existing courses
+                                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                                 const courseIndex = courses.findIndex(course => course.id === currentCourseId);
-                                console.log('Course index:', courseIndex);
-
+                                
                                 if (courseIndex === -1) {
                                     console.log('Course not found');
-                            showNotification('Course not found', 'error');
+                                    showNotification('Course not found', 'error');
                                     progressContainer.style.display = 'none';
-                            return;
-                        }
+                                    return;
+                                }
 
-                                // Update progress to 75%
-                                progressBar.style.width = '75%';
-                                progressText.textContent = '75%';
+                                // Process students from Excel and create a new student list specific to this course
+                                const newStudentList = jsonData.map(student => ({
+                                    id: 'student_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                                    name: student.Name || student.name || '',
+                                    email: (student.Email || student.email || '').toLowerCase().trim(),
+                                    phone: (student.Phone || student.phone || '').trim(),
+                                    status: 'Registered',
+                                    attendance: '',
+                                    registrationDate: new Date().toISOString()
+                                }));
 
-                                console.log('Processing students from Excel');
-                                // Process each student from Excel
-                                const processedStudents = jsonData.map(excelStudent => {
-                                    const studentEmail = (excelStudent.Email || excelStudent.email || '').toLowerCase().trim();
-                                    const studentPhone = (excelStudent.Phone || excelStudent.phone || '').trim();
-                                    
-                                    console.log('Processing student:', {
-                                        name: excelStudent.Name || excelStudent.name,
-                                        email: studentEmail,
-                                        phone: studentPhone
-                                    });
-                                    
-                                    // Try to find existing student by email or phone
-                                    let existingStudent = students.find(s => 
-                                        (studentEmail && s.email && s.email.toLowerCase() === studentEmail) || 
-                                        (studentPhone && s.phone === studentPhone)
-                                    );
+                                // Update the course with the new student list
+                                courses[courseIndex].studentList = newStudentList;
+                                courses[courseIndex].studentsRegistered = newStudentList.length;
+                                
+                                // Save the updated courses
+                                localStorage.setItem('courses', JSON.stringify(courses));
 
-                                    if (!existingStudent) {
-                                        console.log('Creating new student record');
-                                        // Create new permanent student record
-                                        existingStudent = {
-                                            id: 'student_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                                            name: excelStudent.Name || excelStudent.name || '',
-                                            email: studentEmail,
-                                            phone: studentPhone,
-                                            registrationDate: new Date().toISOString(),
-                                            courses: [],
-                                            certificates: []
-                                        };
-                                        students.push(existingStudent);
-                                    }
-
-                                    // Add course reference to student's record if not already present
-                                    if (!existingStudent.courses.includes(currentCourseId)) {
-                                        existingStudent.courses.push(currentCourseId);
-                                    }
-
-                                    // Return student data for course roster
-                                    return {
-                                        id: existingStudent.id,
-                                        name: existingStudent.name,
-                                        email: existingStudent.email,
-                                        phone: existingStudent.phone,
-                                        status: 'Registered',
-                                        attendance: ''
-                                    };
-                                });
-
-                                console.log('Updating course with processed students');
-                                // Update course student list
-                                courses[courseIndex].studentList = processedStudents;
-                                courses[courseIndex].studentsRegistered = processedStudents.length;
-
-                                console.log('Saving updates to localStorage');
-                                // Save all updates
-                        localStorage.setItem('courses', JSON.stringify(courses));
-                                localStorage.setItem('students', JSON.stringify(students));
-
-                                // Update progress to 100%
                                 progressBar.style.width = '100%';
                                 progressText.textContent = '100%';
 
-                                console.log('Upload complete, closing modal');
-                                // Hide progress bar and close modal after a short delay
                                 setTimeout(() => {
                                     progressContainer.style.display = 'none';
                                     showNotification('Student list uploaded successfully', 'success');
                                     closeModal('uploadModal');
-                                    updateMyCoursesTable(); // Refresh the display
+                                    updateMyCoursesTable();
                                 }, 500);
+
                             } catch (error) {
                                 console.error('Error processing Excel file:', error);
-                                console.error('Error stack:', error.stack);
                                 showNotification('Error processing Excel file', 'error');
                                 progressContainer.style.display = 'none';
                             }
@@ -1434,17 +1473,13 @@
 
                         reader.onerror = function(error) {
                             console.error('Error reading file:', error);
-                            console.error('Error stack:', error.stack);
                             showNotification('Error reading file', 'error');
                             progressContainer.style.display = 'none';
                         };
 
-                        console.log('Starting file read');
                         reader.readAsBinaryString(selectedFile);
-                        console.log('=== End File Upload Process ===');
                     } catch (error) {
                         console.error('Error handling file upload:', error);
-                        console.error('Error stack:', error.stack);
                         showNotification('Error handling file upload', 'error');
                         document.querySelector('.progress-container').style.display = 'none';
                     }
