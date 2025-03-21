@@ -769,70 +769,43 @@
                 <div style="display: flex; gap: 10px;">
                     <!-- Left side - Stats -->
                     <div style="flex: 2;">
-                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                            <!-- Current Week Stats -->
-                            <div style="flex: 1; background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                                <h3 style="color: var(--primary-color); margin: 0 0 5px 0; font-size: 0.8rem;">Current Week</h3>
-                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
-                                    <div style="text-align: center; padding: 3px;">
-                                        <div style="font-size: 0.7rem; color: #666;">Scheduled</div>
-                                        <div style="font-size: 1rem; font-weight: bold; color: var(--secondary-color);" id="currentWeekScheduledCount">0</div>
-                                    </div>
-                                    <div style="text-align: center; padding: 3px;">
-                                        <div style="font-size: 0.7rem; color: #666;">Confirmed</div>
-                                        <div style="font-size: 1rem; font-weight: bold; color: var(--secondary-color);" id="currentWeekConfirmedCount">0</div>
-                                    </div>
-                                    <div style="text-align: center; padding: 3px;">
-                                        <div style="font-size: 0.7rem; color: #666;">Instructors</div>
-                                        <div style="font-size: 1rem; font-weight: bold; color: var(--secondary-color);" id="currentWeekInstructorCount">0</div>
-                                    </div>
-                                    <div style="text-align: center; padding: 3px;">
-                                        <div style="font-size: 0.7rem; color: #666;">Organizations</div>
-                                        <div style="font-size: 1rem; font-weight: bold; color: var(--secondary-color);" id="currentWeekOrganizationCount">0</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Next Week Stats -->
-                            <div style="flex: 1; background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                                <h3 style="color: var(--primary-color); margin: 0 0 5px 0; font-size: 0.8rem;">Next Week</h3>
-                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
-                                    <div style="text-align: center; padding: 3px;">
-                                        <div style="font-size: 0.7rem; color: #666;">Scheduled</div>
-                                        <div style="font-size: 1rem; font-weight: bold; color: var(--secondary-color);" id="nextWeekScheduledCount">0</div>
-                                    </div>
-                                    <div style="text-align: center; padding: 3px;">
-                                        <div style="font-size: 0.7rem; color: #666;">Confirmed</div>
-                                        <div style="font-size: 1rem; font-weight: bold; color: var(--secondary-color);" id="nextWeekConfirmedCount">0</div>
-                                    </div>
-                                    <div style="text-align: center; padding: 3px;">
-                                        <div style="font-size: 0.7rem; color: #666;">Instructors</div>
-                                        <div style="font-size: 1rem; font-weight: bold; color: var(--secondary-color);" id="nextWeekInstructorCount">0</div>
-                                    </div>
-                                    <div style="text-align: center; padding: 3px;">
-                                        <div style="font-size: 0.7rem; color: #666;">Organizations</div>
-                                        <div style="font-size: 1rem; font-weight: bold; color: var(--secondary-color);" id="nextWeekOrganizationCount">0</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="table-responsive" style="background: white; padding: 15px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: left;">Date</th>
+                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: left;">Organization</th>
+                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: left;">Course Type</th>
+                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: left;">Instructor</th>
+                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: center;">Pending</th>
+                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: center;">Scheduled</th>
+                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: center;">Confirmed</th>
+                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: center;">Completed</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="courseStatusTableBody">
+                                    <!-- JavaScript will populate this -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
                     <!-- Right side - Monthly Instructor Summary -->
-                    <div style="max-width: 250px; margin-left: 20px;">
-                        <div style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 1rem; text-align: center;">Monthly Summary</h3>
+                    <div style="max-width: 300px; margin-left: 20px;">
+                        <div style="background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <h3 style="color: white; margin: 0 0 15px 0; font-size: 1.1rem; text-align: center; border-bottom: 2px solid rgba(255,255,255,0.2); padding-bottom: 10px;">Monthly Summary</h3>
                             <div class="table-responsive" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
-                                <table style="width: 100%; color: white;">
+                                <table style="width: 100%; color: white; border-collapse: separate; border-spacing: 0 8px;">
                                     <thead>
                                         <tr>
-                                            <th style="width: 70%;">Instructor</th>
-                                            <th style="width: 30%; text-align: center;">Total</th>
+                                            <th style="padding: 8px; text-align: left; font-size: 0.9rem; color: #a3c2e3;">Instructor</th>
+                                            <th style="padding: 8px; text-align: center; font-size: 0.9rem; color: #a3c2e3;">Confirmed</th>
+                                            <th style="padding: 8px; text-align: center; font-size: 0.9rem; color: #a3c2e3;">Completed</th>
                                         </tr>
                                     </thead>
                                     <tbody id="monthlyConfirmedCoursesBody">
                                         <tr>
-                                            <td colspan="2">No confirmed courses</td>
+                                            <td colspan="3" style="text-align: center; padding: 15px 5px; color: white; font-style: italic;">No confirmed courses</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -1854,60 +1827,32 @@
         function updateDashboardStats() {
             try {
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
-
-                // Get current and next week bounds
-                const today = new Date();
-                const currentWeek = getWeekBounds(today);
-                const nextWeek = getWeekBounds(new Date(today.setDate(today.getDate() + 7)));
-
-                // Filter courses for current week
-                const currentWeekCourses = courses.filter(course => 
-                    course.courseDate >= currentWeek.start && course.courseDate <= currentWeek.end
-                );
-
-                // Filter courses for next week
-                const nextWeekCourses = courses.filter(course => 
-                    course.courseDate >= nextWeek.start && course.courseDate <= nextWeek.end
-                );
-
-                // Filter instructors for current week
-                const currentWeekInstructors = instructors.filter(instructor => 
-                    instructor.availability?.some(date => 
-                        date >= currentWeek.start && date <= currentWeek.end
-                    )
-                );
-
-                // Filter instructors for next week
-                const nextWeekInstructors = instructors.filter(instructor => 
-                    instructor.availability?.some(date => 
-                        date >= nextWeek.start && date <= nextWeek.end
-                    )
-                );
-
-                // Update current week stats
-                document.getElementById('currentWeekScheduledCount').textContent = 
-                    currentWeekCourses.filter(course => course.adminScheduledDashStatus === 'Scheduled').length;
+                const tbody = document.getElementById('courseStatusTableBody');
                 
-                document.getElementById('currentWeekConfirmedCount').textContent = 
-                    currentWeekCourses.filter(course => course.adminScheduledDashStatus === 'Confirmed').length;
+                if (!tbody) return;
                 
-                document.getElementById('currentWeekInstructorCount').textContent = currentWeekInstructors.length;
-                document.getElementById('currentWeekOrganizationCount').textContent = 
-                    [...new Set(currentWeekCourses.map(course => course.organizationId))].length;
-
-                // Update next week stats
-                document.getElementById('nextWeekScheduledCount').textContent = 
-                    nextWeekCourses.filter(course => course.adminScheduledDashStatus === 'Scheduled').length;
+                // Sort courses by date
+                const sortedCourses = courses.sort((a, b) => new Date(a.courseDate) - new Date(b.courseDate));
                 
-                document.getElementById('nextWeekConfirmedCount').textContent = 
-                    nextWeekCourses.filter(course => course.adminScheduledDashStatus === 'Confirmed').length;
+                tbody.innerHTML = sortedCourses.map(course => {
+                    const status = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
+                                 course.adminConfirmed ? 'CONFIRMED' :
+                                 course.adminScheduledDashStatus === 'SCHEDULED' ? 'SCHEDULED' : 'PENDING';
+                    
+                    return `
+                        <tr>
+                            <td style="font-size: 0.9rem;">${formatDate(course.courseDate)}</td>
+                            <td style="font-size: 0.9rem;">${course.organizationName || '-'}</td>
+                            <td style="font-size: 0.9rem;">${course.classType || '-'}</td>
+                            <td style="font-size: 0.9rem;">${course.instructorName || '-'}</td>
+                            <td style="text-align: center; font-weight: bold;">${status === 'PENDING' ? 'X' : ''}</td>
+                            <td style="text-align: center; font-weight: bold;">${status === 'SCHEDULED' ? 'X' : ''}</td>
+                            <td style="text-align: center; font-weight: bold;">${status === 'CONFIRMED' ? 'X' : ''}</td>
+                            <td style="text-align: center; font-weight: bold;">${status === 'COMPLETED' ? 'X' : ''}</td>
+                        </tr>
+                    `;
+                }).join('') || '<tr><td colspan="8" style="text-align: center;">No courses found</td></tr>';
                 
-                document.getElementById('nextWeekInstructorCount').textContent = nextWeekInstructors.length;
-                document.getElementById('nextWeekOrganizationCount').textContent = 
-                    [...new Set(nextWeekCourses.map(course => course.organizationId))].length;
-
             } catch (error) {
                 console.error('Error updating dashboard stats:', error);
             }
@@ -2079,10 +2024,7 @@
                 console.log('Starting updateMonthlyConfirmedCourses');
                 
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                console.log('Loaded courses:', courses);
-                
-                const tbody = document.getElementById('monthlyConfirmedCoursesTable');
-                console.log('Found tbody element:', !!tbody);
+                const tbody = document.getElementById('monthlyConfirmedCoursesBody');
                 
                 if (!tbody) {
                     console.log('No tbody element found, returning');
@@ -2093,53 +2035,49 @@
                 const today = new Date();
                 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
                 const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                console.log('Date range:', {
-                    firstDay: firstDay.toISOString(),
-                    lastDay: lastDay.toISOString()
-                });
 
-                // Filter confirmed courses for current month
-                const confirmedCourses = courses.filter(course => {
-                    const courseDate = new Date(course.courseDate);
-                    const isConfirmed = course.adminConfirmed === true; // Explicitly check for true
-                    const isInCurrentMonth = courseDate >= firstDay && courseDate <= lastDay;
-                    console.log('Course:', {
-                        id: course.id,
-                        date: course.courseDate,
-                        status: course.status,
-                        adminConfirmed: course.adminConfirmed,
-                        isConfirmed,
-                        isInCurrentMonth
-                    });
-                    return isConfirmed && isInCurrentMonth;
-                });
-                console.log('Filtered confirmed courses:', confirmedCourses);
-
-                // Group courses by instructor and count them
+                // Create instructor summary object
                 const instructorSummary = {};
-                confirmedCourses.forEach(course => {
-                    if (course.instructorName) {
-                        instructorSummary[course.instructorName] = (instructorSummary[course.instructorName] || 0) + 1;
+
+                // Process all courses for the current month
+                courses.forEach(course => {
+                    const courseDate = new Date(course.courseDate);
+                    const isInCurrentMonth = courseDate >= firstDay && courseDate <= lastDay;
+                    
+                    if (isInCurrentMonth && course.instructorName) {
+                        // Initialize instructor summary if not exists
+                        if (!instructorSummary[course.instructorName]) {
+                            instructorSummary[course.instructorName] = {
+                                confirmed: 0,
+                                completed: 0
+                            };
+                        }
+                        
+                        // Count confirmed and completed courses
+                        if (course.completionStatus === 'COMPLETED') {
+                            instructorSummary[course.instructorName].completed++;
+                        } else if (course.adminConfirmed) {
+                            instructorSummary[course.instructorName].confirmed++;
+                        }
                     }
                 });
-                console.log('Instructor summary:', instructorSummary);
 
-                // Convert to array and sort by total courses (descending)
+                // Convert to array and sort by total courses (confirmed + completed)
                 const sortedInstructors = Object.entries(instructorSummary)
-                    .sort(([, a], [, b]) => b - a);
-                console.log('Sorted instructors:', sortedInstructors);
+                    .sort(([, a], [, b]) => (b.confirmed + b.completed) - (a.confirmed + a.completed));
 
                 // Update the table
                 tbody.innerHTML = sortedInstructors.length ? 
-                    sortedInstructors.map(([instructor, total]) => `
+                    sortedInstructors.map(([instructor, counts]) => `
                         <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
                             <td style="padding: 8px 5px; color: white; white-space: nowrap; font-weight: 500; background: transparent;">${instructor}</td>
-                            <td style="text-align: center; padding: 8px 5px; font-weight: bold; color: white; background: rgba(255,255,255,0.15); border-radius: 3px;">${total}</td>
+                            <td style="text-align: center; padding: 8px 5px; font-weight: bold; color: white; background: rgba(255,255,255,0.1); border-radius: 3px;">${counts.confirmed}</td>
+                            <td style="text-align: center; padding: 8px 5px; font-weight: bold; color: white; background: rgba(255,255,255,0.15); border-radius: 3px;">${counts.completed}</td>
                         </tr>
                     `).join('') :
-                    '<tr><td colspan="2" style="text-align: center; padding: 15px 5px; color: white; font-style: italic; background: transparent;">No confirmed courses</td></tr>';
+                    '<tr><td colspan="3" style="text-align: center; padding: 15px 5px; color: white; font-style: italic; background: transparent;">No courses found</td></tr>';
                 
-                console.log('Table updated successfully');
+                console.log('Monthly summary updated successfully');
             } catch (error) {
                 console.error('Error in updateMonthlyConfirmedCourses:', error);
             }
