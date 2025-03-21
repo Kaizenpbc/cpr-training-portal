@@ -308,22 +308,42 @@
 
         function displayStorage() {
             try {
-                const storageContent = document.getElementById('storageContent');
-                const storage = {};
-                
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    storage[key] = JSON.parse(localStorage.getItem(key));
-                }
+                const storageData = {
+                    courses: JSON.parse(localStorage.getItem('courses') || '[]'),
+                    instructors: JSON.parse(localStorage.getItem('instructors') || '[]'),
+                    organizations: JSON.parse(localStorage.getItem('organizations') || '[]'),
+                    students: JSON.parse(localStorage.getItem('students') || '[]'),
+                    certificates: JSON.parse(localStorage.getItem('certificates') || '[]')
+                };
 
-                storageContent.textContent = JSON.stringify(storage, null, 2);
-                
-                if (Object.keys(storage).length === 0) {
-                    storageContent.textContent = 'Storage is empty';
-                }
+                const storageDisplay = document.getElementById('storageContent');
+                storageDisplay.innerHTML = `
+                    <div class="storage-section">
+                        <h3>Organizations (${storageData.organizations.length})</h3>
+                        <pre>${JSON.stringify(storageData.organizations, null, 2)}</pre>
+                    </div>
+                    <div class="storage-section">
+                        <h3>Instructors (${storageData.instructors.length})</h3>
+                        <pre>${JSON.stringify(storageData.instructors, null, 2)}</pre>
+                    </div>
+                    <div class="storage-section">
+                        <h3>Students (${storageData.students.length})</h3>
+                        <pre>${JSON.stringify(storageData.students, null, 2)}</pre>
+                    </div>
+                    <div class="storage-section">
+                        <h3>Courses (${storageData.courses.length})</h3>
+                        <pre>${JSON.stringify(storageData.courses, null, 2)}</pre>
+                    </div>
+                    <div class="storage-section">
+                        <h3>Certificates (${storageData.certificates.length})</h3>
+                        <pre>${JSON.stringify(storageData.certificates, null, 2)}</pre>
+                    </div>
+                `;
+
+                showNotification('Storage data loaded successfully', 'success');
             } catch (error) {
                 console.error('Error displaying storage:', error);
-                showNotification('Error displaying storage', 'error');
+                showNotification('Error loading storage data', 'error');
             }
         }
 
