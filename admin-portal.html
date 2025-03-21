@@ -733,8 +733,9 @@
             <a href="Index.html">Home</a>
             <a href="instructor-portal.html">Instructors</a>
             <a href="organization-portal.html">Organizations</a>
-            <a href="admin-portal.html">Admin</a>
+            <a href="admin-portal.html" class="active">Course Management</a>
             <a href="support-portal.html">Support</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </header>
 
@@ -818,18 +819,24 @@
                     </div>
 
                     <!-- Right side - Monthly Instructor Summary -->
-                    <div style="flex: 1; background: var(--primary-color); padding: 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                        <h3 style="color: white; margin: 0 0 5px 0; font-size: 0.8rem;">Monthly Summary</h3>
-                        <div style="max-height: 100px; overflow-y: auto; background: rgba(255,255,255,0.1); border-radius: 4px; padding: 5px;">
-                            <table style="width: 100%; font-size: 0.8rem; border-collapse: collapse; background: transparent;">
-                                <thead>
-                                    <tr>
-                                        <th style="text-align: left; padding: 5px; color: white; border-bottom: 1px solid rgba(255,255,255,0.2);">Instructor</th>
-                                        <th style="text-align: center; padding: 5px; color: white; border-bottom: 1px solid rgba(255,255,255,0.2);">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="monthlyConfirmedCoursesTable"></tbody>
-                            </table>
+                    <div style="max-width: 250px; margin-left: 20px;">
+                        <div style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 1rem; text-align: center;">Monthly Summary</h3>
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
+                                <table style="width: 100%; color: white;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 70%;">Instructor</th>
+                                            <th style="width: 30%; text-align: center;">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="monthlyConfirmedCoursesBody">
+                                        <tr>
+                                            <td colspan="2">No confirmed courses</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1505,10 +1512,11 @@
                 courses[courseIndex].adminScheduledDashStatus = 'SCHEDULED';// Admin Portal Scheduled Courses view
                 courses[courseIndex].adminInstructorDashStatus = 'SCHEDULED';// Admin Portal Instructor Dashboard
                 courses[courseIndex].organizationStatus = 'PENDING';       // Organization Portal status
-                courses[courseIndex].instructorStatus = 'SCHEDULED';       // Instructor Portal status (now SCHEDULED when assigned)
+                courses[courseIndex].instructorStatus = 'SCHEDULED';       // Instructor Portal status
                 courses[courseIndex].adminConfirmed = false;              // Not confirmed yet
                 courses[courseIndex].displayInstructorDetails = false;    // Hide instructor details in org portal
-                courses[courseIndex].displayOrgDetails = false;          // Hide org details in instructor portal until confirmed
+                courses[courseIndex].displayOrgDetails = false;          // Hide org details in instructor portal
+                courses[courseIndex].hideOrgDetails = true;             // Hide org details until confirmed
 
                 console.log('Updated course state:', courses[courseIndex]);
 
@@ -2207,89 +2215,83 @@
 
         function updateConfirmedCoursesList() {
             try {
-                console.log('=== STARTING CONFIRMED COURSES TRACE ===');
-                
+                const confirmedCoursesTableBody = document.getElementById('confirmedCoursesTableBody');
+                if (!confirmedCoursesTableBody) return;
+
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                console.log('All courses from storage:', JSON.stringify(courses, null, 2));
-                
-                const tbody = document.getElementById('confirmedCoursesTableBody');
-                console.log('Found confirmedCoursesTableBody element:', !!tbody);
-                
-                if (!tbody) {
-                    console.warn('confirmedCoursesTableBody element not found');
+                const confirmedCourses = courses.filter(course => 
+                    course.adminConfirmed && course.completionStatus !== 'COMPLETED'
+                );
+
+                if (confirmedCourses.length === 0) {
+                    confirmedCoursesTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No confirmed courses found</td></tr>';
                     return;
                 }
 
-                // Debug: Log all courses with their status
-                console.log('\n=== COURSE STATUS DETAILS ===');
-                courses.forEach(course => {
-                    console.log('\nCourse Details:', {
-                        id: course.id,
-                        date: course.courseDate,
-                        adminConfirmed: course.adminConfirmed,
-                        completionStatus: course.completionStatus,
-                        isArchived: course.isArchived,
-                        status: course.status,
-                        adminScheduledDashStatus: course.adminScheduledDashStatus,
-                        instructorName: course.instructorName,
-                        organizationName: course.organizationName,
-                        classType: course.classType
-                    });
-                });
-
-                // Filter for confirmed courses that are not completed
-                console.log('\n=== FILTERING COURSES ===');
-                const confirmedCourses = courses.filter(course => {
-                    const isConfirmed = course.adminConfirmed === true;
-                    const isNotCompleted = course.completionStatus !== 'COMPLETED';
-                    const isNotArchived = !course.isArchived;
-                    
-                    console.log('\nCourse Filter Check:', {
-                        id: course.id,
-                        date: course.courseDate,
-                        isConfirmed,
-                        isNotCompleted,
-                        isNotArchived,
-                        adminConfirmed: course.adminConfirmed,
-                        completionStatus: course.completionStatus,
-                        isArchived: course.isArchived,
-                        'Filter Result': isConfirmed && isNotCompleted && isNotArchived
-                    });
-                    
-                    return isConfirmed && isNotCompleted && isNotArchived;
-                });
-                
-                console.log('\n=== FILTERED CONFIRMED COURSES ===');
-                console.log('Number of confirmed courses:', confirmedCourses.length);
-                console.log('Confirmed courses:', JSON.stringify(confirmedCourses, null, 2));
-
-                tbody.innerHTML = confirmedCourses.length ? 
-                    confirmedCourses.map(course => {
-                        console.log('\nProcessing confirmed course for display:', course);
-                        return `
-                            <tr>
-                                <td>${formatDate(course.courseDate)}</td>
-                                <td>${course.organizationName || '-'}</td>
-                                <td>${course.location || '-'}</td>
-                                <td>${course.classType || '-'}</td>
-                                <td>${course.studentsRegistered || 0}</td>
-                                <td>
-                                    <span class="status-confirmed">CONFIRMED</span>
-                                </td>
-                                <td>${course.instructorName || '-'}</td>
-                                <td>
-                                    <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                                    <button class="btn btn-primary" onclick="generateBill('${course.id}')">BILL</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('') :
-                    '<tr><td colspan="8" style="text-align: center;">No confirmed courses found</td></tr>';
-                
-                console.log('\n=== CONFIRMED COURSES LIST UPDATE COMPLETE ===');
+                confirmedCoursesTableBody.innerHTML = confirmedCourses.map(course => `
+                    <tr>
+                        <td>${formatDate(course.courseDate)}</td>
+                        <td>${course.location}</td>
+                        <td>${course.classType}</td>
+                        <td>${course.organizationName || '-'}</td>
+                        <td>${course.instructorName || 'Not Assigned'}</td>
+                        <td>${course.studentsRegistered || 0}</td>
+                        <td>
+                            <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
+                            <button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">Details</button>
+                            <button class="btn btn-warning" onclick="editCourse('${course.id}')">Edit</button>
+                        </td>
+                    </tr>
+                `).join('');
             } catch (error) {
-                console.error('Error in updateConfirmedCoursesList:', error);
-                showNotification('Error updating confirmed courses list', 'error');
+                console.error('Error updating confirmed courses list:', error);
+            }
+        }
+
+        function updateInstructorDashboard() {
+            try {
+                const instructorDashTableBody = document.getElementById('instructorDashboardTableBody');
+                if (!instructorDashTableBody) return;
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                
+                // Get all courses that are either active (confirmed but not completed) or completed
+                const dashboardCourses = courses.filter(course => 
+                    course.adminConfirmed || course.completionStatus === 'COMPLETED'
+                );
+
+                if (dashboardCourses.length === 0) {
+                    instructorDashTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No courses found</td></tr>';
+                    return;
+                }
+
+                instructorDashTableBody.innerHTML = dashboardCourses.map(course => {
+                    const isCompleted = course.completionStatus === 'COMPLETED';
+                    const statusClass = isCompleted ? 'complete' : 'confirmed';
+                    const statusText = isCompleted ? 'COMPLETED' : 'CONFIRMED';
+
+                    return `
+                        <tr class="status-${statusClass.toLowerCase()}">
+                            <td>${formatDate(course.courseDate)}</td>
+                            <td>${course.location}</td>
+                            <td>${course.classType}</td>
+                            <td>${course.organizationName || '-'}</td>
+                            <td>${course.instructorName || 'Not Assigned'}</td>
+                            <td><span class="status-${statusClass.toLowerCase()}">${statusText}</span></td>
+                            <td>${course.studentsRegistered || 0}</td>
+                            <td>
+                                <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
+                                ${isCompleted ? 
+                                    `<button class="btn btn-primary" onclick="viewCertificates('${course.id}')">Certificates</button>` : 
+                                    `<button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">Details</button>`
+                                }
+                                <button class="btn btn-warning" onclick="editCourse('${course.id}')">Edit</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error updating instructor dashboard:', error);
             }
         }
 
@@ -2424,250 +2426,37 @@
             }
         }
 
-        // Update the instructor dashboard
-        function updateInstructorDashboard() {
-            try {
-                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const tbody = document.getElementById('instructorDashboardTableBody');
-                
-                if (!tbody) return;
-
-                tbody.innerHTML = courses.length ? 
-                    courses.map(course => {
-                        if (!course.instructorId) return '';
-                        
-                        // Show status based on adminInstructorDashStatus
-                        let statusDisplay = `<span class="status-${course.adminInstructorDashStatus.toLowerCase()}">${course.adminInstructorDashStatus}</span>`;
-                        
-                        // Only show organization details if course is confirmed
-                        const showDetails = course.adminConfirmed;
-
-                        return `
-                            <tr>
-                                <td>${formatDate(course.courseDate)}</td>
-                                <td>${course.instructorName || '-'}</td>
-                                <td>${showDetails ? course.organizationName : '-'}</td>
-                                <td>${showDetails ? course.location : '-'}</td>
-                                <td>${showDetails ? course.classType : '-'}</td>
-                                <td>${statusDisplay}</td>
-                                <td>
-                                    <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).filter(row => row !== '').join('') :
-                    '<tr><td colspan="7" style="text-align: center;">No instructor assignments found</td></tr>';
-            } catch (error) {
-                console.error('Error updating instructor dashboard:', error);
-                showNotification('Error updating instructor dashboard', 'error');
-            }
-        }
-
-        function updateCourseList() {
-            try {
-                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const courseList = document.getElementById('courseList');
-                const noCourses = document.getElementById('noCourses');
-
-                if (!courseList || !noCourses) return;
-
-                // Get today's date in YYYY-MM-DD format
-                const today = new Date().toISOString().split('T')[0];
-
-                // Filter courses for today that are confirmed but not completed
-                const todaysCourses = courses.filter(course => 
-                    course.courseDate === today && 
-                    course.adminConfirmed && 
-                    course.completionStatus !== 'COMPLETED'
-                );
-
-                if (todaysCourses.length === 0) {
-                    courseList.style.display = 'none';
-                    noCourses.style.display = 'block';
-                    return;
-                }
-
-                courseList.style.display = 'grid';
-                noCourses.style.display = 'none';
-
-                // Generate course cards
-                const courseCards = todaysCourses.map(course => {
-                    const statusClass = course.completionStatus === 'COMPLETED' ? 'complete' :
-                        course.adminConfirmed ? 'confirmed' :
-                        course.instructorId ? 'scheduled' : 'pending';
-
-                    const statusText = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
-                        course.adminConfirmed ? 'CONFIRMED' :
-                        course.instructorId ? 'SCHEDULED' : 'PENDING';
-
-                    return `
-                        <div class="course-card">
-                            <div class="course-header">
-                                <h3>${course.classType}</h3>
-                                <span class="status-${statusClass}">${statusText}</span>
-                            </div>
-                            <div class="course-details">
-                                <p><strong>Date:</strong> ${formatDate(course.courseDate)}</p>
-                                <p><strong>Location:</strong> ${course.location}</p>
-                                <p><strong>Organization:</strong> ${course.organizationName}</p>
-                                <p><strong>Instructor:</strong> ${course.instructorName || 'Not Assigned'}</p>
-                                <p><strong>Students:</strong> ${course.studentsRegistered || 0} registered</p>
-                            </div>
-                            <div class="course-actions">
-                                <button class="btn btn-primary" onclick="viewStudentList('${course.id}')">
-                                    View Student List
-                                </button>
-                                <button class="btn btn-success" onclick="viewCertificates('${course.id}')">
-                                    View Certificates
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                courseList.innerHTML = courseCards;
-            } catch (error) {
-                console.error('Error updating course list:', error);
-                showNotification('Error loading courses', 'error');
-            }
-        }
-
-        function viewStudentList(courseId) {
-            try {
-                const courses = JSON.parse(localStorage.getItem('courses')) || [];
-                const course = courses.find(c => c.id === courseId);
-                
-                if (course) {
-                    const studentListTableBody = document.getElementById('studentListTableBody');
-                    if (!studentListTableBody) return;
-                    
-                    // Clear existing content
-                    studentListTableBody.innerHTML = '';
-                    
-                    if (!course.studentList || course.studentList.length === 0) {
-                        studentListTableBody.innerHTML = `
-                            <tr>
-                                <td colspan="4" style="text-align: center;">No students added yet</td>
-                            </tr>
-                        `;
-                    } else {
-                        course.studentList.forEach(student => {
-                            const row = document.createElement('tr');
-                            // Determine attendance status
-                            const attendanceStatus = student.attendance ? 
-                                `<span class="status-${student.attendance}">${student.attendance.toUpperCase()}</span>` : 
-                                'Not Recorded';
-                            
-                            row.innerHTML = `
-                                <td>${student.name || '-'}</td>
-                                <td>${student.email || '-'}</td>
-                                <td>${student.status || 'Registered'}</td>
-                                <td>${attendanceStatus}</td>
-                                <td>${student.notes || '-'}</td>
-                            `;
-                            studentListTableBody.appendChild(row);
-                        });
-                    }
-                    
-                    // Show the modal
-                    document.getElementById('studentListModal').style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error viewing student list:', error);
-                showNotification('Error loading student list', 'error');
-            }
-        }
-
-        function closeStudentListModal() {
-            try {
-                const modal = document.getElementById('studentListModal');
-                if (modal) {
-                    modal.style.display = 'none';
-                }
-            } catch (error) {
-                console.error('Error closing student list modal:', error);
-                showNotification('Error closing modal', 'error');
-            }
-        }
-
-        // Add this function to update completed courses
         function updateCompletedCoursesList() {
             try {
-                console.log('=== STARTING COMPLETED COURSES TRACE ===');
-                
+                const completedCoursesTableBody = document.getElementById('completedCoursesTableBody');
+                if (!completedCoursesTableBody) return;
+
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                console.log('All courses from storage:', JSON.stringify(courses, null, 2));
-                
-                const tbody = document.getElementById('completedCoursesTableBody');
-                console.log('Found completedCoursesTableBody element:', !!tbody);
-                
-                if (!tbody) {
-                    console.warn('completedCoursesTableBody element not found');
+                const completedCourses = courses.filter(course => course.completionStatus === 'COMPLETED');
+
+                if (completedCourses.length === 0) {
+                    completedCoursesTableBody.innerHTML = '<tr><td colspan="9" class="text-center">No completed courses found</td></tr>';
                     return;
                 }
 
-                // Filter for completed courses
-                const completedCourses = courses.filter(course => {
-                    const isCompleted = course.completionStatus === 'COMPLETED';
-                    const isNotArchived = !course.isArchived;
-                    
-                    console.log('\nCourse Filter Check:', {
-                        id: course.id,
-                        date: course.courseDate,
-                        isCompleted,
-                        isNotArchived,
-                        completionStatus: course.completionStatus,
-                        isArchived: course.isArchived,
-                        billingStatus: course.billingStatus,
-                        'Filter Result': isCompleted && isNotArchived
-                    });
-                    
-                    return isCompleted && isNotArchived;
-                });
-                
-                console.log('\n=== FILTERED COMPLETED COURSES ===');
-                console.log('Number of completed courses:', completedCourses.length);
-                console.log('Completed courses:', JSON.stringify(completedCourses, null, 2));
-
-                tbody.innerHTML = completedCourses.length ? 
-                    completedCourses.map(course => {
-                        console.log('\nProcessing completed course for display:', course);
-                        const billingStatusClass = course.billingStatus === 'BILLED' ? 'billed' :
-                                                 course.billingStatus === 'READY_FOR_BILLING' ? 'ready-for-billing' : 'pending';
-                        
-                        return `
-                            <tr>
-                                <td>${formatDate(course.courseDate)}</td>
-                                <td>${course.organizationName || '-'}</td>
-                                <td>${course.location || '-'}</td>
-                                <td>${course.classType || '-'}</td>
-                                <td>${course.studentsRegistered || 0}</td>
-                                <td>${course.studentsAttended || 0}</td>
-                                <td>
-                                    <span class="status-complete">COMPLETED</span>
-                                </td>
-                                <td>
-                                    <span class="status-${billingStatusClass}">${course.billingStatus || 'PENDING'}</span>
-                                </td>
-                                <td>${course.instructorName || '-'}</td>
-                                <td>
-                                    <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                                    ${course.billingStatus === 'READY_FOR_BILLING' ? 
-                                        `<button class="btn btn-primary" onclick="generateBill('${course.id}')">BILL</button>` :
-                                        course.billingStatus === 'BILLED' ?
-                                        `<button class="btn btn-success" disabled>BILLED</button>` :
-                                        ''
-                                    }
-                                </td>
-                            </tr>
-                        `;
-                    }).join('') :
-                    '<tr><td colspan="10" style="text-align: center;">No completed courses found</td></tr>';
-                
-                console.log('\n=== COMPLETED COURSES LIST UPDATE COMPLETE ===');
+                completedCoursesTableBody.innerHTML = completedCourses.map(course => `
+                    <tr>
+                        <td>${formatDate(course.courseDate)}</td>
+                        <td>${course.location}</td>
+                        <td>${course.classType}</td>
+                        <td>${course.organizationName || '-'}</td>
+                        <td>${course.instructorName || 'Not Assigned'}</td>
+                        <td>${course.studentsAttended || 0}/${course.studentsRegistered || 0}</td>
+                        <td>
+                            <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
+                            <button class="btn btn-primary" onclick="viewCertificates('${course.id}')">Certificates</button>
+                            <button class="btn btn-secondary" onclick="viewCourseDetails('${course.id}')">Details</button>
+                            <button class="btn btn-warning" onclick="editCourse('${course.id}')">Edit</button>
+                        </td>
+                    </tr>
+                `).join('');
             } catch (error) {
-                console.error('Error in updateCompletedCoursesList:', error);
-                showNotification('Error updating completed courses list', 'error');
+                console.error('Error updating completed courses list:', error);
             }
         }
 

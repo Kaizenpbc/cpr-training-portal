@@ -1181,8 +1181,10 @@
                         
                         if (!tbody) return;
 
-                        // Filter courses for current organization only
-                        const orgCourses = courses.filter(course => course.organizationId === currentOrg.id && !course.isArchived);
+                        // Filter courses for current organization only - show all non-archived courses
+                        const orgCourses = courses.filter(course => 
+                            course.organizationId === currentOrg.id && !course.isArchived
+                        );
                         console.log('Found', orgCourses.length, 'courses for organization');
 
                         if (orgCourses.length === 0) {
@@ -1228,14 +1230,18 @@
                                         <button class="btn btn-primary" onclick="viewStudentList('${course.id}')">
                                             View Students
                                         </button>
-                                        <button class="btn btn-success" onclick="showUploadModal('${course.id}')">
-                                            Upload List
-                                        </button>
+                                        ${course.completionStatus !== 'COMPLETED' ? 
+                                            `<button class="btn btn-success" onclick="showUploadModal('${course.id}')">
+                                                Upload List
+                                            </button>` : ''
+                                        }
                                         ${course.completionStatus === 'COMPLETED' ? 
                                             `<button class="btn btn-info" onclick="viewCertificate('${course.id}')">
                                                 Certificates
-                                            </button>` : 
-                                            ''
+                                            </button>
+                                            <button class="btn btn-secondary" onclick="archiveCourse('${course.id}')">
+                                                Archive
+                                            </button>` : ''
                                         }
                                     </td>
                                 </tr>
