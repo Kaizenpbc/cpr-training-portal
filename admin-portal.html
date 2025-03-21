@@ -699,6 +699,31 @@
             padding: 0.4rem 0.8rem;
             font-size: 0.9rem;
         }
+
+        .section-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .section-buttons button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .section-buttons button:hover {
+            background-color: #2980b9;
+        }
+
+        .section-buttons button.active {
+            background-color: var(--primary-color);
+        }
     </style>
 </head>
 <body>
@@ -708,16 +733,21 @@
             <a href="Index.html">Home</a>
             <a href="instructor-portal.html">Instructors</a>
             <a href="organization-portal.html">Organizations</a>
-            <a href="admin-portal.html" class="active">Admin</a>
-            <a href="accounting-portal.html">Accounting</a>
+            <a href="admin-portal.html">Admin</a>
+            <a href="support-portal.html">Support</a>
         </nav>
     </header>
 
-    <div style="background-color: white; padding: 20px; margin: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
-        <h1 style="margin: 0; color: var(--primary-color); font-size: 2rem;">Admin Dashboard</h1>
-    </div>
-
     <div class="dashboard">
+        <h1 class="dashboard-title">Admin Dashboard</h1>
+        <div class="section-buttons">
+            <button onclick="showSection('scheduledCourses')" class="btn btn-primary">Scheduled Courses</button>
+            <button onclick="showSection('confirmedCourses')" class="btn btn-primary">Confirmed Courses</button>
+            <button onclick="showSection('instructorDashboard')" class="btn btn-primary">Instructor Dashboard</button>
+            <button onclick="showSection('courseTypes')" class="btn btn-primary">Course Types</button>
+            <button onclick="showSection('completedCourses')" class="btn btn-primary">Completed Courses</button>
+        </div>
+
         <nav class="left-nav">
             <button onclick="showSection('dashboard')">Dashboard</button>
             <button onclick="showSection('scheduledCourses')">Scheduled Courses</button>
@@ -1105,6 +1135,28 @@
                         <button type="submit" class="btn btn-primary">Save</button>
                     </form>
                 </div>
+            </div>
+
+            <!-- Add Student Management Section -->
+            <div id="studentManagementSection" class="section" style="display: none;">
+                <h2>Student Management</h2>
+                <div class="search-filters">
+                    <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="updateStudentTable()">
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Registration Date</th>
+                            <th>Courses</th>
+                            <th>Certificates</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody"></tbody>
+                </table>
             </div>
         </main>
     </div>
@@ -2643,6 +2695,110 @@
                 showNotification('Error resetting data', 'error');
             }
         }
+
+        function updateStudentTable() {
+            const students = JSON.parse(localStorage.getItem('students') || '[]');
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const searchTerm = document.getElementById('studentSearch').value.toLowerCase();
+            const tbody = document.getElementById('studentTableBody');
+
+            const filteredStudents = students.filter(student =>
+                student.name.toLowerCase().includes(searchTerm) ||
+                student.email.toLowerCase().includes(searchTerm) ||
+                student.phone.includes(searchTerm)
+            );
+
+            tbody.innerHTML = filteredStudents.map(student => {
+                const studentCourses = courses.filter(course => 
+                    student.courses.includes(course.id)
+                );
+
+                return `
+                    <tr>
+                        <td>${student.name}</td>
+                        <td>${student.email}</td>
+                        <td>${student.phone}</td>
+                        <td>${formatDate(student.registrationDate)}</td>
+                        <td>${studentCourses.length} courses</td>
+                        <td>${student.certificates.length} certificates</td>
+                        <td>
+                            <button class="btn btn-info btn-sm" onclick="viewStudentDetails('${student.id}')">
+                                View Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function viewStudentDetails(studentId) {
+            const students = JSON.parse(localStorage.getItem('students') || '[]');
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const student = students.find(s => s.id === studentId);
+
+            if (!student) {
+                showNotification('Student not found', 'error');
+                return;
+            }
+
+            const studentCourses = courses.filter(course => 
+                student.courses.includes(course.id)
+            );
+
+            const modalContent = `
+                <div class="student-details">
+                    <h3>${student.name}</h3>
+                    <p><strong>Email:</strong> ${student.email}</p>
+                    <p><strong>Phone:</strong> ${student.phone}</p>
+                    <p><strong>Registration Date:</strong> ${formatDate(student.registrationDate)}</p>
+                    
+                    <h4>Course History</h4>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Course Type</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Certificate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${studentCourses.map(course => `
+                                <tr>
+                                    <td>${course.classType}</td>
+                                    <td>${formatDate(course.courseDate)}</td>
+                                    <td>${course.completionStatus}</td>
+                                    <td>
+                                        ${course.completionStatus === 'COMPLETED' ?
+                                            `<button class="btn btn-info btn-sm" onclick="viewCertificate('${course.id}', '${student.id}')">
+                                                View Certificate
+                                            </button>` :
+                                            'N/A'
+                                        }
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            // Show modal with student details
+            const modal = document.getElementById('genericModal');
+            modal.querySelector('.modal-title').textContent = 'Student Details';
+            modal.querySelector('.modal-body').innerHTML = modalContent;
+            new bootstrap.Modal(modal).show();
+        }
+
+        // Add student management to section buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            const sectionButtons = document.querySelector('.section-buttons');
+            sectionButtons.innerHTML += `
+                <button onclick="showSection('studentManagement')" class="btn btn-primary">
+                    Student Management
+                </button>
+            `;
+        });
     </script>
 </body>
 </html> 
