@@ -1864,6 +1864,104 @@
                         }
                     }
                 }
+
+                // Course ID Generation
+                function generateCourseId(orgName, courseType) {
+                    try {
+                        // Get organization prefix (first 3 letters uppercase)
+                        const orgPrefix = orgName.substring(0, 3).toUpperCase();
+                        
+                        // Get today's date in YYYYMMDD format
+                        const today = new Date();
+                        const dateStr = today.getFullYear().toString() +
+                                      (today.getMonth() + 1).toString().padStart(2, '0') +
+                                      today.getDate().toString().padStart(2, '0');
+                        
+                        // Get existing courses for this org on this date
+                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                        const todayCourses = courses.filter(course => {
+                            return course.id.startsWith(`${orgPrefix}_${dateStr}_${courseType}`);
+                        });
+                        
+                        // Generate sequence number
+                        const sequence = (todayCourses.length + 1).toString().padStart(3, '0');
+                        
+                        // Construct ID
+                        const courseId = `${orgPrefix}_${dateStr}_${courseType}_${sequence}`;
+                        console.log('Generated course ID:', courseId);
+                        
+                        return courseId;
+                    } catch (error) {
+                        console.error('Error generating course ID:', error);
+                        // Fallback to a timestamp-based ID if something goes wrong
+                        return `COURSE_${Date.now()}`;
+                    }
+                }
+
+                function handleCourseSubmit(event) {
+                    event.preventDefault();
+                    try {
+                        console.log('=== Course Creation Started ===');
+                        
+                        // Get form values
+                        const courseDate = document.getElementById('courseDate').value;
+                        const location = document.getElementById('location').value;
+                        const classType = document.getElementById('classType').value;
+                        const notes = document.getElementById('notes').value;
+                        
+                        if (!courseDate || !location || !classType) {
+                            showNotification('Please fill in all required fields', 'error');
+                            return;
+                        }
+
+                        // Get current organization
+                        const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
+                        if (!currentOrg) {
+                            showNotification('Please log in to create courses', 'error');
+                            return;
+                        }
+
+                        // Generate course ID
+                        const courseId = generateCourseId(currentOrg.name, classType);
+                        console.log('Generated course ID:', courseId);
+
+                        // Create course object
+                        const newCourse = {
+                            id: courseId,
+                            organizationId: currentOrg.id,
+                            courseDate: courseDate,
+                            location: location,
+                            classType: classType,
+                            notes: notes,
+                            status: 'PENDING',
+                            studentsRegistered: 0,
+                            studentList: [],
+                            createdAt: new Date().toISOString(),
+                            lastModified: new Date().toISOString()
+                        };
+
+                        // Get existing courses
+                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                        courses.push(newCourse);
+                        
+                        // Save updated courses
+                        localStorage.setItem('courses', JSON.stringify(courses));
+                        
+                        console.log('Course created:', newCourse);
+                        
+                        // Clear form and close modal
+                        document.getElementById('courseForm').reset();
+                        closeModal('courseModal');
+                        
+                        // Update table and show success message
+                        updateMyCoursesTable();
+                        showNotification('Course created successfully', 'success');
+                        
+                    } catch (error) {
+                        console.error('Error creating course:', error);
+                        showNotification('Error creating course', 'error');
+                    }
+                }
             </script>
         </main>
     </div>
