@@ -769,6 +769,28 @@
                 <div style="display: flex; gap: 10px;">
                     <!-- Left side - Stats -->
                     <div style="flex: 2;">
+                        <div class="dashboard-stats" style="margin-bottom: 20px;">
+                            <div class="stat-card">
+                                <h3>Total Courses</h3>
+                                <p id="totalCoursesCount">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Pending</h3>
+                                <p id="pendingCoursesCount">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Scheduled</h3>
+                                <p id="scheduledCoursesCount">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Confirmed</h3>
+                                <p id="confirmedCoursesCount">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Completed</h3>
+                                <p id="completedCoursesCount">0</p>
+                            </div>
+                        </div>
                         <div class="table-responsive" style="background: white; padding: 15px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                             <table class="table table-bordered">
                                 <thead>
@@ -1166,35 +1188,31 @@
 
         // Initialize data if not exists
         function initializeData() {
-            // Initialize instructors if not exists
-            if (!localStorage.getItem('instructors')) {
-                localStorage.setItem('instructors', JSON.stringify([]));
-            }
+            try {
+                // Initialize instructors if not exists
+                if (!localStorage.getItem('instructors')) {
+                    localStorage.setItem('instructors', JSON.stringify([]));
+                }
 
-            // Initialize organizations if not exists
-            if (!localStorage.getItem('organizations')) {
-                localStorage.setItem('organizations', JSON.stringify([]));
-            }
+                // Initialize organizations if not exists
+                if (!localStorage.getItem('organizations')) {
+                    localStorage.setItem('organizations', JSON.stringify([]));
+                }
 
-            // Initialize courses if not exists
-            if (!localStorage.getItem('courses')) {
-                localStorage.setItem('courses', JSON.stringify([]));
-            } else {
-                // Fix any existing courses that might have inconsistent status
-                const courses = JSON.parse(localStorage.getItem('courses'));
-                const updatedCourses = courses.map(course => {
-                    if (course.status === 'CONFIRMED') {
-                        course.adminConfirmed = true;
-                        course.adminScheduledDashStatus = 'CONFIRMED';
-                        course.adminInstructorDashStatus = 'CONFIRMED';
-                        course.organizationStatus = 'CONFIRMED';
-                        course.instructorStatus = 'CONFIRMED';
-                    } else {
-                        course.adminConfirmed = false;
-                    }
-                    return course;
-                });
-                localStorage.setItem('courses', JSON.stringify(updatedCourses));
+                // Initialize courses if not exists
+                if (!localStorage.getItem('courses')) {
+                    localStorage.setItem('courses', JSON.stringify([]));
+                }
+
+                // Update all displays
+                updateDashboardStats();
+                updateMonthlyConfirmedCourses();
+                updateScheduledCoursesList();
+                updateConfirmedCoursesList();
+                updateCompletedCoursesList();
+                updateInstructorDashboard();
+            } catch (error) {
+                console.error('Error initializing data:', error);
             }
         }
 
@@ -1262,6 +1280,10 @@
             
             console.log('Setting up section display...');
             setupSectionDisplay();
+            
+            // Initialize dashboard and monthly summary
+            updateDashboardStats();
+            updateMonthlyConfirmedCourses();
         });
 
         function setupSectionDisplay() {
@@ -1827,32 +1849,58 @@
         function updateDashboardStats() {
             try {
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                
+                // Get current month's date range
+                const today = new Date();
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+                // Filter courses for current month
+                const currentMonthCourses = courses.filter(course => {
+                    const courseDate = new Date(course.courseDate);
+                    return courseDate >= firstDay && courseDate <= lastDay;
+                });
+
+                // Count different statuses
+                const stats = {
+                    total: currentMonthCourses.length,
+                    pending: currentMonthCourses.filter(c => !c.adminConfirmed && !c.completionStatus).length,
+                    scheduled: currentMonthCourses.filter(c => c.adminScheduledDashStatus === 'SCHEDULED' && !c.adminConfirmed).length,
+                    confirmed: currentMonthCourses.filter(c => c.adminConfirmed && !c.completionStatus).length,
+                    completed: currentMonthCourses.filter(c => c.completionStatus === 'COMPLETED').length
+                };
+
+                // Update dashboard stats
+                document.getElementById('totalCoursesCount').textContent = stats.total;
+                document.getElementById('pendingCoursesCount').textContent = stats.pending;
+                document.getElementById('scheduledCoursesCount').textContent = stats.scheduled;
+                document.getElementById('confirmedCoursesCount').textContent = stats.confirmed;
+                document.getElementById('completedCoursesCount').textContent = stats.completed;
+
+                // Update course status table
                 const tbody = document.getElementById('courseStatusTableBody');
-                
-                if (!tbody) return;
-                
-                // Sort courses by date
-                const sortedCourses = courses.sort((a, b) => new Date(a.courseDate) - new Date(b.courseDate));
-                
-                tbody.innerHTML = sortedCourses.map(course => {
-                    const status = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
-                                 course.adminConfirmed ? 'CONFIRMED' :
-                                 course.adminScheduledDashStatus === 'SCHEDULED' ? 'SCHEDULED' : 'PENDING';
-                    
-                    return `
-                        <tr>
-                            <td style="font-size: 0.9rem;">${formatDate(course.courseDate)}</td>
-                            <td style="font-size: 0.9rem;">${course.organizationName || '-'}</td>
-                            <td style="font-size: 0.9rem;">${course.classType || '-'}</td>
-                            <td style="font-size: 0.9rem;">${course.instructorName || '-'}</td>
-                            <td style="text-align: center; font-weight: bold;">${status === 'PENDING' ? 'X' : ''}</td>
-                            <td style="text-align: center; font-weight: bold;">${status === 'SCHEDULED' ? 'X' : ''}</td>
-                            <td style="text-align: center; font-weight: bold;">${status === 'CONFIRMED' ? 'X' : ''}</td>
-                            <td style="text-align: center; font-weight: bold;">${status === 'COMPLETED' ? 'X' : ''}</td>
-                        </tr>
-                    `;
-                }).join('') || '<tr><td colspan="8" style="text-align: center;">No courses found</td></tr>';
-                
+                if (tbody) {
+                    tbody.innerHTML = currentMonthCourses.map(course => {
+                        const status = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
+                                     course.adminConfirmed ? 'CONFIRMED' :
+                                     course.adminScheduledDashStatus === 'SCHEDULED' ? 'SCHEDULED' : 'PENDING';
+                        
+                        return `
+                            <tr>
+                                <td style="font-size: 0.9rem;">${formatDate(course.courseDate)}</td>
+                                <td style="font-size: 0.9rem;">${course.organizationName || '-'}</td>
+                                <td style="font-size: 0.9rem;">${course.classType || '-'}</td>
+                                <td style="font-size: 0.9rem;">${course.instructorName || '-'}</td>
+                                <td style="text-align: center; font-weight: bold;">${status === 'PENDING' ? 'X' : ''}</td>
+                                <td style="text-align: center; font-weight: bold;">${status === 'SCHEDULED' ? 'X' : ''}</td>
+                                <td style="text-align: center; font-weight: bold;">${status === 'CONFIRMED' ? 'X' : ''}</td>
+                                <td style="text-align: center; font-weight: bold;">${status === 'COMPLETED' ? 'X' : ''}</td>
+                            </tr>
+                        `;
+                    }).join('') || '<tr><td colspan="8" style="text-align: center;">No courses found</td></tr>';
+                }
+
+                console.log('Dashboard stats updated successfully:', stats);
             } catch (error) {
                 console.error('Error updating dashboard stats:', error);
             }
@@ -2022,12 +2070,11 @@
         function updateMonthlyConfirmedCourses() {
             try {
                 console.log('Starting updateMonthlyConfirmedCourses');
-                
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                 const tbody = document.getElementById('monthlyConfirmedCoursesBody');
                 
                 if (!tbody) {
-                    console.log('No tbody element found, returning');
+                    console.log('No tbody element found');
                     return;
                 }
 
@@ -2035,6 +2082,11 @@
                 const today = new Date();
                 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
                 const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                
+                console.log('Date range:', {
+                    firstDay: firstDay.toISOString(),
+                    lastDay: lastDay.toISOString()
+                });
 
                 // Create instructor summary object
                 const instructorSummary = {};
@@ -2056,13 +2108,17 @@
                         // Count confirmed and completed courses
                         if (course.completionStatus === 'COMPLETED') {
                             instructorSummary[course.instructorName].completed++;
+                            console.log(`Completed course for ${course.instructorName}`);
                         } else if (course.adminConfirmed) {
                             instructorSummary[course.instructorName].confirmed++;
+                            console.log(`Confirmed course for ${course.instructorName}`);
                         }
                     }
                 });
 
-                // Convert to array and sort by total courses (confirmed + completed)
+                console.log('Instructor summary:', instructorSummary);
+
+                // Convert to array and sort by total courses
                 const sortedInstructors = Object.entries(instructorSummary)
                     .sort(([, a], [, b]) => (b.confirmed + b.completed) - (a.confirmed + a.completed));
 
@@ -2076,7 +2132,7 @@
                         </tr>
                     `).join('') :
                     '<tr><td colspan="3" style="text-align: center; padding: 15px 5px; color: white; font-style: italic; background: transparent;">No courses found</td></tr>';
-                
+
                 console.log('Monthly summary updated successfully');
             } catch (error) {
                 console.error('Error in updateMonthlyConfirmedCourses:', error);
@@ -2169,15 +2225,24 @@
                 confirmedCoursesTableBody.innerHTML = confirmedCourses.map(course => `
                     <tr>
                         <td>${formatDate(course.courseDate)}</td>
-                        <td>${course.location}</td>
-                        <td>${course.classType}</td>
                         <td>${course.organizationName || '-'}</td>
-                        <td>${course.instructorName || 'Not Assigned'}</td>
+                        <td>${course.location || '-'}</td>
+                        <td>${course.classType || '-'}</td>
                         <td>${course.studentsRegistered || 0}</td>
                         <td>
-                            <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                            <button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">Details</button>
-                            <button class="btn btn-warning" onclick="editCourse('${course.id}')">Edit</button>
+                            <span class="status-confirmed">CONFIRMED</span>
+                        </td>
+                        <td>${course.instructorName || 'Not Assigned'}</td>
+                        <td>
+                            <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
+                                View Students
+                            </button>
+                            <button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">
+                                Details
+                            </button>
+                            <button class="btn btn-warning" onclick="editCourse('${course.id}')">
+                                Edit
+                            </button>
                         </td>
                     </tr>
                 `).join('');
@@ -2188,42 +2253,46 @@
 
         function updateInstructorDashboard() {
             try {
-                const instructorDashTableBody = document.getElementById('instructorDashboardTableBody');
-                if (!instructorDashTableBody) return;
+                const instructorDashboardTableBody = document.getElementById('instructorDashboardTableBody');
+                if (!instructorDashboardTableBody) return;
 
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                 
-                // Get all courses that are either active (confirmed but not completed) or completed
-                const dashboardCourses = courses.filter(course => 
-                    course.adminConfirmed || course.completionStatus === 'COMPLETED'
+                // Filter for courses that are:
+                // 1. Admin confirmed
+                // 2. Not completed
+                // 3. Have an assigned instructor
+                const availableCourses = courses.filter(course => 
+                    course.adminConfirmed && 
+                    course.completionStatus !== 'COMPLETED' &&
+                    course.instructorName &&
+                    course.instructorName.trim() !== ''
                 );
 
-                if (dashboardCourses.length === 0) {
-                    instructorDashTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No courses found</td></tr>';
+                console.log('Available courses for instructor dashboard:', availableCourses);
+
+                if (availableCourses.length === 0) {
+                    instructorDashboardTableBody.innerHTML = '<tr><td colspan="7" class="text-center">No available courses found</td></tr>';
                     return;
                 }
 
-                instructorDashTableBody.innerHTML = dashboardCourses.map(course => {
+                instructorDashboardTableBody.innerHTML = availableCourses.map(course => {
                     const isCompleted = course.completionStatus === 'COMPLETED';
-                    const statusClass = isCompleted ? 'complete' : 'confirmed';
-                    const statusText = isCompleted ? 'COMPLETED' : 'CONFIRMED';
-
                     return `
-                        <tr class="status-${statusClass.toLowerCase()}">
+                        <tr>
                             <td>${formatDate(course.courseDate)}</td>
-                            <td>${course.location}</td>
-                            <td>${course.classType}</td>
                             <td>${course.organizationName || '-'}</td>
-                            <td>${course.instructorName || 'Not Assigned'}</td>
-                            <td><span class="status-${statusClass.toLowerCase()}">${statusText}</span></td>
+                            <td>${course.location || '-'}</td>
+                            <td>${course.classType || '-'}</td>
                             <td>${course.studentsRegistered || 0}</td>
+                            <td>${course.instructorName || 'Not Assigned'}</td>
                             <td>
-                                <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                                ${isCompleted ? 
-                                    `<button class="btn btn-primary" onclick="viewCertificates('${course.id}')">Certificates</button>` : 
-                                    `<button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">Details</button>`
-                                }
-                                <button class="btn btn-warning" onclick="editCourse('${course.id}')">Edit</button>
+                                <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
+                                    View Students
+                                </button>
+                                <button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">
+                                    Details
+                                </button>
                             </td>
                         </tr>
                     `;
@@ -2235,166 +2304,96 @@
 
         function confirmCourse(courseId) {
             try {
-                console.log('Starting confirmCourse function with courseId:', courseId);
-                
-                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                console.log('Current courses:', courses);
-                
-                const courseIndex = courses.findIndex(c => c.id === courseId);
-                console.log('Found course at index:', courseIndex);
-                
-                if (courseIndex === -1) {
-                    console.error('Course not found with ID:', courseId);
-                    showNotification('Course not found', 'error');
-                    return;
-                }
-
-                console.log('Course before update:', courses[courseIndex]);
-
-                // Update course statuses for all portals
-                const course = courses[courseIndex];
-                course.status = 'CONFIRMED';                    // Organization Portal view
-                course.adminConfirmed = true;                  // Set confirmation flag
-                course.adminScheduledDashStatus = 'CONFIRMED'; // Admin Portal Scheduled Courses view
-                course.adminInstructorDashStatus = 'CONFIRMED';// Admin Portal Instructor Dashboard
-                course.organizationStatus = 'CONFIRMED';       // Organization Portal status
-                course.instructorStatus = 'CONFIRMED';         // Instructor Portal status
-                course.displayInstructorDetails = true;       // Show instructor details in org portal
-                course.displayOrgDetails = true;              // Show org details in instructor portal
-                course.billingStatus = 'PENDING';             // Set billing status
-                course.confirmationDate = new Date().toISOString(); // Record confirmation date
-
-                console.log('Course after update:', course);
-
-                // Save changes
-                localStorage.setItem('courses', JSON.stringify(courses));
-                
-                // Update displays
-                updateScheduledCoursesList();
-                updateConfirmedCoursesList();
-                updateInstructorDashboard();
-                
-                showNotification('Course confirmed successfully', 'success');
-            } catch (error) {
-                console.error('Error confirming course:', error);
-                showNotification('Error confirming course', 'error');
-            }
-        }
-
-        // Add this function to handle course completion
-        function completeCourse(courseId) {
-            try {
-                console.log('Starting completeCourse function with courseId:', courseId);
-                
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                 const courseIndex = courses.findIndex(c => c.id === courseId);
                 
                 if (courseIndex === -1) {
-                    console.error('Course not found with ID:', courseId);
-                    showNotification('Course not found', 'error');
-                    return;
-                }
-
-                const course = courses[courseIndex];
-                
-                // Only allow completion of confirmed courses
-                if (!course.adminConfirmed) {
-                    showNotification('Course must be confirmed before completion', 'error');
+                    console.error('Course not found:', courseId);
                     return;
                 }
 
                 // Update course status
-                course.completionStatus = 'COMPLETED';
-                course.completedDate = new Date().toISOString();
-                course.completedBy = course.instructorId;
-                course.billingStatus = 'READY_FOR_BILLING';
-                course.autoArchiveDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days from now
-
-                // Save changes
+                courses[courseIndex].adminConfirmed = true;
+                courses[courseIndex].adminScheduledDashStatus = 'CONFIRMED';
+                courses[courseIndex].displayInstructorDetails = true;
+                
                 localStorage.setItem('courses', JSON.stringify(courses));
                 
-                // Update displays
+                // Update all displays
+                updateScheduledCoursesList();
                 updateConfirmedCoursesList();
-                updateCompletedCoursesList();
                 updateInstructorDashboard();
+                updateDashboardStats();
+                updateMonthlyConfirmedCourses();
                 
-                showNotification('Course marked as completed successfully', 'success');
+                showNotification('Course confirmed successfully', 'success');
             } catch (error) {
-                console.error('Error completing course:', error);
-                showNotification('Error completing course', 'error');
+                console.error('Error confirming course:', error);
             }
         }
 
-        // Add this function to handle billing
-        function generateBill(courseId) {
+        function handleCourseStatusChange(courseId, newStatus) {
             try {
-                console.log('Starting generateBill function with courseId:', courseId);
-                
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                 const courseIndex = courses.findIndex(c => c.id === courseId);
                 
                 if (courseIndex === -1) {
-                    console.error('Course not found with ID:', courseId);
-                    showNotification('Course not found', 'error');
+                    console.error('Course not found:', courseId);
                     return;
                 }
 
-                const course = courses[courseIndex];
-                
-                // Only allow billing of completed courses
-                if (course.completionStatus !== 'COMPLETED') {
-                    showNotification('Course must be completed before billing', 'error');
-                    return;
+                courses[courseIndex].status = newStatus;
+                if (newStatus === 'COMPLETED') {
+                    courses[courseIndex].completionStatus = 'COMPLETED';
+                    courses[courseIndex].completedDate = new Date().toISOString();
                 }
 
-                // Update billing status
-                course.billingStatus = 'BILLED';
-                course.billedDate = new Date().toISOString();
-
-                // Save changes
                 localStorage.setItem('courses', JSON.stringify(courses));
                 
-                // Update displays
-                updateCompletedCoursesList();
+                // Update both dashboard and monthly summary
+                updateDashboardStats();
+                updateMonthlyConfirmedCourses();
                 
-                showNotification('Bill generated successfully', 'success');
+                console.log('Course status updated successfully:', newStatus);
             } catch (error) {
-                console.error('Error generating bill:', error);
-                showNotification('Error generating bill', 'error');
+                console.error('Error updating course status:', error);
             }
         }
 
-        function updateCompletedCoursesList() {
+        function completeCourse(courseId) {
             try {
-                const completedCoursesTableBody = document.getElementById('completedCoursesTableBody');
-                if (!completedCoursesTableBody) return;
-
+                console.log('Starting completeCourse function with courseId:', courseId);
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const completedCourses = courses.filter(course => course.completionStatus === 'COMPLETED');
-
-                if (completedCourses.length === 0) {
-                    completedCoursesTableBody.innerHTML = '<tr><td colspan="9" class="text-center">No completed courses found</td></tr>';
-                    return;
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
+                if (courseIndex === -1) {
+                    console.error('Course not found:', courseId);
+                    return false;
                 }
-
-                completedCoursesTableBody.innerHTML = completedCourses.map(course => `
-                    <tr>
-                        <td>${formatDate(course.courseDate)}</td>
-                        <td>${course.location}</td>
-                        <td>${course.classType}</td>
-                        <td>${course.organizationName || '-'}</td>
-                        <td>${course.instructorName || 'Not Assigned'}</td>
-                        <td>${course.studentsAttended || 0}/${course.studentsRegistered || 0}</td>
-                        <td>
-                            <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                            <button class="btn btn-primary" onclick="viewCertificates('${course.id}')">Certificates</button>
-                            <button class="btn btn-secondary" onclick="viewCourseDetails('${course.id}')">Details</button>
-                            <button class="btn btn-warning" onclick="editCourse('${course.id}')">Edit</button>
-                        </td>
-                    </tr>
-                `).join('');
+                
+                courses[courseIndex].completionStatus = 'COMPLETED';
+                courses[courseIndex].completedDate = new Date().toISOString();
+                
+                // Set auto-archive date to 30 days from completion
+                const archiveDate = new Date();
+                archiveDate.setDate(archiveDate.getDate() + 30);
+                courses[courseIndex].autoArchiveDate = formatDateForStorage(archiveDate);
+                
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                // Update all relevant displays
+                updateDashboardStats();
+                updateMonthlyConfirmedCourses();
+                updateCompletedCoursesList();
+                updateConfirmedCoursesList();
+                updateScheduledCoursesList();
+                
+                console.log('Course completed successfully');
+                showNotification('Course marked as completed', 'success');
+                return true;
             } catch (error) {
-                console.error('Error updating completed courses list:', error);
+                console.error('Error completing course:', error);
+                return false;
             }
         }
 
@@ -2526,6 +2525,161 @@
                 </button>
             `;
         });
+
+        function handleScheduleCourse(event) {
+            event.preventDefault();
+            try {
+                // ... existing scheduling code ...
+                
+                localStorage.setItem('courses', JSON.stringify(courses));
+                updateDashboardStats();
+                updateMonthlyConfirmedCourses();
+                showNotification('Course scheduled successfully', 'success');
+            } catch (error) {
+                console.error('Error scheduling course:', error);
+                showNotification('Error scheduling course', 'error');
+            }
+        }
+
+        function handleExcelUpload() {
+            try {
+                // ... existing upload code ...
+                
+                localStorage.setItem('courses', JSON.stringify(courses));
+                updateDashboardStats();
+                updateMonthlyConfirmedCourses();
+                showNotification('Student list uploaded successfully', 'success');
+            } catch (error) {
+                console.error('Error uploading student list:', error);
+                showNotification('Error uploading student list', 'error');
+            }
+        }
+
+        function viewStudentList(courseId) {
+            try {
+                console.log('Opening student list for course:', courseId);
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const course = courses.find(c => c.id === courseId);
+                
+                if (!course) {
+                    console.error('Course not found:', courseId);
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                console.log('Found course:', course);
+                console.log('Students data:', course.studentList || course.students || []);
+
+                const studentListModal = document.getElementById('studentListModal');
+                const studentListTableBody = document.getElementById('studentListTableBody');
+                
+                if (!studentListModal || !studentListTableBody) {
+                    console.error('Required modal elements not found');
+                    return;
+                }
+
+                // Get the students array from either studentList or students property
+                const students = course.studentList || course.students || [];
+                console.log('Processing students:', students);
+
+                // Update the table body with student information
+                studentListTableBody.innerHTML = students.length ? 
+                    students.map(student => {
+                        // Handle both object and array formats
+                        const studentData = typeof student === 'object' ? student : {
+                            name: student,
+                            email: '-',
+                            status: 'Registered',
+                            attendance: 'Not Taken',
+                            notes: '-'
+                        };
+
+                        return `
+                            <tr>
+                                <td>${studentData.name || '-'}</td>
+                                <td>${studentData.email || '-'}</td>
+                                <td>${studentData.status || 'Registered'}</td>
+                                <td>${studentData.attendance || 'Not Taken'}</td>
+                                <td>${studentData.notes || '-'}</td>
+                            </tr>
+                        `;
+                    }).join('') :
+                    '<tr><td colspan="5" style="text-align: center;">No students registered for this course</td></tr>';
+
+                // Show the modal
+                studentListModal.style.display = 'block';
+
+                // Add event listener to close button if it exists
+                const closeButton = studentListModal.querySelector('.close-modal');
+                if (closeButton) {
+                    closeButton.onclick = closeStudentListModal;
+                }
+
+                // Add click event listener to close modal when clicking outside
+                window.onclick = function(event) {
+                    if (event.target === studentListModal) {
+                        closeStudentListModal();
+                    }
+                };
+
+            } catch (error) {
+                console.error('Error viewing student list:', error);
+                showNotification('Error loading student list', 'error');
+            }
+        }
+
+        function closeStudentListModal() {
+            const modal = document.getElementById('studentListModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function updateCompletedCoursesList() {
+            try {
+                const completedCoursesTableBody = document.getElementById('completedCoursesTableBody');
+                if (!completedCoursesTableBody) return;
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const completedCourses = courses.filter(course => 
+                    course.completionStatus === 'COMPLETED'
+                );
+
+                if (completedCourses.length === 0) {
+                    completedCoursesTableBody.innerHTML = '<tr><td colspan="10" class="text-center">No completed courses found</td></tr>';
+                    return;
+                }
+
+                completedCoursesTableBody.innerHTML = completedCourses.map(course => `
+                    <tr>
+                        <td>${formatDate(course.courseDate)}</td>
+                        <td>${course.organizationName || '-'}</td>
+                        <td>${course.location || '-'}</td>
+                        <td>${course.classType || '-'}</td>
+                        <td>${course.studentsRegistered || 0}</td>
+                        <td>${course.studentsAttended || 0}</td>
+                        <td>
+                            <span class="status-complete">COMPLETED</span>
+                        </td>
+                        <td>
+                            <span class="${course.billingStatus === 'BILLED' ? 'status-confirmed' : 'status-pending'}">
+                                ${course.billingStatus || 'PENDING'}
+                            </span>
+                        </td>
+                        <td>${course.instructorName || '-'}</td>
+                        <td style="text-align: center;">
+                            <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
+                                <i class="fas fa-users"></i> View Students
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                console.log('Completed courses list updated successfully');
+            } catch (error) {
+                console.error('Error updating completed courses list:', error);
+            }
+        }
     </script>
 </body>
 </html> 
