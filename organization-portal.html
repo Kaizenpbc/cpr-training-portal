@@ -763,7 +763,7 @@
                     </select>
                     <div class="form-group">
                         <label for="studentListFileModal">Select Excel File:</label>
-                        <input type="file" id="studentListFileModal" accept=".xlsx,.xls" required onchange="handleExcelUpload()">
+                        <input type="file" id="studentListFileModal" accept=".xlsx,.xls" required>
                         <small>Accepted formats: .xlsx, .xls</small>
                     </div>
                     <div class="progress-container" style="display: none;">
@@ -773,6 +773,7 @@
                         <div class="progress-text">Uploading: <span id="progressPercentage">0%</span></div>
                     </div>
                     <div class="button-group">
+                        <button type="button" class="btn btn-primary" onclick="handleExcelUpload()">Upload</button>
                         <button type="button" class="btn btn-secondary" onclick="downloadTemplate()">Download Template</button>
                     </div>
                 </div>
@@ -1144,10 +1145,23 @@
                             return;
                         }
 
+                        const progressContainer = document.querySelector('.progress-container');
+                        const progressBarFill = document.querySelector('.progress-bar-fill');
+                        const progressText = document.getElementById('progressPercentage');
+                        
+                        // Show progress bar
+                        progressContainer.style.display = 'block';
+                        progressBarFill.style.width = '0%';
+                        progressText.textContent = '0%';
+
                         const reader = new FileReader();
 
                         reader.onload = function(e) {
                             try {
+                                // Update progress to 50%
+                                progressBarFill.style.width = '50%';
+                                progressText.textContent = '50%';
+
                                 const data = e.target.result;
                                 const workbook = XLSX.read(data, { type: 'binary' });
                                 const sheetName = workbook.SheetNames[0];
@@ -1155,6 +1169,7 @@
 
                                 if (!currentCourseId) {
                                     showNotification('No course selected for upload', 'error');
+                                    progressContainer.style.display = 'none';
                                     return;
                                 }
 
@@ -1165,8 +1180,13 @@
 
                                 if (courseIndex === -1) {
                                     showNotification('Course not found', 'error');
+                                    progressContainer.style.display = 'none';
                                     return;
                                 }
+
+                                // Update progress to 75%
+                                progressBarFill.style.width = '75%';
+                                progressText.textContent = '75%';
 
                                 // Process each student from Excel
                                 const processedStudents = jsonData.map(excelStudent => {
@@ -1217,27 +1237,38 @@
                                 localStorage.setItem('courses', JSON.stringify(courses));
                                 localStorage.setItem('students', JSON.stringify(students));
 
+                                // Update progress to 100%
+                                progressBarFill.style.width = '100%';
+                                progressText.textContent = '100%';
+
                                 // Clear the file input
                                 fileInput.value = '';
 
-                                showNotification('Student list uploaded successfully', 'success');
-                                closeModal('uploadModal');
-                                updateMyCoursesTable(); // Refresh the display
+                                // Hide progress bar and close modal after a short delay
+                                setTimeout(() => {
+                                    progressContainer.style.display = 'none';
+                                    showNotification('Student list uploaded successfully', 'success');
+                                    closeModal('uploadModal');
+                                    updateMyCoursesTable(); // Refresh the display
+                                }, 500);
                             } catch (error) {
                                 console.error('Error processing Excel file:', error);
                                 showNotification('Error processing Excel file', 'error');
+                                progressContainer.style.display = 'none';
                             }
                         };
 
                         reader.onerror = function(error) {
                             console.error('Error reading file:', error);
                             showNotification('Error reading file', 'error');
+                            progressContainer.style.display = 'none';
                         };
 
                         reader.readAsBinaryString(file);
                     } catch (error) {
                         console.error('Error handling file upload:', error);
                         showNotification('Error handling file upload', 'error');
+                        document.querySelector('.progress-container').style.display = 'none';
                     }
                 }
 
@@ -1724,22 +1755,21 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal('uploadModal')">&times;</span>
             <h2>Upload Student List</h2>
-            <form id="uploadForm" onsubmit="handleExcelUpload(event)">
-                <div class="form-group">
-                    <label for="studentListFileModal">Select Excel File:</label>
-                    <input type="file" id="studentListFileModal" accept=".xlsx,.xls" required onchange="handleExcelUpload()">
-                    <small>Accepted formats: .xlsx, .xls</small>
+            <div class="form-group">
+                <label for="studentListFileModal">Select Excel File:</label>
+                <input type="file" id="studentListFileModal" accept=".xlsx,.xls" required>
+                <small>Accepted formats: .xlsx, .xls</small>
+            </div>
+            <div class="progress-container" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-bar-fill"></div>
                 </div>
-                <div class="progress-container" style="display: none;">
-                    <div class="progress-bar">
-                        <div class="progress-bar-fill"></div>
-                    </div>
-                    <div class="progress-text">Uploading: <span id="progressPercentage">0%</span></div>
-                </div>
-                <div class="button-group">
-                    <button type="button" class="btn btn-secondary" onclick="downloadTemplate()">Download Template</button>
-                </div>
-            </form>
+                <div class="progress-text">Uploading: <span id="progressPercentage">0%</span></div>
+            </div>
+            <div class="button-group">
+                <button type="button" class="btn btn-primary" onclick="handleExcelUpload()">Upload</button>
+                <button type="button" class="btn btn-secondary" onclick="downloadTemplate()">Download Template</button>
+            </div>
         </div>
     </div>
 
