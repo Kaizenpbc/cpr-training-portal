@@ -769,6 +769,20 @@
                 </div>
                 <div class="calendar" id="availabilityCalendar"></div>
                 <button class="btn btn-primary" onclick="saveAvailability()">Save Availability</button>
+                
+                <h3>My Availability</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="availabilityTableBody"></tbody>
+                    </table>
+                </div>
             </section>
 
             <section id="classes" class="section">
@@ -1192,39 +1206,37 @@
             console.log('=== Showing Section ===');
             console.log('Requested section:', sectionId);
             
-            // Debug: Check if section exists
-            const requestedSection = document.getElementById(sectionId);
-            console.log('Section element exists:', !!requestedSection);
+            const section = document.getElementById(sectionId);
+            console.log('Section element exists:', !!section);
             
+            if (!section) {
+                console.error('Section not found:', sectionId);
+                return;
+            }
+
             // Hide all sections
             const allSections = document.querySelectorAll('.section');
             console.log('Total sections found:', allSections.length);
             console.log('All sections:', Array.from(allSections).map(s => s.id));
             
-            allSections.forEach(section => {
-                section.style.display = 'none';
-                console.log('Hidden section:', section.id);
+            allSections.forEach(s => {
+                console.log('Hidden section:', s.id);
+                s.style.display = 'none';
             });
-            
-            // Show the selected section
-            if (requestedSection) {
-                requestedSection.style.display = 'block';
-                console.log('Displayed section:', sectionId);
-                
-                // Update the archived classes list if that section is being shown
-                if (sectionId === 'archivedClasses') {
-                    console.log('Updating archived classes list');
-                    updateArchivedClassesList();
-                }
 
-                // Update class list if showing classes section
-                if (sectionId === 'classes') {
-                    console.log('Updating class list');
-                    updateClassList();
-                }
-            } else {
-                console.error('Section not found:', sectionId);
-            }
+            // Show requested section
+            section.style.display = 'block';
+            console.log('Displayed section:', sectionId);
+
+            // Update navigation
+            updateNavButtons();
+
+            // Dispatch section change event
+            const event = new CustomEvent('sectionChanged', { 
+                detail: { section: sectionId }
+            });
+            document.dispatchEvent(event);
+
             console.log('=== Section Display Complete ===');
         }
 
@@ -1373,6 +1385,10 @@
                 
                 if (!tbody) return;
 
+                // Get all availability records for this instructor
+                const allAvailability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+                const instructorAvailability = allAvailability.filter(a => a.instructorId === instructor.id);
+                
                 // Filter for courses assigned to this instructor that are not archived or completed
                 const assignedCourses = courses.filter(course => 
                     course.instructorId === instructor.id && 
@@ -1380,8 +1396,11 @@
                     course.completionStatus !== 'COMPLETED'
                 );
 
-                // Get instructor's availability dates
-                const availableDates = instructor.availability || [];
+                // Get instructor's availability dates from both sources
+                const availableDates = [
+                    ...(instructor.availability || []),
+                    ...instructorAvailability.map(a => a.date)
+                ].filter((date, index, self) => self.indexOf(date) === index); // Remove duplicates
                 availableDates.sort();
 
                 if (assignedCourses.length === 0 && availableDates.length === 0) {
@@ -1997,27 +2016,25 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            if (!ensureBrowserCompatibility()) {
-                return;
-            }
-
+            console.log('=== Starting initialization ===');
             checkSession();
-            initializeCalendar();
-            loadAvailability();
-            updateClassList();
-            updateTodaysCourses();
-            setInterval(updateTodaysCourses, 60000); // Update every minute
             
-            // Add periodic refresh with error handling
-            setInterval(() => {
-                try {
-                if (document.getElementById('classes').classList.contains('active')) {
+            // Add event listener for section changes
+            document.addEventListener('sectionChanged', (event) => {
+                const section = event.detail.section;
+                console.log('Section changed to:', section);
+                
+                if (section === 'availability') {
+                    console.log('Showing availability section, updating table...');
+                    updateMyAvailabilityTable();
+                } else if (section === 'classes') {
+                    console.log('Showing classes section, updating class list...');
                     updateClassList();
+                } else if (section === 'archivedClasses') {
+                    console.log('Showing archived classes section, updating archived list...');
+                    updateArchivedClassesList();
                 }
-                } catch (error) {
-                    console.error('Error in refresh interval:', error);
-                }
-            }, 5000);
+            });
         });
 
         // Add notification system that works across browsers
@@ -2566,6 +2583,154 @@
                 tbody.appendChild(row);
             });
         }
+
+        function updateMyCoursesTable() {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                
+                if (!currentInstructor) {
+                    showNotification('Please log in first', 'error');
+                    return;
+                }
+
+                const instructorCourses = courses.filter(course => 
+                    course.instructorId === currentInstructor.id && 
+                    course.adminConfirmed
+                );
+
+                const tableBody = document.getElementById('coursesTableBody');
+                if (!tableBody) return;
+
+                if (instructorCourses.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center">No confirmed courses available</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tableBody.innerHTML = instructorCourses.map(course => `
+                    <tr>
+                        <td>${formatDate(course.courseDate)}</td>
+                        <td>${course.organizationName || 'Not Specified'}</td>
+                        <td>${course.location}</td>
+                        <td>${course.classType}</td>
+                        <td>${course.studentsRegistered || 0}</td>
+                        <td>
+                            <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewCourseDetails('${course.id}')">View Details</button>
+                            ${course.status === 'CONFIRMED' ? 
+                                `<button class="btn btn-sm btn-success" onclick="takeAttendance('${course.id}')">Take Attendance</button>` : 
+                                ''}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error updating courses table:', error);
+                showNotification('Error loading courses', 'error');
+            }
+        }
+
+        function updateMyAvailabilityTable() {
+            console.log('=== updateMyAvailabilityTable called ===');
+            const availabilityTableBody = document.getElementById('availabilityTableBody');
+            console.log('Table body element:', availabilityTableBody);
+            
+            if (!availabilityTableBody) {
+                console.error('availabilityTableBody not found');
+                return;
+            }
+
+            const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor') || '{}');
+            const allAvailability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+            
+            console.log('Current instructor:', currentInstructor);
+            console.log('All availability:', allAvailability);
+            
+            // Get availability from both sources
+            const instructorAvailability = allAvailability.filter(a => a.instructorId === currentInstructor.id);
+            const directAvailability = currentInstructor.availability || [];
+            
+            console.log('Instructor availability:', instructorAvailability);
+            console.log('Direct availability:', directAvailability);
+
+            // Combine and deduplicate availability dates
+            const combinedAvailability = [
+                ...instructorAvailability.map(a => ({
+                    date: a.date,
+                    status: a.status || 'AVAILABLE',
+                    source: 'bulk'
+                })),
+                ...directAvailability.map(date => ({
+                    date: date,
+                    status: 'AVAILABLE',
+                    source: 'direct'
+                }))
+            ].filter((item, index, self) => 
+                index === self.findIndex(t => t.date === item.date)
+            ).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            console.log('Combined availability:', combinedAvailability);
+
+            if (combinedAvailability.length === 0) {
+                availabilityTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center">No availability records found</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            availabilityTableBody.innerHTML = combinedAvailability.map(record => `
+                <tr>
+                    <td>${formatDate(record.date)}</td>
+                    <td>${record.status}</td>
+                    <td>
+                        ${record.source === 'direct' ? `
+                            <button class="btn btn-sm btn-danger" onclick="deleteAvailability('${record.date}')">
+                                Delete
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteAvailability(date) {
+            try {
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!currentInstructor) return;
+
+                // Remove from instructor's direct availability
+                currentInstructor.availability = currentInstructor.availability.filter(d => d !== date);
+                
+                // Update instructor in localStorage
+                let instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const index = instructors.findIndex(i => i.id === currentInstructor.id);
+                if (index !== -1) {
+                    instructors[index] = currentInstructor;
+                }
+                
+                localStorage.setItem('instructors', JSON.stringify(instructors));
+                localStorage.setItem('currentInstructor', JSON.stringify(currentInstructor));
+                
+                // Update the table
+                updateMyAvailabilityTable();
+                showNotification('Availability deleted successfully', 'success');
+            } catch (error) {
+                console.error('Error deleting availability:', error);
+                showNotification('Error deleting availability', 'error');
+            }
+        }
+
+        // Call updateMyAvailabilityTable when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            updateMyAvailabilityTable();
+        });
     </script>
 </body>
 </html> 

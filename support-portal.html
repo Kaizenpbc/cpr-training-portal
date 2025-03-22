@@ -213,6 +213,65 @@
         .status-scheduled { color: #f39c12; }
         .status-confirmed { color: #2ecc71; }
         .status-pending { color: #95a5a6; }
+
+        .bulk-upload-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .upload-section h3 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .button-group {
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+
+        .progress-container {
+            margin: 1rem 0;
+        }
+
+        .progress {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--secondary-color);
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+            color: var(--text-color);
+        }
     </style>
 </head>
 <body>
@@ -263,6 +322,55 @@
             </div>
         </section>
 
+        <section id="bulkUpload" class="section">
+            <h2>Bulk Upload</h2>
+            <div class="bulk-upload-container">
+                <div class="upload-section">
+                    <h3>Instructor Availability</h3>
+                    <div class="form-group">
+                        <label for="instructorAvailabilityFile">Upload Instructor Availability Excel File:</label>
+                        <input type="file" id="instructorAvailabilityFile" accept=".xlsx,.xls" onchange="handleInstructorAvailabilityFileSelect(event)">
+                    </div>
+                    <div class="progress-container" id="instructorAvailabilityProgress" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-text">Processing: 0%</div>
+                    </div>
+                    <div class="button-group">
+                        <button id="uploadInstructorAvailabilityBtn" class="btn btn-primary" onclick="handleInstructorAvailabilityUpload()" disabled>
+                            Upload Availability
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadInstructorAvailabilityTemplate()">
+                            Download Template
+                        </button>
+                    </div>
+                </div>
+
+                <div class="upload-section">
+                    <h3>Organization Course Schedule</h3>
+                    <div class="form-group">
+                        <label for="organizationCoursesFile">Upload Organization Course Schedule Excel File:</label>
+                        <input type="file" id="organizationCoursesFile" accept=".xlsx,.xls" onchange="handleOrganizationCoursesFileSelect(event)">
+                    </div>
+                    <div class="progress-container" id="organizationCoursesProgress" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-text">Processing: 0%</div>
+                    </div>
+                    <div class="button-group">
+                        <button id="uploadOrganizationCoursesBtn" class="btn btn-primary" onclick="handleOrganizationCoursesUpload()" disabled>
+                            Upload Course Schedule
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadOrganizationCoursesTemplate()">
+                            Download Template
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <div id="notification" class="notification"></div>
     </div>
 
@@ -286,7 +394,14 @@
                 const storage = {};
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
-                    storage[key] = JSON.parse(localStorage.getItem(key));
+                    const value = localStorage.getItem(key);
+                    try {
+                        // Try to parse as JSON first
+                        storage[key] = JSON.parse(value);
+                    } catch (e) {
+                        // If parsing fails, store as raw string
+                        storage[key] = value;
+                    }
                 }
 
                 const dataStr = JSON.stringify(storage, null, 2);
@@ -308,16 +423,64 @@
 
         function displayStorage() {
             try {
+                const storageContent = document.getElementById('storageContent');
+                
+                // First show what keys exist in localStorage
+                const allKeys = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    allKeys.push(localStorage.key(i));
+                }
+
+                if (allKeys.length === 0) {
+                    storageContent.innerHTML = `
+                        <div class="storage-section">
+                            <h3>Storage Status</h3>
+                            <pre>localStorage is empty. No data has been stored yet.</pre>
+                        </div>`;
+                    return;
+                }
+
                 const storageData = {
                     courses: JSON.parse(localStorage.getItem('courses') || '[]'),
                     instructors: JSON.parse(localStorage.getItem('instructors') || '[]'),
                     organizations: JSON.parse(localStorage.getItem('organizations') || '[]'),
                     students: JSON.parse(localStorage.getItem('students') || '[]'),
-                    certificates: JSON.parse(localStorage.getItem('certificates') || '[]')
+                    certificates: JSON.parse(localStorage.getItem('certificates') || '[]'),
+                    instructorAvailability: JSON.parse(localStorage.getItem('instructorAvailability') || '[]')
                 };
 
-                const storageDisplay = document.getElementById('storageContent');
-                storageDisplay.innerHTML = `
+                // Add course admin status summary
+                const courseAdminSummary = {
+                    total: storageData.courses.length,
+                    pending: storageData.courses.filter(c => !c.adminConfirmed && !c.completionStatus).length,
+                    scheduled: storageData.courses.filter(c => c.adminScheduledDashStatus === 'SCHEDULED' && !c.adminConfirmed).length,
+                    confirmed: storageData.courses.filter(c => c.adminConfirmed && !c.completionStatus).length,
+                    completed: storageData.courses.filter(c => c.completionStatus === 'COMPLETED').length
+                };
+
+                // Add instructor dashboard status summary
+                const instructorDashSummary = {
+                    total: storageData.courses.length,
+                    available: storageData.courses.filter(c => !c.adminConfirmed && c.adminInstructorDashStatus === 'AVAILABLE').length,
+                    scheduled: storageData.courses.filter(c => c.adminInstructorDashStatus === 'SCHEDULED').length,
+                    confirmed: storageData.courses.filter(c => c.adminInstructorDashStatus === 'CONFIRMED').length,
+                    completed: storageData.courses.filter(c => c.adminInstructorDashStatus === 'COMPLETED').length,
+                    availability: storageData.instructorAvailability.length
+                };
+
+                storageContent.innerHTML = `
+                    <div class="storage-section">
+                        <h3>Available Storage Keys</h3>
+                        <pre>${JSON.stringify(allKeys, null, 2)}</pre>
+                    </div>
+                    <div class="storage-section">
+                        <h3>Course Admin Status Summary</h3>
+                        <pre>${JSON.stringify(courseAdminSummary, null, 2)}</pre>
+                    </div>
+                    <div class="storage-section">
+                        <h3>Instructor Dashboard Status Summary</h3>
+                        <pre>${JSON.stringify(instructorDashSummary, null, 2)}</pre>
+                    </div>
                     <div class="storage-section">
                         <h3>Organizations (${storageData.organizations.length})</h3>
                         <pre>${JSON.stringify(storageData.organizations, null, 2)}</pre>
@@ -332,7 +495,18 @@
                     </div>
                     <div class="storage-section">
                         <h3>Courses (${storageData.courses.length})</h3>
-                        <pre>${JSON.stringify(storageData.courses, null, 2)}</pre>
+                        <pre>${JSON.stringify(storageData.courses.map(course => ({
+                            ...course,
+                            adminStatus: {
+                                confirmed: course.adminConfirmed,
+                                scheduledDashStatus: course.adminScheduledDashStatus,
+                                instructorDashStatus: course.adminInstructorDashStatus
+                            }
+                        })), null, 2)}</pre>
+                    </div>
+                    <div class="storage-section">
+                        <h3>Instructor Availability (${storageData.instructorAvailability.length})</h3>
+                        <pre>${JSON.stringify(storageData.instructorAvailability, null, 2)}</pre>
                     </div>
                     <div class="storage-section">
                         <h3>Certificates (${storageData.certificates.length})</h3>
@@ -343,6 +517,12 @@
                 showNotification('Storage data loaded successfully', 'success');
             } catch (error) {
                 console.error('Error displaying storage:', error);
+                const storageContent = document.getElementById('storageContent');
+                storageContent.innerHTML = `
+                    <div class="storage-section">
+                        <h3>Error Loading Storage</h3>
+                        <pre>Error: ${error.message}</pre>
+                    </div>`;
                 showNotification('Error loading storage data', 'error');
             }
         }
@@ -454,6 +634,229 @@
 
         // Display storage content on page load
         document.addEventListener('DOMContentLoaded', displayStorage);
+
+        // Add these functions to handle bulk uploads
+        let instructorAvailabilityFile = null;
+        let organizationCoursesFile = null;
+
+        function handleInstructorAvailabilityFileSelect(event) {
+            instructorAvailabilityFile = event.target.files[0];
+            const uploadBtn = document.getElementById('uploadInstructorAvailabilityBtn');
+            uploadBtn.disabled = !instructorAvailabilityFile;
+        }
+
+        function handleOrganizationCoursesFileSelect(event) {
+            organizationCoursesFile = event.target.files[0];
+            const uploadBtn = document.getElementById('uploadOrganizationCoursesBtn');
+            uploadBtn.disabled = !organizationCoursesFile;
+        }
+
+        function downloadInstructorAvailabilityTemplate() {
+            try {
+                const wb = XLSX.utils.book_new();
+                const wsData = [
+                    ['Instructor Name', 'Date', 'Status'],
+                    ['Mike', '2024-03-21', 'Available']
+                ];
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                XLSX.utils.book_append_sheet(wb, ws, 'Instructor Availability');
+                XLSX.writeFile(wb, 'instructor_availability_template.xlsx');
+                showNotification('Template downloaded successfully', 'success');
+            } catch (error) {
+                console.error('Error downloading template:', error);
+                showNotification('Error downloading template', 'error');
+            }
+        }
+
+        function downloadOrganizationCoursesTemplate() {
+            try {
+                const wb = XLSX.utils.book_new();
+                const wsData = [
+                    ['Instructor Name', 'Date', 'Status'],
+                    ['Mike', '2024-03-21', 'Available']
+                ];
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                XLSX.utils.book_append_sheet(wb, ws, 'Instructor Availability');
+                XLSX.writeFile(wb, 'instructor_availability_template.xlsx');
+                showNotification('Template downloaded successfully', 'success');
+            } catch (error) {
+                console.error('Error downloading template:', error);
+                showNotification('Error downloading template', 'error');
+            }
+        }
+
+        function handleInstructorAvailabilityUpload() {
+            try {
+                if (!instructorAvailabilityFile) {
+                    showNotification('Please select a file to upload', 'error');
+                    return;
+                }
+
+                const progressContainer = document.getElementById('instructorAvailabilityProgress');
+                const progressBar = progressContainer.querySelector('.progress-bar');
+                const progressText = progressContainer.querySelector('.progress-text');
+                
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        progressBar.style.width = '50%';
+                        progressText.textContent = '50%';
+
+                        const data = e.target.result;
+                        const workbook = XLSX.read(data, { type: 'binary' });
+                        const sheetName = workbook.SheetNames[0];
+                        const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+                        // Process instructor availability data
+                        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                        const availability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+
+                        let successCount = 0;
+                        let errorCount = 0;
+
+                        jsonData.forEach(row => {
+                            const instructor = instructors.find(i => i.name === row['Instructor Name']);
+                            if (instructor) {
+                                availability.push({
+                                    id: 'availability_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                                    instructorId: instructor.id,
+                                    instructorName: instructor.name,
+                                    date: row['Date'],
+                                    status: row['Status'] || 'Available'
+                                });
+                                successCount++;
+                            } else {
+                                errorCount++;
+                            }
+                        });
+
+                        localStorage.setItem('instructorAvailability', JSON.stringify(availability));
+
+                        progressBar.style.width = '100%';
+                        progressText.textContent = '100%';
+
+                        setTimeout(() => {
+                            progressContainer.style.display = 'none';
+                            showNotification(`Upload complete: ${successCount} successful, ${errorCount} failed`, 'success');
+                            displayStorage(); // Update the storage display
+                        }, 500);
+
+                    } catch (error) {
+                        console.error('Error processing Excel file:', error);
+                        showNotification('Error processing Excel file', 'error');
+                        progressContainer.style.display = 'none';
+                    }
+                };
+
+                reader.onerror = function(error) {
+                    console.error('Error reading file:', error);
+                    showNotification('Error reading file', 'error');
+                    progressContainer.style.display = 'none';
+                };
+
+                reader.readAsBinaryString(instructorAvailabilityFile);
+            } catch (error) {
+                console.error('Error handling file upload:', error);
+                showNotification('Error handling file upload', 'error');
+                document.getElementById('instructorAvailabilityProgress').style.display = 'none';
+            }
+        }
+
+        function handleOrganizationCoursesUpload() {
+            const fileInput = document.getElementById('organizationCoursesFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                showNotification('Please select a file to upload', 'error');
+                return;
+            }
+
+            const progressContainer = document.getElementById('organizationCoursesProgress');
+            const progressBar = progressContainer.querySelector('.progress-bar');
+            const progressText = progressContainer.querySelector('.progress-text');
+            
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = event.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                    
+                    let successCount = 0;
+                    let errorCount = 0;
+
+                    // Load existing data
+                    const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                    const instructorAvailability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+
+                    progressBar.style.width = '50%';
+                    progressText.textContent = '50%';
+
+                    jsonData.forEach((row, index) => {
+                        try {
+                            // Find instructor
+                            const instructor = instructors.find(inst => inst.name === row['Instructor Name']);
+                            if (!instructor) {
+                                console.error(`Instructor not found: ${row['Instructor Name']}`);
+                                errorCount++;
+                                return;
+                            }
+
+                            const availabilityId = `availability_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                            const availability = {
+                                id: availabilityId,
+                                instructorId: instructor.id,
+                                instructorName: instructor.name,
+                                date: row['Date'],
+                                status: row['Status'] || 'Available'
+                            };
+
+                            instructorAvailability.push(availability);
+                            successCount++;
+                        } catch (error) {
+                            console.error('Error processing row:', error);
+                            errorCount++;
+                        }
+
+                        // Update progress
+                        const progress = Math.min(50 + ((index + 1) / jsonData.length * 50), 100);
+                        progressBar.style.width = `${progress}%`;
+                        progressText.textContent = `${Math.round(progress)}%`;
+                    });
+
+                    localStorage.setItem('instructorAvailability', JSON.stringify(instructorAvailability));
+
+                    progressBar.style.width = '100%';
+                    progressText.textContent = '100%';
+
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                        showNotification(`Upload complete: ${successCount} successful, ${errorCount} failed`, 'success');
+                        displayStorage(); // Update the storage display
+                    }, 500);
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    showNotification('Error processing file', 'error');
+                    progressContainer.style.display = 'none';
+                }
+            };
+
+            reader.onerror = function(error) {
+                console.error('Error reading file:', error);
+                showNotification('Error reading file', 'error');
+                progressContainer.style.display = 'none';
+            };
+
+            reader.readAsBinaryString(file);
+        }
     </script>
 </body>
 </html> 

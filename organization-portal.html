@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Organization Portal - GTA CPR</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -887,27 +889,37 @@
                 // Initialize the application
                 document.addEventListener('DOMContentLoaded', function() {
                     console.log('=== Application Initialization ===');
-                    console.log('Checking monthly summary box styling...');
-                    
-                    // Add trace for monthly summary box
-                    const monthlyBox = document.querySelector('[style*="max-width: 300px"]');
-                    console.log('Monthly Summary Box:', monthlyBox);
-                    if (monthlyBox) {
-                        console.log('Monthly Box Current Styles:', {
-                            maxWidth: monthlyBox.style.maxWidth,
-                            background: monthlyBox.querySelector('div').style.background,
-                            color: monthlyBox.querySelector('div').style.color
-                        });
-                    }
                     
                     // Check if user is logged in
                     const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
+                    console.log('Current organization from localStorage:', currentOrg);
+                    
                     if (currentOrg) {
                         console.log('Found logged in organization:', currentOrg.name);
                         currentOrganization = currentOrg; // Set the global variable
                         showWelcomeBanner(currentOrg.name);
-                        showSection('courses');  // Show courses section by default
-                        updateMyCoursesTable(); // Update the courses table
+                        
+                        // First show the courses section
+                        console.log('Showing courses section...');
+                        showSection('courses');
+                        
+                        // Wait for the section to be visible and table to be ready
+                        const checkTableAndUpdate = () => {
+                            console.log('Checking if courses section and table are ready...');
+                            const coursesSection = document.getElementById('courses');
+                            const coursesTableBody = document.getElementById('coursesTableBody');
+                            
+                            if (coursesSection && coursesSection.classList.contains('active') && coursesTableBody) {
+                                console.log('Courses section and table are ready, updating...');
+                                updateMyCoursesTable();
+                            } else {
+                                console.log('Waiting for courses section and table to be ready...');
+                                setTimeout(checkTableAndUpdate, 100);
+                            }
+                        };
+                        
+                        // Start checking after a short delay
+                        setTimeout(checkTableAndUpdate, 100);
                     } else {
                         console.log('No organization logged in, showing login section');
                         showSection('login');
@@ -917,16 +929,6 @@
                     window.checkDataIntegrity = function() {
                         console.log('=== Data Integrity Check ===');
                         try {
-                            // Check courses
-                            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                            console.log('Courses:', courses);
-                            console.log('Number of courses:', courses.length);
-                            
-                            // Check students
-                            const students = JSON.parse(localStorage.getItem('students') || '[]');
-                            console.log('Students:', students);
-                            console.log('Number of students:', students.length);
-                            
                             // Check organizations
                             const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
                             console.log('Organizations:', organizations);
@@ -938,19 +940,6 @@
                             
                             // Check for data inconsistencies
                             let issues = [];
-                            
-                            // Check course references
-                            courses.forEach(course => {
-                                if (!course.id) issues.push(`Course missing ID: ${JSON.stringify(course)}`);
-                                if (!course.organizationId) issues.push(`Course missing organization ID: ${course.id}`);
-                                if (!Array.isArray(course.studentList)) issues.push(`Course ${course.id} has invalid studentList`);
-                            });
-                            
-                            // Check student references
-                            students.forEach(student => {
-                                if (!student.id) issues.push(`Student missing ID: ${JSON.stringify(student)}`);
-                                if (!Array.isArray(student.courses)) issues.push(`Student ${student.id} has invalid courses array`);
-                            });
                             
                             // Check organization references
                             organizations.forEach(org => {
@@ -1022,6 +1011,12 @@
                             }
                         });
                     });
+
+                    // Listen for course updates
+                    window.addEventListener('coursesUpdated', () => {
+                        console.log('Courses updated, refreshing table...');
+                        updateMyCoursesTable();
+                    });
                 });
 
                 function handleLogin(event) {
@@ -1074,61 +1069,99 @@
                     document.getElementById('welcomeMessage').textContent = `Welcome, ${name}!`;
                 }
 
+                function getCurrentOrganizationId() {
+                    try {
+                        console.log('Getting current organization ID');
+                        const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
+                        console.log('Current organization from localStorage:', currentOrg);
+                        
+                        if (!currentOrg) {
+                            console.log('No organization found in localStorage');
+                            showNotification('Please log in first', 'error');
+                            return null;
+                        }
+                        
+                        if (!currentOrg.id) {
+                            console.log('Organization found but missing ID');
+                            showNotification('Organization data is invalid', 'error');
+                            return null;
+                        }
+                        
+                        console.log('Returning organization ID:', currentOrg.id);
+                        return currentOrg.id;
+                    } catch (error) {
+                        console.error('Error getting current organization ID:', error);
+                        showNotification('Error getting organization ID', 'error');
+                        return null;
+                    }
+                }
+
+                function getCurrentOrganizationName() {
+                    try {
+                        const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
+                        if (!currentOrg) {
+                            showNotification('Please log in first', 'error');
+                            return null;
+                        }
+                        return currentOrg.name;
+                    } catch (error) {
+                        console.error('Error getting current organization name:', error);
+                        showNotification('Error getting organization name', 'error');
+                        return null;
+                    }
+                }
+
                 function handleScheduleCourse(event) {
                     event.preventDefault();
                     try {
-                        const organization = JSON.parse(localStorage.getItem('currentOrganization'));
-                        if (!organization) {
-                            showNotification('Please log in first', 'error');
-                            return;
-                        }
+                        console.log('Starting handleScheduleCourse');
+                        const currentOrgId = getCurrentOrganizationId();
+                        console.log('Current organization ID:', currentOrgId);
 
                         const courseDate = document.getElementById('courseDate').value;
                         const location = document.getElementById('location').value;
                         const classType = document.getElementById('classType').value;
                         const studentsRegistered = parseInt(document.getElementById('studentsRegistered').value) || 0;
-                        const notes = document.getElementById('notes').value.trim();
+                        const notes = document.getElementById('notes').value;
 
-                        // Create new course with initial status
-                        const course = {
+                        if (!courseDate || !location || !classType) {
+                            showNotification('Please fill in all required fields', 'error');
+                            return;
+                        }
+
+                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                        const newCourse = {
                             id: 'course_' + Date.now(),
-                            organizationId: organization.id,
-                            organizationName: organization.name,
+                            organizationId: currentOrgId,
+                            organizationName: getCurrentOrganizationName(),
                             courseDate: courseDate,
-                            systemDate: new Date().toISOString().split('T')[0],
                             location: location,
                             classType: classType,
-                            // Status fields
-                            status: 'PENDING',                    // Organization Portal view
-                            adminConfirmed: false,                // Admin confirmation flag
-                            adminScheduledDashStatus: 'PENDING',  // Admin Portal Scheduled Courses view
-                            adminInstructorDashStatus: 'PENDING', // Admin Portal Instructor Dashboard
-                            organizationStatus: 'PENDING',        // Organization Portal status
-                            instructorStatus: '',                 // Instructor Portal status
-                            // Course details
                             studentsRegistered: studentsRegistered,
-                            studentsAttended: 0,
                             notes: notes,
-                            studentList: [],
-                            // Instructor fields (initially empty)
-                            instructorId: '',
-                            instructorName: '',
-                            // Additional fields
-                            completionStatus: '',
-                            isArchived: false,
-                            displayInstructorDetails: false,      // Hide instructor details until confirmed
-                            displayOrgDetails: false              // Hide org details in instructor view until confirmed
+                            status: 'PENDING',
+                            adminScheduledDashStatus: 'PENDING',
+                            adminInstructorDashStatus: 'PENDING',
+                            organizationStatus: 'PENDING',
+                            instructorStatus: 'PENDING',
+                            adminConfirmed: false,
+                            displayInstructorDetails: false,
+                            displayOrgDetails: false,
+                            hideOrgDetails: true,
+                            studentList: []
                         };
 
-                        // Save course
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        courses.push(course);
+                        console.log('New course to be added:', newCourse);
+                        courses.push(newCourse);
                         localStorage.setItem('courses', JSON.stringify(courses));
 
-                        showNotification('Course scheduled successfully', 'success');
-                        event.target.reset();
+                        // Update displays
                         updateMyCoursesTable();
-                        showSection('courses'); // Switch to My Courses view after scheduling
+                        showNotification('Course scheduled successfully', 'success');
+
+                        // Reset form and switch to courses section
+                        event.target.reset();
+                        showSection('courses');
                     } catch (error) {
                         console.error('Error scheduling course:', error);
                         showNotification('Error scheduling course', 'error');
@@ -1137,29 +1170,47 @@
 
                 function showSection(sectionId) {
                     try {
+                        console.log('=== showSection called ===');
+                        console.log('Section ID:', sectionId);
+                        
                         // Hide all sections
                         document.querySelectorAll('.section').forEach(section => {
                             section.classList.remove('active');
+                            console.log('Removed active class from section:', section.id);
                         });
                         
                         // Show the selected section
                         const selectedSection = document.getElementById(sectionId);
+                        console.log('Selected section element:', selectedSection);
+                        
                         if (selectedSection) {
                             selectedSection.classList.add('active');
+                            console.log('Added active class to section:', sectionId);
                             
                             // Update navigation buttons
                             document.querySelectorAll('.nav-button').forEach(button => {
                                 button.classList.toggle('active', button.dataset.section === sectionId);
                             });
                             
-                            // If showing myCourses, update the table
-                            if (sectionId === 'myCourses') {
-                                updateMyCoursesTable();
+                            // If showing courses section, wait for it to be visible before updating
+                            if (sectionId === 'courses') {
+                                console.log('Courses section shown, waiting for visibility...');
+                                setTimeout(() => {
+                                    const coursesTableBody = document.getElementById('coursesTableBody');
+                                    if (coursesTableBody) {
+                                        console.log('Table found, updating...');
+                                        updateMyCoursesTable();
+                                    } else {
+                                        console.log('Table not found yet, retrying...');
+                                        // Retry after another delay
+                                        setTimeout(() => {
+                                            updateMyCoursesTable();
+                                        }, 100);
+                                    }
+                                }, 100);
                             }
-                            // If showing archived courses, update the list
-                            if (sectionId === 'archivedCourses') {
-                                updateArchivedCoursesList();
-                            }
+                        } else {
+                            console.error('Section not found:', sectionId);
                         }
                     } catch (error) {
                         console.error('Error showing section:', error);
@@ -1168,350 +1219,208 @@
                 }
 
                 function updateMyCoursesTable() {
-                    try {
-                        const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
-                        if (!currentOrg) {
-                            showNotification('Please log in to view courses', 'error');
-                            return;
-                        }
-
-                        console.log('Updating courses table for organization:', currentOrg.name);
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const tbody = document.getElementById('coursesTableBody');
-                        
-                        if (!tbody) return;
-
-                        // Filter courses for current organization only - show all non-archived courses
-                        const orgCourses = courses.filter(course => 
-                            course.organizationId === currentOrg.id && !course.isArchived
-                        );
-                        console.log('Found', orgCourses.length, 'courses for organization');
-
-                        if (orgCourses.length === 0) {
-                            tbody.innerHTML = `
-                                <tr>
-                                    <td colspan="9" style="text-align: center;">No courses found. Schedule a course to get started.</td>
-                                </tr>
-                            `;
-                            return;
-                        }
-
-                        // Sort courses by date (most recent first)
-                        orgCourses.sort((a, b) => new Date(b.courseDate) - new Date(a.courseDate));
-
-                        // Generate table rows
-                        tbody.innerHTML = orgCourses.map(course => {
-                            const statusClass = course.completionStatus === 'COMPLETED' ? 'complete' :
-                                course.adminConfirmed && course.displayInstructorDetails ? 'confirmed' :
-                                course.adminScheduledDashStatus === 'SCHEDULED' && course.displayInstructorDetails ? 'scheduled' : 'pending';
-
-                            const statusText = course.completionStatus === 'COMPLETED' ? 'COMPLETED' :
-                                course.adminConfirmed && course.displayInstructorDetails ? 'CONFIRMED' :
-                                course.adminScheduledDashStatus === 'SCHEDULED' && course.displayInstructorDetails ? 'SCHEDULED' : 'PENDING';
-
-                            const attendanceText = course.studentsAttended ? 
-                                `${course.studentsAttended}/${course.studentsRegistered} Present` : 
-                                'Not Taken';
-
-                            const notes = course.notes || '';
-                            const truncatedNotes = notes.length > 50 ? notes.substring(0, 50) + '...' : notes;
-
-                            return `
-                                <tr>
-                                    <td>${formatDate(course.courseDate)}</td>
-                                    <td>${course.location}</td>
-                                    <td>${course.classType}</td>
-                                    <td>${course.studentsRegistered || 0}</td>
-                                    <td>${attendanceText}</td>
-                                    <td><span class="status-${statusClass.toLowerCase()}">${statusText}</span></td>
-                                    <td>${course.displayInstructorDetails ? (course.instructorName || 'Not Assigned') : '-'}</td>
-                                    <td><span title="${notes}">${truncatedNotes}</span></td>
-                                    <td>
-                                        <button class="btn btn-primary" onclick="viewStudentList('${course.id}')">
-                                            View Students
-                                        </button>
-                                        ${course.completionStatus !== 'COMPLETED' ? 
-                                            `<button class="btn btn-success" onclick="showUploadModal('${course.id}')">
-                                                Upload List
-                                            </button>` : ''
-                                        }
-                                        ${course.completionStatus === 'COMPLETED' ? 
-                                            `<button class="btn btn-info" onclick="viewCertificate('${course.id}')">
-                                                Certificates
-                                            </button>
-                                            <button class="btn btn-secondary" onclick="archiveCourse('${course.id}')">
-                                                Archive
-                                            </button>` : ''
-                                        }
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('');
-                    } catch (error) {
-                        console.error('Error updating course list:', error);
-                        showNotification('Error loading courses', 'error');
+                    const coursesTableBody = document.getElementById('coursesTableBody');
+                    if (!coursesTableBody) {
+                        console.error('coursesTableBody not found');
+                        return;
                     }
+
+                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                    const currentOrg = JSON.parse(localStorage.getItem('currentOrganization') || '{}');
+                    
+                    console.log('Current organization:', currentOrg);
+                    console.log('All courses:', courses);
+                    
+                    const orgCourses = courses.filter(course => course.organizationId === currentOrg.id);
+                    console.log('Organization courses:', orgCourses);
+
+                    if (orgCourses.length === 0) {
+                        coursesTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="9" class="text-center">No courses available</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    coursesTableBody.innerHTML = orgCourses.map(course => `
+                        <tr>
+                            <td>${formatDate(course.courseDate)}</td>
+                            <td>${course.location}</td>
+                            <td>${course.classType}</td>
+                            <td>${course.studentsRegistered || 0}</td>
+                            <td>${course.studentsAttended || 0}</td>
+                            <td>
+                                <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
+                            </td>
+                            <td>${course.displayInstructorDetails ? (course.instructorName || 'Not Assigned') : '-'}</td>
+                            <td class="note-cell" data-full-note="${course.notes || '-'}">${course.notes || '-'}</td>
+                            <td>
+                                ${course.studentList && course.studentList.length > 0 ? 
+                                    `<button class="btn btn-sm btn-info" onclick="viewStudentList('${course.id}')">View Students</button>` : 
+                                    `<button class="btn btn-sm btn-primary" onclick="uploadStudentList('${course.id}')">Upload Student List</button>`
+                                }
+                                ${course.status === 'CONFIRMED' ? 
+                                    `<button class="btn btn-sm btn-success" onclick="viewCourseDetails('${course.id}')">View Details</button>` : 
+                                    `<button class="btn btn-sm btn-warning" onclick="viewCourseDetails('${course.id}')">View Details</button>`
+                                }
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+
+                function uploadStudentList(courseId) {
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = '.csv';
+                    
+                    fileInput.onchange = function(e) {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            try {
+                                console.log('=== Starting Student List Upload ===');
+                                const csv = event.target.result;
+                                const lines = csv.split('\n').map(line => line.trim()).filter(line => line);
+                                
+                                if (lines.length < 2) {
+                                    showNotification('File is empty or has no data rows', 'error');
+                                    return;
+                                }
+
+                                const headers = lines[0].split(',').map(h => h.trim());
+                                console.log('Found headers:', headers);
+                                
+                                // Validate headers
+                                const requiredHeaders = ['Name', 'Email', 'Phone'];
+                                const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+                                if (missingHeaders.length > 0) {
+                                    console.log('Missing headers:', missingHeaders);
+                                    showNotification(`Missing required columns: ${missingHeaders.join(', ')}`, 'error');
+                                    return;
+                                }
+
+                                const students = lines.slice(1)
+                                    .filter(line => line.trim())
+                                    .map(line => {
+                                        const values = line.split(',').map(v => v.trim());
+                                        const student = {
+                                            id: `student_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                            name: values[headers.indexOf('Name')],
+                                            email: values[headers.indexOf('Email')],
+                                            phone: values[headers.indexOf('Phone')],
+                                            status: 'REGISTERED',
+                                            attendance: null
+                                        };
+                                        console.log('Processed student:', student);
+                                        return student;
+                                    });
+
+                                console.log('Total students processed:', students.length);
+
+                                // Validate student data
+                                const invalidStudents = students.filter(s => !s.name || !s.email || !s.phone);
+                                if (invalidStudents.length > 0) {
+                                    console.log('Invalid students found:', invalidStudents);
+                                    showNotification(`Found ${invalidStudents.length} students with missing information`, 'error');
+                                    return;
+                                }
+
+                                // Update course with students
+                                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                                const courseIndex = courses.findIndex(c => c.id === courseId);
+                                
+                                if (courseIndex === -1) {
+                                    console.log('Course not found:', courseId);
+                                    showNotification('Course not found', 'error');
+                                    return;
+                                }
+
+                                // Update the course's studentList and studentsRegistered count
+                                courses[courseIndex].studentList = students;
+                                courses[courseIndex].studentsRegistered = students.length;
+                                
+                                localStorage.setItem('courses', JSON.stringify(courses));
+
+                                console.log('Successfully updated course with students');
+                                showNotification(`Successfully uploaded ${students.length} students`, 'success');
+                                updateMyCoursesTable();
+                            } catch (error) {
+                                console.error('Error processing student list:', error);
+                                showNotification('Error processing student list. Please check the file format.', 'error');
+                            }
+                        };
+
+                        reader.onerror = function() {
+                            console.error('Error reading file');
+                            showNotification('Error reading file', 'error');
+                        };
+
+                        reader.readAsText(file);
+                    };
+
+                    fileInput.click();
+                }
+
+                function viewStudentList(courseId) {
+                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                    const course = courses.find(c => c.id === courseId);
+                    
+                    if (!course || !course.students) {
+                        showNotification('No students found for this course', 'error');
+                        return;
+                    }
+
+                    const modal = document.createElement('div');
+                    modal.className = 'modal fade';
+                    modal.innerHTML = `
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Student List - ${course.classType}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Email</th>
+                                                <th>Phone</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${course.students.map(student => `
+                                                <tr>
+                                                    <td>${student.name}</td>
+                                                    <td>${student.email}</td>
+                                                    <td>${student.phone}</td>
+                                                    <td>${student.status}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    document.body.appendChild(modal);
+                    const modalInstance = new bootstrap.Modal(modal);
+                    modalInstance.show();
+
+                    modal.addEventListener('hidden.bs.modal', () => {
+                        document.body.removeChild(modal);
+                    });
                 }
 
                 function formatDate(dateString) {
                     if (!dateString) return '';
                     const date = new Date(dateString);
                     return date.toISOString().split('T')[0];
-                }
-
-                function viewStudentList(courseId) {
-                    try {
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const course = courses.find(c => c.id === courseId);
-                        
-                        if (!course) {
-                            showNotification('Course not found', 'error');
-                            return;
-                        }
-
-                            const studentListTableBody = document.getElementById('studentListTableBody');
-                        if (!studentListTableBody) {
-                            showNotification('Error: Student list table not found', 'error');
-                            return;
-                        }
-                            
-                            // Clear existing content
-                            studentListTableBody.innerHTML = '';
-                            
-                            if (!course.studentList || course.studentList.length === 0) {
-                                studentListTableBody.innerHTML = `
-                                    <tr>
-                                        <td colspan="3" style="text-align: center;">No students added yet</td>
-                                    </tr>
-                                `;
-                            } else {
-                            studentListTableBody.innerHTML = `
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Status</th>
-                                    ${course.adminConfirmed ? '<th>Attendance</th>' : ''}
-                                </tr>
-                            `;
-                            course.studentList.forEach((student, index) => {
-                                    const row = document.createElement('tr');
-                                    row.innerHTML = `
-                                        <td>${student.name || '-'}</td>
-                                        <td>${student.email || '-'}</td>
-                                        <td>${student.status || 'Registered'}</td>
-                                    ${course.adminConfirmed ? `
-                                        <td>${student.attendance ? 
-                                            `<span class="status-${student.attendance}">${student.attendance.toUpperCase()}</span>` : 
-                                            'Not Recorded'}</td>
-                                    ` : ''}
-                                    `;
-                                    studentListTableBody.appendChild(row);
-                                });
-                            }
-                            
-                            // Show the modal
-                        const modal = document.getElementById('studentListModal');
-                        if (modal) {
-                            modal.style.display = 'block';
-                        } else {
-                            showNotification('Error: Student list modal not found', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error viewing student list:', error);
-                        showNotification('Error loading student list', 'error');
-                    }
-                }
-
-                function closeStudentListModal() {
-                    try {
-                        const modal = document.getElementById('studentListModal');
-                        if (modal) {
-                            modal.style.display = 'none';
-                        }
-                    } catch (error) {
-                        console.error('Error closing student list modal:', error);
-                        showNotification('Error closing modal', 'error');
-                    }
-                }
-
-                function showUploadModal(courseId) {
-                    console.log('=== Upload Modal Debug ===');
-                    console.log('Opening upload modal for course:', courseId);
-                    currentCourseId = courseId;
-                    
-                    const modal = document.getElementById('uploadModal');
-                    console.log('Modal element:', modal);
-                    
-                    const fileInput = document.getElementById('excelFile');
-                    console.log('File input element:', fileInput);
-                    
-                    if (modal) {
-                        modal.style.display = 'block';
-                        console.log('Modal displayed');
-                    } else {
-                        console.error('Upload modal not found');
-                        showNotification('Error: Upload modal not found', 'error');
-                    }
-                }
-
-                function handleFileSelect(event) {
-                    console.log('=== File Selection Debug ===');
-                    console.log('Event triggered:', event);
-                    console.log('Event target:', event.target);
-                    console.log('Files array:', event.target.files);
-                    console.log('Files array length:', event.target.files.length);
-                    
-                    selectedFile = event.target.files[0];  // Store the selected file
-                    console.log('Selected file:', selectedFile);
-                    
-                    if (selectedFile) {
-                        console.log('File details:', {
-                            name: selectedFile.name,
-                            type: selectedFile.type,
-                            size: selectedFile.size,
-                            lastModified: new Date(selectedFile.lastModified).toISOString()
-                        });
-                        
-                        // Enable the upload button
-                        const uploadButton = event.target.closest('.modal-content').querySelector('.btn-primary');
-                        if (uploadButton) {
-                            uploadButton.disabled = false;
-                            console.log('Upload button enabled');
-                        }
-                    } else {
-                        console.log('No file selected');
-                        
-                        // Disable the upload button
-                        const uploadButton = event.target.closest('.modal-content').querySelector('.btn-primary');
-                        if (uploadButton) {
-                            uploadButton.disabled = true;
-                            console.log('Upload button disabled');
-                        }
-                    }
-                }
-
-                function handleExcelUpload() {
-                    try {
-                        console.log('=== Starting File Upload Process ===');
-                        console.log('Selected file:', selectedFile);
-                        
-                        if (!selectedFile) {
-                            console.log('No file selected');
-                            showNotification('Please select a file to upload', 'error');
-                            return;
-                        }
-
-                        // Show progress bar
-                        const progressContainer = document.querySelector('.progress-container');
-                        const progressBar = document.querySelector('.progress-bar');
-                        const progressText = document.querySelector('.progress-text');
-                        
-                        progressContainer.style.display = 'block';
-                        progressBar.style.width = '0%';
-                        progressText.textContent = '0%';
-
-                        const reader = new FileReader();
-                        console.log('FileReader created');
-
-                        reader.onload = function(e) {
-                            try {
-                                console.log('FileReader onload triggered');
-                                progressBar.style.width = '50%';
-                                progressText.textContent = '50%';
-
-                                const data = e.target.result;
-                                const workbook = XLSX.read(data, { type: 'binary' });
-                                const sheetName = workbook.SheetNames[0];
-                                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                                
-                                if (!currentCourseId) {
-                                    console.log('No course ID found');
-                                    showNotification('No course selected for upload', 'error');
-                                    progressContainer.style.display = 'none';
-                                    return;
-                                }
-
-                                // Load existing courses
-                                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                                const courseIndex = courses.findIndex(course => course.id === currentCourseId);
-                                
-                                if (courseIndex === -1) {
-                                    console.log('Course not found');
-                                    showNotification('Course not found', 'error');
-                                    progressContainer.style.display = 'none';
-                                    return;
-                                }
-
-                                // Process students from Excel and create a new student list specific to this course
-                                const newStudentList = jsonData.map(student => ({
-                                    id: 'student_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                                    name: student.Name || student.name || '',
-                                    email: (student.Email || student.email || '').toLowerCase().trim(),
-                                    phone: (student.Phone || student.phone || '').trim(),
-                                    status: 'Registered',
-                                    attendance: '',
-                                    registrationDate: new Date().toISOString()
-                                }));
-
-                                // Update the course with the new student list
-                                courses[courseIndex].studentList = newStudentList;
-                                courses[courseIndex].studentsRegistered = newStudentList.length;
-                                
-                                // Save the updated courses
-                                localStorage.setItem('courses', JSON.stringify(courses));
-
-                                progressBar.style.width = '100%';
-                                progressText.textContent = '100%';
-
-                                setTimeout(() => {
-                                    progressContainer.style.display = 'none';
-                                    showNotification('Student list uploaded successfully', 'success');
-                                    closeModal('uploadModal');
-                                    updateMyCoursesTable();
-                                }, 500);
-
-                            } catch (error) {
-                                console.error('Error processing Excel file:', error);
-                                showNotification('Error processing Excel file', 'error');
-                                progressContainer.style.display = 'none';
-                            }
-                        };
-
-                        reader.onerror = function(error) {
-                            console.error('Error reading file:', error);
-                            showNotification('Error reading file', 'error');
-                            progressContainer.style.display = 'none';
-                        };
-
-                        reader.readAsBinaryString(selectedFile);
-                    } catch (error) {
-                        console.error('Error handling file upload:', error);
-                        showNotification('Error handling file upload', 'error');
-                        document.querySelector('.progress-container').style.display = 'none';
-                    }
-                }
-
-                function downloadTemplate() {
-                    try {
-                        // Create workbook with template data
-                        const wb = XLSX.utils.book_new();
-                        const wsData = [
-                            ['Name', 'Email', 'Phone', 'Status'],
-                            // Empty row for example format
-                            ['', '', '', 'Registered']
-                        ];
-                        const ws = XLSX.utils.aoa_to_sheet(wsData);
-                        
-                        // Add worksheet to workbook
-                        XLSX.utils.book_append_sheet(wb, ws, 'Students');
-                        
-                        // Save the file
-                        XLSX.writeFile(wb, 'student_template.xlsx');
-                        showNotification('Template downloaded successfully', 'success');
-                    } catch (error) {
-                        console.error('Error downloading template:', error);
-                        showNotification('Error downloading template', 'error');
-                    }
                 }
 
                 function showNotification(message, type) {
@@ -2001,6 +1910,104 @@
                     } catch (error) {
                         console.error('Error creating course:', error);
                         showNotification('Error creating course', 'error');
+                    }
+                }
+
+                function viewCourseDetails(courseId) {
+                    try {
+                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                        const course = courses.find(c => c.id === courseId);
+                        
+                        if (!course) {
+                            showNotification('Course not found', 'error');
+                            return;
+                        }
+
+                        // Create modal container
+                        const modalContainer = document.createElement('div');
+                        modalContainer.className = 'modal';
+                        modalContainer.style.display = 'block';
+                        modalContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                        modalContainer.style.position = 'fixed';
+                        modalContainer.style.top = '0';
+                        modalContainer.style.left = '0';
+                        modalContainer.style.width = '100%';
+                        modalContainer.style.height = '100%';
+                        modalContainer.style.zIndex = '1000';
+
+                        // Create modal content
+                        const modalContent = document.createElement('div');
+                        modalContent.className = 'modal-content';
+                        modalContent.style.position = 'relative';
+                        modalContent.style.backgroundColor = 'white';
+                        modalContent.style.margin = '10% auto';
+                        modalContent.style.padding = '2rem';
+                        modalContent.style.width = '80%';
+                        modalContent.style.maxWidth = '800px';
+                        modalContent.style.borderRadius = '8px';
+                        modalContent.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+
+                        modalContent.innerHTML = `
+                            <div class="modal-header">
+                                <h5 class="modal-title">Course Details - ${course.classType}</h5>
+                                <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="course-details">
+                                    <p><strong>Date:</strong> ${formatDate(course.courseDate)}</p>
+                                    <p><strong>Location:</strong> ${course.location}</p>
+                                    <p><strong>Class Type:</strong> ${course.classType}</p>
+                                    <p><strong>Students Registered:</strong> ${course.studentsRegistered || 0}</p>
+                                    <p><strong>Status:</strong> <span class="status status-${course.status.toLowerCase()}">${course.status}</span></p>
+                                    <p><strong>Instructor:</strong> ${course.displayInstructorDetails ? (course.instructorName || 'Not Assigned') : '-'}</p>
+                                    <p><strong>Notes:</strong> ${course.notes || '-'}</p>
+                                </div>
+                                <div class="student-list mt-4">
+                                    <h6>Student List</h6>
+                                    ${course.studentList && course.studentList.length > 0 ? `
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Email</th>
+                                                    <th>Phone</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${course.studentList.map(student => `
+                                                    <tr>
+                                                        <td>${student.name}</td>
+                                                        <td>${student.email}</td>
+                                                        <td>${student.phone}</td>
+                                                        <td>${student.status}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    ` : '<p>No students registered yet.</p>'}
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Close</button>
+                                ${!course.studentList || course.studentList.length === 0 ? 
+                                    `<button type="button" class="btn btn-primary" onclick="uploadStudentList('${course.id}')">Upload Student List</button>` : 
+                                    ''}
+                            </div>
+                        `;
+
+                        modalContainer.appendChild(modalContent);
+                        document.body.appendChild(modalContainer);
+
+                        // Close modal when clicking outside
+                        modalContainer.addEventListener('click', function(e) {
+                            if (e.target === modalContainer) {
+                                modalContainer.remove();
+                            }
+                        });
+                    } catch (error) {
+                        console.error('Error viewing course details:', error);
+                        showNotification('Error loading course details', 'error');
                     }
                 }
             </script>
