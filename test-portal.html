@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Management Test Portal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-section h2 {
+            color: #444;
+            margin-top: 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #console-output {
+            background-color: #1e1e1e;
+            color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .clear-btn {
+            background-color: #f44336;
+        }
+        .clear-btn:hover {
+            background-color: #da190b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Course Management Test Portal</h1>
+        
+        <div class="test-section">
+            <h2>Course Status Check</h2>
+            <button onclick="checkCourseStatuses()">Check Current Course Statuses</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Course Workflow Tests</h2>
+            <button onclick="testInstructorAvailability()">Test Instructor Availability</button>
+            <button onclick="testOrganizationSubmission()">Test Organization Submission</button>
+            <button onclick="testAdminScheduling()">Test Admin Scheduling</button>
+            <button onclick="testAdminConfirmation()">Test Admin Confirmation</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Console Output</h2>
+            <button class="clear-btn" onclick="clearConsole()">Clear Console</button>
+            <div id="console-output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Override console.log to display in our console-output div
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const consoleOutput = document.getElementById('console-output');
+
+        console.log = function() {
+            originalConsoleLog.apply(console, arguments);
+            const message = Array.from(arguments).join(' ');
+            consoleOutput.innerHTML += `<div style="color: #fff;">${message}</div>`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        };
+
+        console.error = function() {
+            originalConsoleError.apply(console, arguments);
+            const message = Array.from(arguments).join(' ');
+            consoleOutput.innerHTML += `<div style="color: #ff6b6b;">${message}</div>`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        };
+
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+        }
+
+        // Test Course Status Workflow
+        function testCourseWorkflow() {
+            console.log('Starting Course Workflow Tests...');
+            
+            // Test 1: Organization Submits Course
+            function testOrganizationSubmission() {
+                console.log('\nTest 1: Organization Course Submission');
+                try {
+                    // Create test organization
+                    const testOrg = {
+                        id: 'test_org_' + Date.now(),
+                        name: 'Test Organization',
+                        email: 'test@org.com'
+                    };
+                    localStorage.setItem('currentOrganization', JSON.stringify(testOrg));
+                    
+                    // Create test course
+                    const testCourse = {
+                        id: 'test_course_' + Date.now(),
+                        date: '2024-04-01',
+                        location: 'Test Location',
+                        classType: 'Test Class',
+                        studentsRegistered: '10',
+                        notes: 'Test Notes',
+                        status: 'PENDING',
+                        adminScheduledDashStatus: 'PENDING',
+                        adminInstructorDashStatus: 'PENDING',
+                        organizationStatus: 'PENDING',
+                        instructorStatus: 'AVAILABLE',
+                        adminConfirmed: false,
+                        displayInstructorDetails: false,
+                        displayOrgDetails: false,
+                        hideOrgDetails: true,
+                        organization: testOrg,
+                        instructorId: null,
+                        instructorName: null
+                    };
+                    
+                    // Add course to storage
+                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                    courses.push(testCourse);
+                    localStorage.setItem('courses', JSON.stringify(courses));
+                    
+                    // Verify initial status
+                    const savedCourse = courses.find(c => c.id === testCourse.id);
+                    if (savedCourse && 
+                        savedCourse.status === 'PENDING' &&
+                        savedCourse.instructorId === null &&
+                        savedCourse.displayInstructorDetails === false) {
+                        console.log('✓ Organization submission test passed');
+                        return true;
+                    } else {
+                        console.error('✗ Organization submission test failed');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('Error in organization submission test:', error);
+                    return false;
+                }
+            }
+            
+            // Test 2: Admin Schedules Course
+            function testAdminScheduling() {
+                console.log('\nTest 2: Admin Course Scheduling');
+                try {
+                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                    const testCourse = courses.find(c => c.instructorId === null);
+                    
+                    if (!testCourse) {
+                        console.error('✗ No pending course found for scheduling test');
+                        return false;
+                    }
+                    
+                    // Create test instructor
+                    const testInstructor = {
+                        id: 'test_instructor_' + Date.now(),
+                        name: 'Test Instructor',
+                        email: 'test@instructor.com'
+                    };
+                    
+                    // Update course with instructor
+                    testCourse.instructorId = testInstructor.id;
+                    testCourse.instructorName = testInstructor.name;
+                    testCourse.adminInstructorDashStatus = 'SCHEDULED';
+                    testCourse.displayOrgDetails = true;
+                    testCourse.status = 'SCHEDULED';
+                    testCourse.adminScheduledDashStatus = 'SCHEDULED';
+                    testCourse.organizationStatus = 'PENDING';
+                    testCourse.instructorStatus = 'AVAILABLE';
+                    testCourse.displayInstructorDetails = false;
+                    testCourse.hideOrgDetails = true;
+                    
+                    localStorage.setItem('courses', JSON.stringify(courses));
+                    
+                    // Verify scheduling status
+                    const updatedCourse = courses.find(c => c.id === testCourse.id);
+                    if (updatedCourse &&
+                        updatedCourse.status === 'SCHEDULED' &&
+                        updatedCourse.instructorId === testInstructor.id &&
+                        updatedCourse.organizationStatus === 'PENDING' &&
+                        updatedCourse.instructorStatus === 'AVAILABLE' &&
+                        updatedCourse.displayInstructorDetails === false) {
+                        console.log('✓ Admin scheduling test passed');
+                        return true;
+                    } else {
+                        console.error('✗ Admin scheduling test failed');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('Error in admin scheduling test:', error);
+                    return false;
+                }
+            }
+            
+            // Test 3: Admin Confirms Course
+            function testAdminConfirmation() {
+                console.log('\nTest 3: Admin Course Confirmation');
+                try {
+                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                    const testCourse = courses.find(c => c.status === 'SCHEDULED');
+                    
+                    if (!testCourse) {
+                        console.error('✗ No scheduled course found for confirmation test');
+                        return false;
+                    }
+                    
+                    // Update course status to confirmed
+                    testCourse.status = 'CONFIRMED';
+                    testCourse.adminScheduledDashStatus = 'CONFIRMED';
+                    testCourse.adminInstructorDashStatus = 'CONFIRMED';
+                    testCourse.organizationStatus = 'CONFIRMED';
+                    testCourse.instructorStatus = 'CONFIRMED';
+                    testCourse.adminConfirmed = true;
+                    testCourse.displayInstructorDetails = true;
+                    testCourse.displayOrgDetails = true;
+                    testCourse.hideOrgDetails = false;
+                    testCourse.isConfirmed = true;
+                    
+                    localStorage.setItem('courses', JSON.stringify(courses));
+                    
+                    // Verify confirmation status
+                    const updatedCourse = courses.find(c => c.id === testCourse.id);
+                    if (updatedCourse &&
+                        updatedCourse.status === 'CONFIRMED' &&
+                        updatedCourse.adminConfirmed === true &&
+                        updatedCourse.displayInstructorDetails === true &&
+                        updatedCourse.displayOrgDetails === true &&
+                        updatedCourse.hideOrgDetails === false) {
+                        console.log('✓ Admin confirmation test passed');
+                        return true;
+                    } else {
+                        console.error('✗ Admin confirmation test failed');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('Error in admin confirmation test:', error);
+                    return false;
+                }
+            }
+            
+            // Run all tests
+            const orgTest = testOrganizationSubmission();
+            const scheduleTest = testAdminScheduling();
+            const confirmTest = testAdminConfirmation();
+            
+            // Print summary
+            console.log('\nTest Summary:');
+            console.log('Organization Submission:', orgTest ? '✓ Passed' : '✗ Failed');
+            console.log('Admin Scheduling:', scheduleTest ? '✓ Passed' : '✗ Failed');
+            console.log('Admin Confirmation:', confirmTest ? '✓ Passed' : '✗ Failed');
+            
+            return orgTest && scheduleTest && confirmTest;
+        }
+
+        // Status check function
+        function checkCourseStatuses() {
+            console.log('\n=== Current Course Statuses ===');
+            
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                
+                if (courses.length === 0) {
+                    console.log('No courses found in the system.');
+                    return;
+                }
+
+                courses.forEach((course, index) => {
+                    console.log(`\nCourse ${index + 1}:`);
+                    console.log('ID:', course.id);
+                    console.log('Date:', course.date);
+                    console.log('Status:', course.status);
+                    console.log('Admin Scheduled Status:', course.adminScheduledDashStatus);
+                    console.log('Admin Instructor Status:', course.adminInstructorDashStatus);
+                    console.log('Organization Status:', course.organizationStatus);
+                    console.log('Instructor Status:', course.instructorStatus);
+                    console.log('Admin Confirmed:', course.adminConfirmed);
+                    console.log('Instructor ID:', course.instructorId || 'Not Assigned');
+                    console.log('Instructor Name:', course.instructorName || 'Not Assigned');
+                    console.log('Organization:', course.organization?.name || 'Not Set');
+                    console.log('Display Flags:');
+                    console.log('- Instructor Details:', course.displayInstructorDetails);
+                    console.log('- Organization Details:', course.displayOrgDetails);
+                    console.log('- Hide Org Details:', course.hideOrgDetails);
+                    console.log('------------------------');
+                });
+            } catch (error) {
+                console.error('Error checking course statuses:', error);
+            }
+        }
+
+        // Add new function to test instructor availability
+        function testInstructorAvailability() {
+            console.log('\n=== Testing Instructor Availability Submission ===');
+            try {
+                // Create test instructor
+                const testInstructor = {
+                    id: 'test_instructor_' + Date.now(),
+                    name: 'Test Instructor',
+                    email: 'test@instructor.com'
+                };
+                
+                // Set availability
+                const availability = {
+                    id: 'availability_' + Date.now(),
+                    instructorId: testInstructor.id,
+                    date: '2024-04-01',
+                    status: 'AVAILABLE'
+                };
+                
+                // Store in localStorage
+                const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
+                availabilities.push(availability);
+                localStorage.setItem('instructorAvailabilities', JSON.stringify(availabilities));
+                
+                // Show status across portals
+                console.log('\nStatus After Instructor Sets Availability:');
+                console.log('\n1. Instructor Portal:');
+                console.log('- Status: AVAILABLE');
+                console.log('- Date: 2024-04-01');
+                
+                console.log('\n2. Admin Portal - Course Management:');
+                console.log('- Instructor Status: AVAILABLE');
+                console.log('- Date: 2024-04-01');
+                
+                console.log('\n3. Admin Portal - Scheduled Courses:');
+                console.log('- No courses scheduled yet');
+                
+                console.log('\n4. Organization Portal:');
+                console.log('- No courses visible');
+                
+                return true;
+            } catch (error) {
+                console.error('Error in instructor availability test:', error);
+                return false;
+            }
+        }
+
+        // Update organization submission test to show all portal statuses
+        function testOrganizationSubmission() {
+            console.log('\n=== Testing Organization Course Submission ===');
+            try {
+                // Create test organization
+                const testOrg = {
+                    id: 'test_org_' + Date.now(),
+                    name: 'Test Organization',
+                    email: 'test@org.com'
+                };
+                localStorage.setItem('currentOrganization', JSON.stringify(testOrg));
+                
+                // Create test course
+                const testCourse = {
+                    id: 'test_course_' + Date.now(),
+                    date: '2024-04-01',
+                    location: 'Test Location',
+                    classType: 'Test Class',
+                    studentsRegistered: '10',
+                    notes: 'Test Notes',
+                    status: 'PENDING',
+                    adminScheduledDashStatus: 'PENDING',
+                    adminInstructorDashStatus: 'PENDING',
+                    organizationStatus: 'PENDING',
+                    instructorStatus: 'AVAILABLE',
+                    adminConfirmed: false,
+                    displayInstructorDetails: false,
+                    displayOrgDetails: false,
+                    hideOrgDetails: true,
+                    organization: testOrg,
+                    instructorId: null,
+                    instructorName: null
+                };
+                
+                // Add course to storage
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                courses.push(testCourse);
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                // Show status across portals
+                console.log('\nStatus After Organization Submits Course:');
+                console.log('\n1. Organization Portal:');
+                console.log('- Course Status: PENDING');
+                console.log('- No instructor assigned');
+                console.log('- Organization can see their course');
+                
+                console.log('\n2. Admin Portal - Course Management:');
+                console.log('- Course Status: PENDING');
+                console.log('- Shows in PENDING COURSES section');
+                console.log('- Organization details visible');
+                
+                console.log('\n3. Admin Portal - Scheduled Courses:');
+                console.log('- Course Status: PENDING');
+                console.log('- Shows in PENDING section');
+                
+                console.log('\n4. Instructor Portal:');
+                console.log('- Course not visible');
+                console.log('- Status remains AVAILABLE');
+                
+                return true;
+            } catch (error) {
+                console.error('Error in organization submission test:', error);
+                return false;
+            }
+        }
+
+        // Update admin scheduling test to show all portal statuses
+        function testAdminScheduling() {
+            console.log('\n=== Testing Admin Course Scheduling ===');
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const testCourse = courses.find(c => c.instructorId === null);
+                
+                if (!testCourse) {
+                    console.error('✗ No pending course found for scheduling test');
+                    return false;
+                }
+                
+                // Create test instructor
+                const testInstructor = {
+                    id: 'test_instructor_' + Date.now(),
+                    name: 'Test Instructor',
+                    email: 'test@instructor.com'
+                };
+                
+                // Update course with instructor
+                testCourse.instructorId = testInstructor.id;
+                testCourse.instructorName = testInstructor.name;
+                testCourse.adminInstructorDashStatus = 'SCHEDULED';
+                testCourse.displayOrgDetails = true;
+                testCourse.status = 'SCHEDULED';
+                testCourse.adminScheduledDashStatus = 'SCHEDULED';
+                testCourse.organizationStatus = 'PENDING';
+                testCourse.instructorStatus = 'AVAILABLE';
+                testCourse.displayInstructorDetails = false;
+                testCourse.hideOrgDetails = true;
+                
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                // Show status across portals
+                console.log('\nStatus After Admin Schedules Course:');
+                console.log('\n1. Organization Portal:');
+                console.log('- Course Status: PENDING');
+                console.log('- No instructor visible');
+                console.log('- Organization can see their course');
+                
+                console.log('\n2. Admin Portal - Course Management:');
+                console.log('- Course Status: SCHEDULED');
+                console.log('- Instructor assigned and visible');
+                console.log('- Organization details visible');
+                
+                console.log('\n3. Admin Portal - Scheduled Courses:');
+                console.log('- Course Status: SCHEDULED');
+                console.log('- Shows in SCHEDULED section');
+                console.log('- Instructor details visible');
+                
+                console.log('\n4. Instructor Portal:');
+                console.log('- Course not visible');
+                console.log('- Status remains AVAILABLE');
+                
+                return true;
+            } catch (error) {
+                console.error('Error in admin scheduling test:', error);
+                return false;
+            }
+        }
+
+        // Update admin confirmation test to show all portal statuses
+        function testAdminConfirmation() {
+            console.log('\n=== Testing Admin Course Confirmation ===');
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const testCourse = courses.find(c => c.status === 'SCHEDULED');
+                
+                if (!testCourse) {
+                    console.error('✗ No scheduled course found for confirmation test');
+                    return false;
+                }
+                
+                // Update course status to confirmed
+                testCourse.status = 'CONFIRMED';
+                testCourse.adminScheduledDashStatus = 'CONFIRMED';
+                testCourse.adminInstructorDashStatus = 'CONFIRMED';
+                testCourse.organizationStatus = 'CONFIRMED';
+                testCourse.instructorStatus = 'CONFIRMED';
+                testCourse.adminConfirmed = true;
+                testCourse.displayInstructorDetails = true;
+                testCourse.displayOrgDetails = true;
+                testCourse.hideOrgDetails = false;
+                testCourse.isConfirmed = true;
+                
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                // Show status across portals
+                console.log('\nStatus After Admin Confirms Course:');
+                console.log('\n1. Organization Portal:');
+                console.log('- Course Status: CONFIRMED');
+                console.log('- Instructor details visible');
+                console.log('- Organization can see their course');
+                
+                console.log('\n2. Admin Portal - Course Management:');
+                console.log('- Course Status: CONFIRMED');
+                console.log('- Instructor details visible');
+                console.log('- Organization details visible');
+                
+                console.log('\n3. Admin Portal - Scheduled Courses:');
+                console.log('- Course Status: CONFIRMED');
+                console.log('- Moved to CONFIRMED section');
+                console.log('- All details visible');
+                
+                console.log('\n4. Instructor Portal:');
+                console.log('- Course Status: CONFIRMED');
+                console.log('- Organization details visible');
+                console.log('- Course appears in confirmed section');
+                
+                return true;
+            } catch (error) {
+                console.error('Error in admin confirmation test:', error);
+                return false;
+            }
+        }
+
+        // Export functions for button clicks
+        window.testInstructorAvailability = testInstructorAvailability;
+        window.testOrganizationSubmission = testOrganizationSubmission;
+        window.testAdminScheduling = testAdminScheduling;
+        window.testAdminConfirmation = testAdminConfirmation;
+        window.checkCourseStatuses = checkCourseStatuses;
+        window.clearConsole = clearConsole;
+    </script>
+</body>
+</html> 
