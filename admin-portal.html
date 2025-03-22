@@ -2649,39 +2649,41 @@
 
         function confirmCourse(courseId) {
             try {
-                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const courseIndex = courses.findIndex(c => c.id === courseId);
+                const courses = JSON.parse(localStorage.getItem('courses')) || [];
+                const courseIndex = courses.findIndex(course => course.id === courseId);
                 
                 if (courseIndex === -1) {
                     showNotification('Course not found', 'error');
                     return;
                 }
 
-                // Update course status
-                courses[courseIndex] = {
-                    ...courses[courseIndex],
-                    adminConfirmed: true,
-                    adminScheduledDashStatus: 'CONFIRMED',
-                    adminInstructorDashStatus: 'CONFIRMED',
-                    status: 'CONFIRMED',
-                    organizationStatus: 'CONFIRMED',
-                    instructorStatus: 'CONFIRMED',
-                    displayInstructorDetails: true
-                };
+                // Update all statuses to CONFIRMED
+                courses[courseIndex].status = 'CONFIRMED';
+                courses[courseIndex].adminScheduledDashStatus = 'CONFIRMED';
+                courses[courseIndex].adminInstructorDashStatus = 'CONFIRMED';
+                courses[courseIndex].organizationStatus = 'CONFIRMED';
+                courses[courseIndex].instructorStatus = 'CONFIRMED';
                 
-                // Update localStorage
+                // Update visibility flags
+                courses[courseIndex].adminConfirmed = true;
+                courses[courseIndex].displayInstructorDetails = true;  // Show instructor to organization
+                courses[courseIndex].displayOrgDetails = true;         // Show organization to instructor
+                courses[courseIndex].hideOrgDetails = false;           // Ensure organization details are visible
+                
+                // Move course to confirmed section
+                courses[courseIndex].isConfirmed = true;
+                
                 localStorage.setItem('courses', JSON.stringify(courses));
                 
-                // Force refresh all displays
-                updateScheduledCoursesTable();
+                // Update all relevant displays
                 updateInstructorDashboardTable();
-                updateOrganizationDashboardTable();
-                updateDashboardStats();
+                updateScheduledCoursesTable();
+                updateConfirmedCoursesTable();
                 
-                showNotification('Course confirmed successfully', 'success');
+                showNotification('Course confirmed successfully!', 'success');
             } catch (error) {
                 console.error('Error confirming course:', error);
-                showNotification('Error confirming course', 'error');
+                showNotification('Error confirming course. Please try again.', 'error');
             }
         }
 
@@ -2923,18 +2925,49 @@
             `;
         });
 
-        function handleScheduleCourse(event) {
-            event.preventDefault();
+        function handleScheduleCourse(courseId, instructorId) {
             try {
-                // ... existing scheduling code ...
+                const courses = JSON.parse(localStorage.getItem('courses')) || [];
+                const instructors = JSON.parse(localStorage.getItem('instructors')) || [];
+                
+                const courseIndex = courses.findIndex(course => course.id === courseId);
+                const instructor = instructors.find(inst => inst.id === instructorId);
+                
+                if (courseIndex === -1 || !instructor) {
+                    showNotification('Course or instructor not found', 'error');
+                    return;
+                }
+
+                // Update course with assigned instructor
+                courses[courseIndex].instructorId = instructorId;
+                courses[courseIndex].instructorName = instructor.name;
+                
+                // Update Course Management Portal status
+                courses[courseIndex].adminInstructorDashStatus = 'SCHEDULED';
+                courses[courseIndex].displayOrgDetails = true;
+                
+                // Update Scheduled Courses section
+                courses[courseIndex].status = 'SCHEDULED';
+                courses[courseIndex].adminScheduledDashStatus = 'SCHEDULED';
+                
+                // Keep organization and instructor statuses unchanged
+                courses[courseIndex].organizationStatus = 'PENDING';
+                courses[courseIndex].instructorStatus = 'AVAILABLE';
+                
+                // Ensure organization and instructor details are hidden from each other
+                courses[courseIndex].displayInstructorDetails = false;
+                courses[courseIndex].hideOrgDetails = true;
                 
                 localStorage.setItem('courses', JSON.stringify(courses));
-                updateDashboardStats();
-                updateMonthlyConfirmedCourses();
-                showNotification('Course scheduled successfully', 'success');
+                
+                // Update displays
+                updateInstructorDashboardTable();
+                updateScheduledCoursesTable();
+                
+                showNotification('Course scheduled successfully!', 'success');
             } catch (error) {
                 console.error('Error scheduling course:', error);
-                showNotification('Error scheduling course', 'error');
+                showNotification('Error scheduling course. Please try again.', 'error');
             }
         }
 

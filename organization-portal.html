@@ -1113,28 +1113,22 @@
 
                 function handleScheduleCourse(event) {
                     event.preventDefault();
+                    const courseDate = document.getElementById('courseDate').value;
+                    const location = document.getElementById('location').value;
+                    const classType = document.getElementById('classType').value;
+                    const studentsRegistered = document.getElementById('studentsRegistered').value;
+                    const notes = document.getElementById('notes').value;
+
+                    if (!courseDate || !location || !classType || !studentsRegistered) {
+                        showNotification('Please fill in all required fields.', 'error');
+                        return;
+                    }
+
                     try {
-                        console.log('Starting handleScheduleCourse');
-                        const currentOrgId = getCurrentOrganizationId();
-                        console.log('Current organization ID:', currentOrgId);
-
-                        const courseDate = document.getElementById('courseDate').value;
-                        const location = document.getElementById('location').value;
-                        const classType = document.getElementById('classType').value;
-                        const studentsRegistered = parseInt(document.getElementById('studentsRegistered').value) || 0;
-                        const notes = document.getElementById('notes').value;
-
-                        if (!courseDate || !location || !classType) {
-                            showNotification('Please fill in all required fields', 'error');
-                            return;
-                        }
-
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                        const courses = JSON.parse(localStorage.getItem('courses')) || [];
                         const newCourse = {
-                            id: 'course_' + Date.now(),
-                            organizationId: currentOrgId,
-                            organizationName: getCurrentOrganizationName(),
-                            courseDate: courseDate,
+                            id: generateUniqueId(),
+                            date: courseDate,
                             location: location,
                             classType: classType,
                             studentsRegistered: studentsRegistered,
@@ -1143,28 +1137,24 @@
                             adminScheduledDashStatus: 'PENDING',
                             adminInstructorDashStatus: 'PENDING',
                             organizationStatus: 'PENDING',
-                            instructorStatus: 'PENDING',
+                            instructorStatus: 'AVAILABLE',
                             adminConfirmed: false,
                             displayInstructorDetails: false,
                             displayOrgDetails: false,
                             hideOrgDetails: true,
-                            studentList: []
+                            organization: getCurrentOrganization(),
+                            instructorId: null,
+                            instructorName: null
                         };
 
-                        console.log('New course to be added:', newCourse);
                         courses.push(newCourse);
                         localStorage.setItem('courses', JSON.stringify(courses));
-
-                        // Update displays
-                        updateMyCoursesTable();
-                        showNotification('Course scheduled successfully', 'success');
-
-                        // Reset form and switch to courses section
-                        event.target.reset();
-                        showSection('courses');
+                        showNotification('Course scheduled successfully!', 'success');
+                        document.getElementById('scheduleForm').reset();
+                        switchSection('courses');
                     } catch (error) {
                         console.error('Error scheduling course:', error);
-                        showNotification('Error scheduling course', 'error');
+                        showNotification('Error scheduling course. Please try again.', 'error');
                     }
                 }
 
