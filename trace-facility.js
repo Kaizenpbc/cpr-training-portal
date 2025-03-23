@@ -209,7 +209,8 @@ function enableTrace(functionName, originalFunction) {
 // Trace control functions
 const TraceFacility = {
     // Initialize trace facility
-    init() {
+    init(portalName) {
+        this.portalName = portalName;
         this.createTraceUI();
         this.loadTraceConfig();
         this.updateGlobalTracingState();
@@ -351,6 +352,21 @@ const TraceFacility = {
             cb.checked = !someChecked;
             this.toggleTrace(portal, cb.id);
         });
+    },
+
+    // Add trace function
+    trace(functionName, message, type = 'info') {
+        if (!globalTracingEnabled) return;
+        
+        const indent = INDENT.repeat(traceDepth);
+        const timestamp = new Date().toISOString();
+        const icon = type === 'error' ? '❌' : '🔍';
+        
+        console.log(`${indent}${icon} [${timestamp}] ${this.portalName} - ${functionName}: ${message}`);
+        
+        if (type === 'error') {
+            console.error(`${indent}Error details:`, message);
+        }
     }
 };
 

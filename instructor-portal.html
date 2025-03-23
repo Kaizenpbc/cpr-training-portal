@@ -3178,6 +3178,48 @@
         function showNoInstructorError(course) {
             showNotification(`No instructors available for ${getISODate(course.courseDate)}`, 'error');
         }
+
+        // Add global error handling
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
+            showNotification('An error occurred. Please check the console for details.', 'error');
+            return false;
+        };
+
+        // Add unhandled promise rejection handling
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            showNotification('An error occurred. Please check the console for details.', 'error');
+        });
+
+        // Add cleanup for event listeners and intervals
+        function cleanup() {
+            // Clear all intervals and timeouts
+            const highestTimeoutId = setTimeout(";");
+            for (let i = 0; i < highestTimeoutId; i++) {
+                clearTimeout(i);
+            }
+        }
+
+        // Add beforeunload handler
+        window.addEventListener('beforeunload', cleanup);
+
+        // Debounce function to prevent too many rapid updates
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Debounce heavy operations
+        const debouncedUpdateAvailability = debounce(updateAvailabilityTable, 250);
+        const debouncedUpdateCourses = debounce(updateCourseTable, 250);
     </script>
 </body>
 </html> 
