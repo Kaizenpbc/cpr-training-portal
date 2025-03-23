@@ -348,6 +348,47 @@
                 overflow-x: auto;
             }
         }
+
+        .portal-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .portal-links .portal-link {
+            padding: 12px 24px;
+            background-color: var(--secondary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .portal-links .portal-link:hover {
+            background-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        @media (max-width: 768px) {
+            .portal-links {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .portal-links .portal-link {
+                width: 100%;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 
@@ -409,6 +450,14 @@
             <h2 class="portal-title">System Admin</h2>
             <p class="portal-description">Manage course types and organizations.</p>
             <a href="system-admin.html" class="portal-link">Enter Portal</a>
+        </div>
+
+        <div class="portal-links">
+            <a href="organization-portal.html" class="portal-link">Organization Portal</a>
+            <a href="admin-portal.html" class="portal-link">Admin Portal</a>
+            <a href="instructor-portal.html" class="portal-link">Instructor Portal</a>
+            <a href="support-portal.html" class="portal-link">Support Portal</a>
+            <a href="test-portal.html" class="portal-link">Test Portal</a>
         </div>
     </main>
 

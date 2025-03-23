@@ -68,7 +68,8 @@
         
         <div class="test-section">
             <h2>Course Status Check</h2>
-            <button onclick="checkCourseStatuses()">Check Current Course Statuses</button>
+            <button onclick="checkCourseStatuses()" class="btn btn-success">Check Current Course Statuses</button>
+            <button onclick="checkInstructorStatuses()" class="btn btn-success">Check Instructor Statuses</button>
         </div>
 
         <div class="test-section">
@@ -80,9 +81,29 @@
         </div>
 
         <div class="test-section">
+            <h2>Test Controls</h2>
+            <button onclick="clearTestData()" class="btn btn-danger">Clear Test Data</button>
+            <button onclick="showCurrentData()" class="btn btn-info">Show Current Data</button>
+            <button onclick="testInstructorAvailability()" class="btn btn-success">Test Instructor Availability</button>
+            <button onclick="testOrganizationSubmission()" class="btn btn-success">Test Organization Submission</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Logins</h2>
+            <button onclick="loginAsInstructor('test1')" class="btn btn-primary">Login as test1</button>
+            <button onclick="loginAsOrganization('ORG1')" class="btn btn-primary">Login as ORG1</button>
+        </div>
+
+        <div class="test-section">
             <h2>Console Output</h2>
             <button class="clear-btn" onclick="clearConsole()">Clear Console</button>
             <div id="console-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Debug Tools</h2>
+            <button onclick="checkLocalStorageState()" class="btn btn-info">Check localStorage State</button>
+            <button onclick="simulateOrgPortalFiltering()" class="btn btn-info">Simulate Org Portal Filtering</button>
         </div>
     </div>
 
@@ -186,8 +207,8 @@
                     // Create test instructor
                     const testInstructor = {
                         id: 'test_instructor_' + Date.now(),
-                        name: 'Test Instructor',
-                        email: 'test@instructor.com'
+                        name: 'Test2',
+                        email: 'test2@instructor.com'
                     };
                     
                     // Update course with instructor
@@ -322,48 +343,56 @@
 
         // Add new function to test instructor availability
         function testInstructorAvailability() {
-            console.log('\n=== Testing Instructor Availability Submission ===');
+            console.log('\n=== Testing Instructor Availability ===');
             try {
                 // Create test instructor
                 const testInstructor = {
-                    id: 'test_instructor_' + Date.now(),
-                    name: 'Test Instructor',
-                    email: 'test@instructor.com'
+                    id: 'inst_test1',
+                    username: 'test1',
+                    firstName: 'Test',
+                    lastName: 'One',
+                    name: 'Test One',
+                    email: 'test1@instructor.com',
+                    status: 'ACTIVE',
+                    availability: ['2024-04-01']  // Set initial availability
                 };
                 
-                // Set availability
+                // Store instructor in instructors array
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const filteredInstructors = instructors.filter(i => i.id !== testInstructor.id);
+                filteredInstructors.push(testInstructor);
+                localStorage.setItem('instructors', JSON.stringify(filteredInstructors));
+                
+                // Set as current instructor
+                localStorage.setItem('currentInstructor', JSON.stringify(testInstructor));
+                
+                // Add availability record
                 const availability = {
                     id: 'availability_' + Date.now(),
                     instructorId: testInstructor.id,
                     date: '2024-04-01',
+                    available: true,
+                    notes: 'Available for teaching',
                     status: 'AVAILABLE'
                 };
                 
-                // Store in localStorage
-                const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
-                availabilities.push(availability);
-                localStorage.setItem('instructorAvailabilities', JSON.stringify(availabilities));
+                const availabilities = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+                const filteredAvailabilities = availabilities.filter(a => 
+                    !(a.instructorId === testInstructor.id && a.date === availability.date)
+                );
+                filteredAvailabilities.push(availability);
+                localStorage.setItem('instructorAvailability', JSON.stringify(filteredAvailabilities));
                 
-                // Show status across portals
-                console.log('\nStatus After Instructor Sets Availability:');
-                console.log('\n1. Instructor Portal:');
-                console.log('- Status: AVAILABLE');
-                console.log('- Date: 2024-04-01');
+                console.log('Created test instructor:', testInstructor.username);
+                console.log('Set availability for April 1st, 2024');
+                console.log('\nYou can now:');
+                console.log('1. Log into instructor portal with username: test1');
+                console.log('2. View instructor in Admin Instructor Dashboard');
                 
-                console.log('\n2. Admin Portal - Course Management:');
-                console.log('- Instructor Status: AVAILABLE');
-                console.log('- Date: 2024-04-01');
-                
-                console.log('\n3. Admin Portal - Scheduled Courses:');
-                console.log('- No courses scheduled yet');
-                
-                console.log('\n4. Organization Portal:');
-                console.log('- No courses visible');
-                
-                return true;
+                return { success: true, message: 'Test instructor created and availability set' };
             } catch (error) {
-                console.error('Error in instructor availability test:', error);
-                return false;
+                console.error('Error in testInstructorAvailability:', error);
+                return { success: false, error: error.message };
             }
         }
 
@@ -373,63 +402,62 @@
             try {
                 // Create test organization
                 const testOrg = {
-                    id: 'test_org_' + Date.now(),
-                    name: 'Test Organization',
-                    email: 'test@org.com'
+                    id: 'org_test1',
+                    name: 'ORG1',
+                    username: 'ORG1',
+                    email: 'org1@test.com',
+                    status: 'ACTIVE'
                 };
+                
+                // Store organization in organizations array and set as current
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const filteredOrganizations = organizations.filter(o => o.id !== testOrg.id);
+                filteredOrganizations.push(testOrg);
+                localStorage.setItem('organizations', JSON.stringify(filteredOrganizations));
                 localStorage.setItem('currentOrganization', JSON.stringify(testOrg));
                 
-                // Create test course
-                const testCourse = {
-                    id: 'test_course_' + Date.now(),
-                    date: '2024-04-01',
+                // Create course submission
+                const course = {
+                    id: 'course_' + Date.now(),
+                    courseDate: '2024-04-01',
                     location: 'Test Location',
-                    classType: 'Test Class',
+                    classType: 'BLS',
                     studentsRegistered: '10',
-                    notes: 'Test Notes',
+                    notes: 'Test course submission',
                     status: 'PENDING',
                     adminScheduledDashStatus: 'PENDING',
                     adminInstructorDashStatus: 'PENDING',
                     organizationStatus: 'PENDING',
-                    instructorStatus: 'AVAILABLE',
+                    instructorStatus: 'PENDING',
                     adminConfirmed: false,
                     displayInstructorDetails: false,
                     displayOrgDetails: false,
                     hideOrgDetails: true,
                     organization: testOrg,
+                    organizationName: testOrg.name,
                     instructorId: null,
                     instructorName: null
                 };
                 
-                // Add course to storage
+                // Store course
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                courses.push(testCourse);
-                localStorage.setItem('courses', JSON.stringify(courses));
+                const filteredCourses = courses.filter(c => 
+                    !(c.organization?.id === testOrg.id && c.courseDate === course.courseDate)
+                );
+                filteredCourses.push(course);
+                localStorage.setItem('courses', JSON.stringify(filteredCourses));
                 
-                // Show status across portals
-                console.log('\nStatus After Organization Submits Course:');
-                console.log('\n1. Organization Portal:');
-                console.log('- Course Status: PENDING');
-                console.log('- No instructor assigned');
-                console.log('- Organization can see their course');
+                console.log('Created test organization:', testOrg.username);
+                console.log('Submitted course for April 1st, 2024');
+                console.log('\nYou can now:');
+                console.log('1. Log into organization portal with username: ORG1');
+                console.log('2. View submitted course in organization dashboard');
+                console.log('3. View course in admin course management (status: PENDING)');
                 
-                console.log('\n2. Admin Portal - Course Management:');
-                console.log('- Course Status: PENDING');
-                console.log('- Shows in PENDING COURSES section');
-                console.log('- Organization details visible');
-                
-                console.log('\n3. Admin Portal - Scheduled Courses:');
-                console.log('- Course Status: PENDING');
-                console.log('- Shows in PENDING section');
-                
-                console.log('\n4. Instructor Portal:');
-                console.log('- Course not visible');
-                console.log('- Status remains AVAILABLE');
-                
-                return true;
+                return { success: true, message: 'Test organization created and course submitted' };
             } catch (error) {
-                console.error('Error in organization submission test:', error);
-                return false;
+                console.error('Error in testOrganizationSubmission:', error);
+                return { success: false, error: error.message };
             }
         }
 
@@ -448,8 +476,8 @@
                 // Create test instructor
                 const testInstructor = {
                     id: 'test_instructor_' + Date.now(),
-                    name: 'Test Instructor',
-                    email: 'test@instructor.com'
+                    name: 'Test2',
+                    email: 'test2@instructor.com'
                 };
                 
                 // Update course with instructor
@@ -486,6 +514,9 @@
                 console.log('\n4. Instructor Portal:');
                 console.log('- Course not visible');
                 console.log('- Status remains AVAILABLE');
+                
+                // After scheduling course, display all portal records
+                displayAllPortalRecords();
                 
                 return true;
             } catch (error) {
@@ -542,10 +573,85 @@
                 console.log('- Organization details visible');
                 console.log('- Course appears in confirmed section');
                 
+                // After confirming course, display all portal records
+                displayAllPortalRecords();
+                
                 return true;
             } catch (error) {
                 console.error('Error in admin confirmation test:', error);
                 return false;
+            }
+        }
+
+        // Add new function to display all portal records
+        function displayAllPortalRecords() {
+            console.log('\n=== Current State of All Portals ===');
+            
+            // Display Instructor Portal Records
+            console.log('\n1. Instructor Portal Records:');
+            try {
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const availabilities = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+                
+                instructors.forEach(instructor => {
+                    console.log(`\nInstructor: ${instructor.firstName} ${instructor.lastName}`);
+                    const instructorAvailabilities = availabilities.filter(a => a.instructorId === instructor.id);
+                    if (instructorAvailabilities.length > 0) {
+                        console.log('Availability:');
+                        instructorAvailabilities.forEach(avail => {
+                            console.log(`- Date: ${avail.date}, Status: ${avail.status}`);
+                        });
+                    } else {
+                        console.log('No availability records');
+                    }
+                });
+            } catch (error) {
+                console.error('Error displaying instructor portal records:', error);
+            }
+
+            // Display Admin Portal Records
+            console.log('\n2. Admin Portal Records:');
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                console.log('\nCourse Management:');
+                courses.forEach(course => {
+                    console.log(`\nCourse ID: ${course.id}`);
+                    console.log(`Date: ${course.courseDate || course.date}`);
+                    console.log(`Status: ${course.status}`);
+                    console.log(`Admin Scheduled Status: ${course.adminScheduledDashStatus}`);
+                    console.log(`Admin Instructor Status: ${course.adminInstructorDashStatus}`);
+                    console.log(`Instructor: ${course.instructorName || 'Not Assigned'}`);
+                    console.log(`Organization: ${course.organization?.name || 'Not Set'}`);
+                });
+            } catch (error) {
+                console.error('Error displaying admin portal records:', error);
+            }
+
+            // Display Organization Portal Records
+            console.log('\n3. Organization Portal Records:');
+            try {
+                const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
+                if (currentOrg) {
+                    console.log(`\nCurrent Organization: ${currentOrg.name}`);
+                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                    const orgCourses = courses.filter(c => c.organization?.id === currentOrg.id);
+                    
+                    if (orgCourses.length > 0) {
+                        console.log('Organization Courses:');
+                        orgCourses.forEach(course => {
+                            console.log(`\nCourse ID: ${course.id}`);
+                            console.log(`Date: ${course.courseDate || course.date}`);
+                            console.log(`Status: ${course.organizationStatus}`);
+                            console.log(`Instructor: ${course.instructorName || 'Not Assigned'}`);
+                        });
+                    } else {
+                        console.log('No courses found for this organization');
+                    }
+                } else {
+                    console.log('No organization currently logged in');
+                }
+            } catch (error) {
+                console.error('Error displaying organization portal records:', error);
             }
         }
 
@@ -556,6 +662,195 @@
         window.testAdminConfirmation = testAdminConfirmation;
         window.checkCourseStatuses = checkCourseStatuses;
         window.clearConsole = clearConsole;
+        window.displayAllPortalRecords = displayAllPortalRecords;
+
+        function checkInstructorStatuses() {
+            console.log('=== Checking Instructor Statuses ===');
+            try {
+                // Get instructors from localStorage
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                if (instructors.length === 0) {
+                    console.log('No instructors found in the system.');
+                    return;
+                }
+
+                instructors.forEach(instructor => {
+                    console.log('\nInstructor Details:');
+                    console.log('ID:', instructor.id);
+                    console.log('Name:', instructor.firstName + ' ' + instructor.lastName);
+                    console.log('Email:', instructor.email);
+                    console.log('Status:', instructor.status);
+                    
+                    // Check instructor's availability
+                    const availability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]')
+                        .filter(a => a.instructorId === instructor.id);
+                    console.log('\nAvailability Records:', availability.length);
+                    availability.forEach(record => {
+                        console.log('- Date:', record.date);
+                        console.log('  Available:', record.available);
+                        console.log('  Notes:', record.notes || 'No notes');
+                    });
+
+                    // Check assigned courses
+                    const courses = JSON.parse(localStorage.getItem('courses') || '[]')
+                        .filter(course => course.instructorId === instructor.id);
+                    console.log('\nAssigned Courses:', courses.length);
+                    courses.forEach(course => {
+                        console.log('- Course ID:', course.id);
+                        console.log('  Date:', course.courseDate);
+                        console.log('  Status:', course.status);
+                        console.log('  Location:', course.location);
+                        console.log('  Students Registered:', course.studentsRegistered);
+                    });
+                    console.log('\n-------------------');
+                });
+            } catch (error) {
+                console.error('Error checking instructor statuses:', error);
+            }
+        }
+
+        function clearTestData() {
+            console.log('=== Clearing Test Data ===');
+            try {
+                localStorage.removeItem('instructors');
+                localStorage.removeItem('currentInstructor');
+                localStorage.removeItem('instructorAvailability');
+                localStorage.removeItem('courses');
+                console.log('All test data cleared');
+                return { success: true, message: 'Test data cleared' };
+            } catch (error) {
+                console.error('Error clearing test data:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        function showCurrentData() {
+            console.log('\n=== Current Data in localStorage ===');
+            try {
+                console.log('\nInstructors:');
+                console.log(JSON.stringify(JSON.parse(localStorage.getItem('instructors') || '[]'), null, 2));
+                
+                console.log('\nOrganizations:');
+                console.log(JSON.stringify(JSON.parse(localStorage.getItem('organizations') || '[]'), null, 2));
+                
+                console.log('\nCourses:');
+                console.log(JSON.stringify(JSON.parse(localStorage.getItem('courses') || '[]'), null, 2));
+                
+                console.log('\nCurrent Instructor:');
+                console.log(JSON.stringify(JSON.parse(localStorage.getItem('currentInstructor') || 'null'), null, 2));
+                
+                console.log('\nCurrent Organization:');
+                console.log(JSON.stringify(JSON.parse(localStorage.getItem('currentOrganization') || 'null'), null, 2));
+                
+                console.log('\nInstructor Availability:');
+                console.log(JSON.stringify(JSON.parse(localStorage.getItem('instructorAvailability') || '[]'), null, 2));
+            } catch (error) {
+                console.error('Error displaying data:', error);
+            }
+        }
+
+        // Add login simulation functions
+        function loginAsInstructor(username) {
+            console.log('\n=== Logging in as Instructor ===');
+            try {
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const instructor = instructors.find(i => i.username === username);
+                if (instructor) {
+                    localStorage.setItem('currentInstructor', JSON.stringify(instructor));
+                    console.log('Logged in as instructor:', instructor.username);
+                    return { success: true, message: 'Logged in as instructor' };
+                } else {
+                    console.error('Instructor not found:', username);
+                    return { success: false, error: 'Instructor not found' };
+                }
+            } catch (error) {
+                console.error('Error logging in as instructor:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        function loginAsOrganization(username) {
+            console.log('\n=== Logging in as Organization ===');
+            try {
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const organization = organizations.find(o => o.username === username);
+                if (organization) {
+                    localStorage.setItem('currentOrganization', JSON.stringify(organization));
+                    console.log('Logged in as organization:', organization.username);
+                    return { success: true, message: 'Logged in as organization' };
+                } else {
+                    console.error('Organization not found:', username);
+                    return { success: false, error: 'Organization not found' };
+                }
+            } catch (error) {
+                console.error('Error logging in as organization:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        function checkLocalStorageState() {
+            console.log('\n=== Current localStorage State ===');
+            try {
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor') || 'null');
+                const currentOrganization = JSON.parse(localStorage.getItem('currentOrganization') || 'null');
+                const instructorAvailability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+
+                console.log('\nInstructors:', JSON.stringify(instructors, null, 2));
+                console.log('\nOrganizations:', JSON.stringify(organizations, null, 2));
+                console.log('\nCourses:', JSON.stringify(courses, null, 2));
+                console.log('\nCurrent Instructor:', JSON.stringify(currentInstructor, null, 2));
+                console.log('\nCurrent Organization:', JSON.stringify(currentOrganization, null, 2));
+                console.log('\nInstructor Availability:', JSON.stringify(instructorAvailability, null, 2));
+
+                // Add detailed course filtering debug
+                if (currentOrganization && courses.length > 0) {
+                    console.log('\n=== Course Filtering Debug ===');
+                    console.log('Current Organization ID:', currentOrganization.id);
+                    courses.forEach(course => {
+                        console.log('\nCourse:', course.id);
+                        console.log('Course Organization:', course.organization);
+                        console.log('Course Organization ID:', course.organization?.id);
+                        console.log('Matches current org?', course.organization?.id === currentOrganization.id);
+                    });
+                }
+            } catch (error) {
+                console.error('Error checking localStorage state:', error);
+            }
+        }
+
+        function simulateOrgPortalFiltering() {
+            console.log('\n=== Simulating Organization Portal Course Filtering ===');
+            try {
+                const currentOrganization = JSON.parse(localStorage.getItem('currentOrganization') || 'null');
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                
+                if (!currentOrganization) {
+                    console.log('No current organization found');
+                    return;
+                }
+
+                console.log('Current Organization:', currentOrganization);
+                console.log('All Courses:', courses);
+
+                // Simulate the filtering logic
+                const organizationCourses = courses.filter(course => {
+                    const matches = course.organization?.id === currentOrganization.id;
+                    console.log(`Course ${course.id}:`, {
+                        courseOrgId: course.organization?.id,
+                        currentOrgId: currentOrganization.id,
+                        matches: matches
+                    });
+                    return matches;
+                });
+
+                console.log('Filtered Courses:', organizationCourses);
+            } catch (error) {
+                console.error('Error in simulation:', error);
+            }
+        }
     </script>
 </body>
 </html> 

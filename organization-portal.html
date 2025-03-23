@@ -831,6 +831,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>Course ID</th>
                                 <th>Date</th>
                                 <th>Location</th>
                                 <th>Class Type</th>
@@ -1111,6 +1112,25 @@
                     }
                 }
 
+                function generateUniqueId() {
+                    return 'course_' + Date.now();
+                }
+
+                function getCurrentOrganization() {
+                    try {
+                        const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
+                        if (!currentOrg) {
+                            showNotification('Please log in first', 'error');
+                            return null;
+                        }
+                        return currentOrg;
+                    } catch (error) {
+                        console.error('Error getting current organization:', error);
+                        showNotification('Error getting organization details', 'error');
+                        return null;
+                    }
+                }
+
                 function handleScheduleCourse(event) {
                     event.preventDefault();
                     const courseDate = document.getElementById('courseDate').value;
@@ -1125,6 +1145,12 @@
                     }
 
                     try {
+                        const currentOrg = getCurrentOrganization();
+                        if (!currentOrg) {
+                            showNotification('Please log in first', 'error');
+                            return;
+                        }
+
                         const courses = JSON.parse(localStorage.getItem('courses')) || [];
                         const newCourse = {
                             id: generateUniqueId(),
@@ -1142,7 +1168,8 @@
                             displayInstructorDetails: false,
                             displayOrgDetails: false,
                             hideOrgDetails: true,
-                            organization: getCurrentOrganization(),
+                            organization: currentOrg,
+                            organizationId: currentOrg.id,
                             instructorId: null,
                             instructorName: null
                         };
@@ -1150,8 +1177,13 @@
                         courses.push(newCourse);
                         localStorage.setItem('courses', JSON.stringify(courses));
                         showNotification('Course scheduled successfully!', 'success');
-                        document.getElementById('scheduleForm').reset();
-                        switchSection('courses');
+                        
+                        // Reset the form using the event target
+                        event.target.reset();
+                        
+                        // Switch to courses section
+                        showSection('courses');
+                        updateMyCoursesTable();
                     } catch (error) {
                         console.error('Error scheduling course:', error);
                         showNotification('Error scheduling course. Please try again.', 'error');
@@ -1221,7 +1253,7 @@
                     console.log('Current organization:', currentOrg);
                     console.log('All courses:', courses);
                     
-                    const orgCourses = courses.filter(course => course.organizationId === currentOrg.id);
+                    const orgCourses = courses.filter(course => course.organization && course.organization.id === currentOrg.id);
                     console.log('Organization courses:', orgCourses);
 
                     if (orgCourses.length === 0) {
@@ -1235,7 +1267,8 @@
 
                     coursesTableBody.innerHTML = orgCourses.map(course => `
                         <tr>
-                            <td>${formatDate(course.courseDate)}</td>
+                            <td>${course.id}</td>
+                            <td>${formatDate(course.date)}</td>
                             <td>${course.location}</td>
                             <td>${course.classType}</td>
                             <td>${course.studentsRegistered || 0}</td>
@@ -1453,12 +1486,12 @@
                         tableBody.innerHTML = archivedCourses.length ? 
                             archivedCourses.map(course => `
                                 <tr>
-                                    <td>${formatDate(course.courseDate)}</td>
+                                    <td>${formatDate(course.date)}</td>
                                     <td>${course.location}</td>
                                     <td>${course.classType}</td>
                                     <td>${course.studentsRegistered || 0}</td>
                                     <td><span class="status status-archived">Archived</span></td>
-                                    <td>${course.displayInstructorName ? course.instructorName : 'Not Assigned'}</td>
+                                    <td>${course.displayInstructorDetails ? course.instructorName : 'Not Assigned'}</td>
                                     <td class="note-cell" data-full-note="${course.notes || '-'}">${course.notes || '-'}</td>
                                     <td>
                                         <button class="btn btn-primary" onclick="viewStudentList('${course.id}')">View Students</button>
@@ -1547,8 +1580,8 @@
                 // Update sorting function
                 function sortCourses(courses) {
                     return courses.sort((a, b) => {
-                        const [yearA, monthA, dayA] = a.courseDate.split('-');
-                        const [yearB, monthB, dayB] = b.courseDate.split('-');
+                        const [yearA, monthA, dayA] = a.date.split('-');
+                        const [yearB, monthB, dayB] = b.date.split('-');
                         return new Date(yearA, monthA - 1, dayA).getTime() - new Date(yearB, monthB - 1, dayB).getTime();
                     });
                 }
@@ -1777,8 +1810,8 @@
 
                     tbody.innerHTML = completedCourses.map(course => `
                         <tr>
-                            <td>${formatDate(course.courseDate)}</td>
-                            <td>${course.courseName}</td>
+                            <td>${formatDate(course.date)}</td>
+                            <td>${course.classType}</td>
                             <td>${course.location}</td>
                             <td>${course.instructorName || 'Not Assigned'}</td>
                             <td>
@@ -1869,7 +1902,7 @@
                         const newCourse = {
                             id: courseId,
                             organizationId: currentOrg.id,
-                            courseDate: courseDate,
+                            date: courseDate,
                             location: location,
                             classType: classType,
                             notes: notes,
@@ -1944,7 +1977,7 @@
                             </div>
                             <div class="modal-body">
                                 <div class="course-details">
-                                    <p><strong>Date:</strong> ${formatDate(course.courseDate)}</p>
+                                    <p><strong>Date:</strong> ${formatDate(course.date)}</p>
                                     <p><strong>Location:</strong> ${course.location}</p>
                                     <p><strong>Class Type:</strong> ${course.classType}</p>
                                     <p><strong>Students Registered:</strong> ${course.studentsRegistered || 0}</p>

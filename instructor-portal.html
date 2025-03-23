@@ -865,12 +865,12 @@
                                     <tr>
                                         <th>Name</th>
                                         <th>Email</th>
-                                        <th>Status</th>
+                            <th>Status</th>
                                         <th>Attendance</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="attendanceTableBody"></tbody>
-                            </table>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody"></tbody>
+                </table>
                         </div>
                         <div class="attendance-summary">
                             <p>Present: <span id="presentCount">0</span> / <span id="totalCount">0</span></p>
@@ -993,7 +993,7 @@
                         </thead>
                         <tbody id="confirmedCoursesTableBody"></tbody>
                     </table>
-                </div>
+    </div>
             </section>
 
             <section id="completedCourses" class="section">
@@ -1013,6 +1013,102 @@
                     </table>
                 </div>
             </section>
+
+            <section id="dashboard" class="section">
+                <h2>My Dashboard</h2>
+                <button onclick="openInstructorAvailabilityModal()" class="btn btn-primary" style="margin-bottom: 20px;">Set Availability</button>
+                
+                <!-- Instructor Availability Table -->
+                <h3>My Availability</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="instructorAvailabilityTableBody">
+                            <!-- JavaScript will populate this -->
+                        </tbody>
+                    </table>
+            </div>
+
+                <h3>My Courses</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Course ID</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th>Class Type</th>
+                                <th>Students</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="myCoursesTableBody">
+                            <!-- JavaScript will populate this -->
+                        </tbody>
+                    </table>
+        </div>
+            </section>
+
+            <!-- Include the instructor availability modal -->
+            <iframe id="availabilityFrame" src="instructor-availability.html" style="display: none;"></iframe>
+
+            <script>
+                // Add these functions for instructor availability
+                function openInstructorAvailabilityModal() {
+                    const frame = document.getElementById('availabilityFrame');
+                    frame.contentWindow.openInstructorAvailabilityModal();
+                }
+
+                function updateInstructorAvailabilityTable() {
+                    const tableBody = document.getElementById('instructorAvailabilityTableBody');
+                    const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
+                    const currentUser = localStorage.getItem('currentUser');
+
+                    if (!currentUser) return;
+
+                    const myAvailabilities = availabilities.filter(a => a.instructorName === currentUser);
+
+                    if (myAvailabilities.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="3" class="text-center">No availabilities set</td></tr>';
+                        return;
+                    }
+
+                    tableBody.innerHTML = myAvailabilities
+                        .sort((a, b) => new Date(a.date) - new Date(b.date))
+                        .map(availability => `
+                            <tr>
+                                <td>${formatDate(availability.date)}</td>
+                                <td><span class="status status-${availability.status.toLowerCase()}">${availability.status}</span></td>
+                                <td>
+                                    <button class="btn btn-danger" onclick="deleteInstructorAvailability('${availability.instructorName}', '${availability.date}')">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('');
+                }
+
+                function deleteInstructorAvailability(instructorName, date) {
+                    const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
+                    const updatedAvailabilities = availabilities.filter(a => 
+                        !(a.instructorName === instructorName && a.date === date)
+                    );
+                    localStorage.setItem('instructorAvailabilities', JSON.stringify(updatedAvailabilities));
+                    updateInstructorAvailabilityTable();
+                }
+
+                // Add this to your existing DOMContentLoaded event listener
+                document.addEventListener('DOMContentLoaded', function() {
+                    updateInstructorAvailabilityTable();
+                });
+            </script>
         </main>
     </div>
 
@@ -1213,7 +1309,7 @@
                 console.error('Section not found:', sectionId);
                 return;
             }
-
+            
             // Hide all sections
             const allSections = document.querySelectorAll('.section');
             console.log('Total sections found:', allSections.length);
@@ -1226,8 +1322,8 @@
 
             // Show requested section
             section.style.display = 'block';
-            console.log('Displayed section:', sectionId);
-
+                console.log('Displayed section:', sectionId);
+                
             // Update navigation
             updateNavButtons();
 
@@ -1295,10 +1391,12 @@
                 if (currentDate < today) {
                     dayElement.classList.add('past');
                 } else {
+                    // Check if date is selected
                     if (selectedDates.has(dateString)) {
                         dayElement.classList.add('available');
                     }
                     
+                    // Add click handler for future dates
                     dayElement.addEventListener('click', () => {
                         if (!dayElement.classList.contains('past')) {
                             if (selectedDates.has(dateString)) {
@@ -1308,6 +1406,8 @@
                                 selectedDates.add(dateString);
                                 dayElement.classList.add('available');
                             }
+                            // Update the availability table when a date is selected/deselected
+                            updateMyAvailabilityTable();
                         }
                     });
                 }
@@ -1352,8 +1452,13 @@
         }
 
         function saveAvailability() {
-            const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
-            if (instructor) {
+            try {
+                const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!instructor) {
+                    showNotification('Please log in first', 'error');
+                    return;
+                }
+
                 // Update current instructor's availability
                 instructor.availability = Array.from(selectedDates);
                 
@@ -1370,7 +1475,13 @@
                 localStorage.setItem('instructors', JSON.stringify(instructors));
                 localStorage.setItem('currentInstructor', JSON.stringify(instructor));
                 
-                alert('Availability saved successfully!');
+                // Update the availability table
+                updateMyAvailabilityTable();
+                
+                showNotification('Availability saved successfully', 'success');
+            } catch (error) {
+                console.error('Error saving availability:', error);
+                showNotification('Error saving availability', 'error');
             }
         }
 
@@ -1423,8 +1534,8 @@
                     const statusClass = course.adminConfirmed ? 'confirmed' : 'available';
 
                     tableRows.push(`
-                        <tr>
-                            <td>${formatDate(course.courseDate)}</td>
+                            <tr>
+                                <td>${formatDate(course.courseDate)}</td>
                             <td>${course.displayOrgDetails ? (course.organizationName || '-') : '-'}</td>
                             <td>${course.displayOrgDetails ? (course.location || '-') : '-'}</td>
                             <td>${course.displayOrgDetails ? (course.classType || '-') : '-'}</td>
@@ -1439,9 +1550,9 @@
                                         Take Attendance
                                     </button>` : 
                                     ''
-                                }
-                            </td>
-                        </tr>
+                                    }
+                                </td>
+                            </tr>
                     `);
                 });
 
@@ -1499,8 +1610,8 @@
                 );
 
                 tbody.innerHTML = completedCourses.map(course => `
-                    <tr>
-                        <td>${formatDate(course.courseDate)}</td>
+                        <tr>
+                            <td>${formatDate(course.courseDate)}</td>
                         <td>${course.organizationName}</td>
                         <td>${course.location}</td>
                         <td>${course.classType}</td>
@@ -1509,8 +1620,8 @@
                         <td>
                             <button class="btn btn-info btn-sm" onclick="viewArchivedCourseDetails('${course.id}')">
                                 View Details
-                            </button>
-                        </td>
+                                </button>
+                            </td>
                     </tr>
                 `).join('');
             } catch (error) {
@@ -1663,7 +1774,7 @@
                 
                 // Filter courses for today and this instructor, excluding completed courses
                 const todaysCourses = courses.filter(course => 
-                    course.courseDate === today && 
+                    course.courseDate === today &&
                     course.instructorId === currentInstructor.id &&
                     course.completionStatus !== 'COMPLETED' &&
                     course.adminConfirmed // Only show confirmed courses
@@ -2027,6 +2138,14 @@
                 if (section === 'availability') {
                     console.log('Showing availability section, updating table...');
                     updateMyAvailabilityTable();
+                    // Initialize calendar when showing availability section
+                    initializeCalendar();
+                    // Load instructor's availability into calendar
+                    const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor') || '{}');
+                    if (currentInstructor.availability) {
+                        selectedDates = new Set(currentInstructor.availability);
+                        renderCalendar();
+                    }
                 } else if (section === 'classes') {
                     console.log('Showing classes section, updating class list...');
                     updateClassList();
@@ -2162,12 +2281,12 @@
 
         function showAddUnregisteredModal() {
             try {
-                // Clear previous values
-                document.getElementById('unregisteredName').value = '';
-                document.getElementById('unregisteredEmail').value = '';
-                document.getElementById('unregisteredNotes').value = '';
-                
-                // Show the modal
+            // Clear previous values
+            document.getElementById('unregisteredName').value = '';
+            document.getElementById('unregisteredEmail').value = '';
+            document.getElementById('unregisteredNotes').value = '';
+            
+            // Show the modal
                 const modal = document.getElementById('addUnregisteredModal');
                 if (modal) {
                     modal.style.display = 'block';
@@ -2613,19 +2732,17 @@
 
                 tableBody.innerHTML = instructorCourses.map(course => `
                     <tr>
+                        <td>${course.id}</td>
                         <td>${formatDate(course.courseDate)}</td>
-                        <td>${course.organizationName || 'Not Specified'}</td>
                         <td>${course.location}</td>
                         <td>${course.classType}</td>
+                        <td>${course.organizationName || '-'}</td>
                         <td>${course.studentsRegistered || 0}</td>
                         <td>
                             <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
                         </td>
                         <td>
                             <button class="btn btn-sm btn-info" onclick="viewCourseDetails('${course.id}')">View Details</button>
-                            ${course.status === 'CONFIRMED' ? 
-                                `<button class="btn btn-sm btn-success" onclick="takeAttendance('${course.id}')">Take Attendance</button>` : 
-                                ''}
                         </td>
                     </tr>
                 `).join('');
@@ -2730,6 +2847,47 @@
         // Call updateMyAvailabilityTable when the page loads
         document.addEventListener('DOMContentLoaded', function() {
             updateMyAvailabilityTable();
+        });
+
+        function updateInstructorAvailabilityTable() {
+            try {
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!currentInstructor) {
+                    console.log('No instructor logged in');
+                    return;
+                }
+
+                const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
+                const instructorAvailabilities = availabilities.filter(a => a.instructorId === currentInstructor.id);
+                
+                const tableBody = document.getElementById('availabilityTableBody');
+                if (!tableBody) return;
+
+                if (instructorAvailabilities.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="3">No availability records found</td></tr>';
+                    return;
+                }
+
+                tableBody.innerHTML = instructorAvailabilities.map(avail => `
+                    <tr>
+                        <td>${formatDate(avail.date)}</td>
+                        <td>${avail.status}</td>
+                        <td>
+                            <button onclick="updateAvailability('${avail.id}', 'UNAVAILABLE')" class="btn btn-danger btn-sm">
+                                Mark Unavailable
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error updating availability table:', error);
+            }
+        }
+
+        // Add this to your DOMContentLoaded event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing code ...
+            updateInstructorAvailabilityTable();
         });
     </script>
 </body>
