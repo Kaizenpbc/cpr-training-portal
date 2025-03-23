@@ -58,7 +58,7 @@ function updateInstructorAvailabilityTable() {
         .map(availability => `
             <tr>
                 <td>${availability.instructorName}</td>
-                <td>${formatDate(availability.date)}</td>
+                <td>${getISODate(availability.date)}</td>
                 <td><span class="status status-${availability.status.toLowerCase()}">${availability.status}</span></td>
                 <td>
                     <button class="btn btn-danger" onclick="deleteInstructorAvailability('${availability.instructorName}', '${availability.date}')">

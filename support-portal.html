@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GTA CPR - Support Portal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="trace-facility.css">
+    <script>
+        // Add error handling for trace facility
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.message);
+            // Prevent window from closing
+            e.preventDefault();
+            return false;
+        });
+
+        // Add unhandled rejection handler
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+            // Prevent window from closing
+            e.preventDefault();
+            return false;
+        });
+
+        // Load trace facility with error handling
+        try {
+            const script = document.createElement('script');
+            script.src = 'trace-facility.js';
+            script.onerror = function() {
+                console.error('Failed to load trace-facility.js');
+            };
+            document.head.appendChild(script);
+        } catch (error) {
+            console.error('Error loading trace facility:', error);
+        }
+    </script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -374,6 +404,7 @@
         <div id="notification" class="notification"></div>
     </div>
 
+    <script src="trace-facility.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         function clearStorage() {
@@ -857,6 +888,35 @@
 
             reader.readAsBinaryString(file);
         }
+
+        // Initialize trace facility after DOM content is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Store original function references
+                window.originalFunctions = {
+                    clearStorage: window.clearStorage,
+                    dumpStorage: window.dumpStorage,
+                    displayStorage: window.displayStorage,
+                    handleExcelUpload: window.handleExcelUpload,
+                    handleInstructorAvailabilityUpload: window.handleInstructorAvailabilityUpload,
+                    handleOrganizationCoursesUpload: window.handleOrganizationCoursesUpload
+                };
+
+                // Initialize trace facility
+                window.TraceFacility.init();
+                console.log('✅ Trace facility initialized in Support Portal');
+            } catch (error) {
+                console.error('❌ Error initializing trace facility:', error);
+            }
+        });
+
+        // Function to restore original functions
+        window.restoreOriginalFunction = function(functionName) {
+            if (window.originalFunctions && window.originalFunctions[functionName]) {
+                window[functionName] = window.originalFunctions[functionName];
+                console.log(`⭕ Restored original ${functionName}`);
+            }
+        };
     </script>
 </body>
 </html> 

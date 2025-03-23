@@ -2876,6 +2876,119 @@
                 return false;
             }
         }
+
+        // Remove formatDate, formatDateForStorage, and formatDateForDisplay functions
+        // Replace with a single date handling function
+        function getISODate(date) {
+            if (!date) return '';
+            try {
+                const dateObj = new Date(date);
+                if (isNaN(dateObj.getTime())) return '';
+                return dateObj.toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return '';
+            }
+        }
+
+        // Update invoice display
+        function displayInvoice(invoice) {
+            const modalContent = `
+                <div class="invoice-details">
+                    <h3>Invoice #${invoice.id}</h3>
+                    <p><strong>Organization:</strong> ${invoice.organizationName}</p>
+                    <p><strong>Date:</strong> ${getISODate(invoice.invoiceDate)}</p>
+                    <p><strong>Due Date:</strong> ${getISODate(invoice.dueDate)}</p>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoice.lineItems.map(item => `
+                                <tr>
+                                    <td>${getISODate(item.date)}</td>
+                                    <td>${item.description}</td>
+                                    <td>$${item.amount.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <p><strong>Total Amount:</strong> $${invoice.totalAmount.toFixed(2)}</p>
+                </div>
+            `;
+            document.getElementById('invoiceModal').innerHTML = modalContent;
+        }
+
+        // Ensure all date inputs use type="date"
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            input.addEventListener('change', function() {
+                // The value will already be in YYYY-MM-DD format
+                console.log('Date selected:', this.value);
+            });
+        });
+
+        // Update all date displays to use getISODate
+        function updateInvoiceList() {
+            try {
+                const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+                const tbody = document.getElementById('invoiceListTableBody');
+                
+                if (!tbody) return;
+                
+                tbody.innerHTML = invoices.length ? 
+                    invoices.map(invoice => `
+                        <tr>
+                            <td>${invoice.invoiceNumber}</td>
+                            <td>${invoice.organizationName}</td>
+                            <td>${getISODate(invoice.invoiceDate)}</td>
+                            <td>${getISODate(invoice.dueDate)}</td>
+                            <td>$${invoice.totalAmount.toFixed(2)}</td>
+                            <td>${invoice.status}</td>
+                            <td>
+                                <button class="btn btn-info" onclick="viewInvoice('${invoice.id}')">View</button>
+                                <button class="btn btn-primary" onclick="printInvoice('${invoice.id}')">Print</button>
+                            </td>
+                        </tr>
+                    `).join('') :
+                    '<tr><td colspan="7" style="text-align: center;">No invoices found</td></tr>';
+            } catch (error) {
+                console.error('Error updating invoice list:', error);
+                showNotification('Error updating invoice list', 'error');
+            }
+        }
+
+        // Update course list display
+        function updateCourseList() {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const tbody = document.getElementById('courseListTableBody');
+                
+                if (!tbody) return;
+                
+                tbody.innerHTML = courses.length ? 
+                    courses.map(course => `
+                        <tr>
+                            <td>${getISODate(course.courseDate)}</td>
+                            <td>${course.organizationName}</td>
+                            <td>${course.location}</td>
+                            <td>${course.classType}</td>
+                            <td>${course.studentsRegistered}</td>
+                            <td>${course.status}</td>
+                            <td>
+                                <button class="btn btn-info" onclick="viewCourseDetails('${course.id}')">View</button>
+                            </td>
+                        </tr>
+                    `).join('') :
+                    '<tr><td colspan="7" style="text-align: center;">No courses found</td></tr>';
+            } catch (error) {
+                console.error('Error updating course list:', error);
+                showNotification('Error updating course list', 'error');
+            }
+        }
     </script>
 </body>
 </html> 

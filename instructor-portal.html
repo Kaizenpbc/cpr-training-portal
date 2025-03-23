@@ -1059,6 +1059,42 @@
             <!-- Include the instructor availability modal -->
             <iframe id="availabilityFrame" src="instructor-availability.html" style="display: none;"></iframe>
 
+            <!-- Add this section after the login section -->
+            <section id="instructorDashboard" style="display: none;">
+                <h2>Instructor Dashboard</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Course Date</th>
+                                <th>Organization</th>
+                                <th>Location</th>
+                                <th>Class Type</th>
+                                <th>Students</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="instructorDashboardTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Add this modal for instructor assignment -->
+            <div id="assignInstructorModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal" onclick="closeModal('assignInstructorModal')">&times;</span>
+                    <h3>Assign Instructor</h3>
+                    <div class="form-group">
+                        <label for="instructorSelect">Select Instructor:</label>
+                        <select id="instructorSelect" required>
+                            <option value="">Choose an instructor...</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="assignInstructor()">Assign</button>
+                </div>
+            </div>
+
             <script>
                 // Add these functions for instructor availability
                 function openInstructorAvailabilityModal() {
@@ -1535,7 +1571,7 @@
 
                     tableRows.push(`
                             <tr>
-                                <td>${formatDate(course.courseDate)}</td>
+                                <td>${getISODate(course.courseDate)}</td>
                             <td>${course.displayOrgDetails ? (course.organizationName || '-') : '-'}</td>
                             <td>${course.displayOrgDetails ? (course.location || '-') : '-'}</td>
                             <td>${course.displayOrgDetails ? (course.classType || '-') : '-'}</td>
@@ -1561,7 +1597,7 @@
                     if (!assignedCourses.some(course => course.courseDate === date)) {
                         tableRows.push(`
                             <tr class="available-date">
-                                <td>${formatDate(date)}</td>
+                                <td>${getISODate(date)}</td>
                                 <td>-</td>
                                 <td>-</td>
                                 <td>-</td>
@@ -1575,8 +1611,8 @@
 
                 // Sort all rows by date
                 tableRows.sort((a, b) => {
-                    const dateA = a.match(/\d{2}\/\d{2}\/\d{4}/)[0];
-                    const dateB = b.match(/\d{2}\/\d{2}\/\d{4}/)[0];
+                    const dateA = a.match(/\d{4}-\d{2}-\d{2}/)[0];
+                    const dateB = b.match(/\d{4}-\d{2}-\d{2}/)[0];
                     return new Date(dateA) - new Date(dateB);
                 });
 
@@ -1611,12 +1647,12 @@
 
                 tbody.innerHTML = completedCourses.map(course => `
                         <tr>
-                            <td>${formatDate(course.courseDate)}</td>
+                            <td>${getISODate(course.courseDate)}</td>
                         <td>${course.organizationName}</td>
                         <td>${course.location}</td>
                         <td>${course.classType}</td>
                         <td>${course.studentsAttended}/${course.studentsRegistered}</td>
-                        <td>${formatDate(course.completedDate)}</td>
+                        <td>${getISODate(course.completedDate)}</td>
                         <td>
                             <button class="btn btn-info btn-sm" onclick="viewArchivedCourseDetails('${course.id}')">
                                 View Details
@@ -1708,17 +1744,17 @@
                 
                 if (!course) {
                     showNotification('Course not found', 'error');
-                return;
-            }
+                    return;
+                }
 
                 const detailsHtml = `
                     <div class="course-details">
                         <h4>${course.classType}</h4>
                         <p><strong>Organization:</strong> ${course.organizationName}</p>
                         <p><strong>Location:</strong> ${course.location}</p>
-                        <p><strong>Course Date:</strong> ${formatDate(course.courseDate)}</p>
-                        <p><strong>Completion Date:</strong> ${formatDate(course.completedDate)}</p>
-                        <p><strong>Archive Date:</strong> ${formatDate(course.archivedDate)}</p>
+                        <p><strong>Course Date:</strong> ${getISODate(course.courseDate)}</p>
+                        <p><strong>Completion Date:</strong> ${getISODate(course.completedDate)}</p>
+                        <p><strong>Archive Date:</strong> ${getISODate(course.archivedDate)}</p>
                         <p><strong>Attendance:</strong> ${course.studentsAttended}/${course.studentsRegistered} students</p>
                         
                         <div class="completion-notes">
@@ -1770,7 +1806,7 @@
                 const today = new Date().toISOString().split('T')[0];
                 
                 // Update today's date display
-                document.getElementById('todayDate').textContent = formatDate(today);
+                document.getElementById('todayDate').textContent = getISODate(today);
                 
                 // Filter courses for today and this instructor, excluding completed courses
                 const todaysCourses = courses.filter(course => 
@@ -2804,7 +2840,7 @@
 
             availabilityTableBody.innerHTML = combinedAvailability.map(record => `
                 <tr>
-                    <td>${formatDate(record.date)}</td>
+                    <td>${getISODate(record.date)}</td>
                     <td>${record.status}</td>
                     <td>
                         ${record.source === 'direct' ? `
@@ -2889,6 +2925,259 @@
             // ... existing code ...
             updateInstructorAvailabilityTable();
         });
+
+        function showAssignInstructorModal(courseId) {
+            try {
+                console.log('=== Starting showAssignInstructorModal ===');
+                console.log('Course ID:', courseId);
+                
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                
+                console.log('Total courses:', courses.length);
+                console.log('Total instructors:', instructors.length);
+                
+                const course = courses.find(c => c.id === courseId);
+                console.log('Found course:', course);
+                
+                if (!course) {
+                    console.error('Course not found:', courseId);
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Filter available instructors for the course date
+                const availableInstructors = instructors.filter(instructor => {
+                    console.log('\nChecking instructor:', instructor.name);
+                    console.log('Instructor availability:', instructor.availability);
+                    console.log('Course date:', course.courseDate);
+                    
+                    const hasDate = instructor.availability && 
+                        instructor.availability.includes(course.courseDate);
+                    
+                    if (!hasDate) {
+                        console.log('Instructor does not have date in availability');
+                        return false;
+                    }
+
+                    const isAlreadyAssigned = courses.some(c => 
+                        c.courseDate === course.courseDate && 
+                        c.instructorId === instructor.id &&
+                        c.id !== courseId
+                    );
+
+                    console.log('Instructor status:', {
+                        hasDate,
+                        isAlreadyAssigned,
+                        availability: instructor.availability
+                    });
+                    
+                    return hasDate && !isAlreadyAssigned;
+                });
+
+                console.log('\nAvailable instructors:', availableInstructors);
+
+                if (!availableInstructors || availableInstructors.length === 0) {
+                    console.log('No available instructors found');
+                    showNotification(`No instructors available for ${formatDateForDisplay(course.courseDate)}`, 'error');
+                    return;
+                }
+
+                // Store courseId for the assign function
+                localStorage.setItem('currentCourseId', courseId);
+
+                // Populate and show modal
+                const select = document.getElementById('instructorSelect');
+                select.innerHTML = availableInstructors.map(instructor => 
+                    `<option value="${instructor.id}">${instructor.name}</option>`
+                ).join('');
+
+                const modal = document.getElementById('assignInstructorModal');
+                modal.style.display = 'block';
+                
+                console.log('=== Completed showAssignInstructorModal ===');
+            } catch (error) {
+                console.error('Error showing assign instructor modal:', error);
+                showNotification('Error loading instructor assignment modal', 'error');
+            }
+        }
+
+        function assignInstructor() {
+            try {
+                console.log('=== Starting assignInstructor function ===');
+                const courseId = localStorage.getItem('currentCourseId');
+                const selectedInstructor = document.getElementById('instructorSelect').value;
+                
+                console.log('CourseId:', courseId);
+                console.log('Selected Instructor:', selectedInstructor);
+                
+                if (!courseId || !selectedInstructor) {
+                    console.error('Missing course or instructor information');
+                    showNotification('Missing course or instructor information', 'error');
+                    return;
+                }
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
+                if (courseIndex === -1) {
+                    console.error('Course not found:', courseId);
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Get instructor details
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const instructor = instructors.find(i => i.id === selectedInstructor);
+                
+                if (!instructor) {
+                    console.error('Instructor not found:', selectedInstructor);
+                    showNotification('Instructor not found', 'error');
+                    return;
+                }
+
+                console.log('Current course state:', courses[courseIndex]);
+                console.log('Selected instructor:', instructor);
+
+                // Update course with instructor information and status
+                courses[courseIndex].instructorId = selectedInstructor;
+                courses[courseIndex].instructorName = instructor.name;
+                
+                // Update statuses for each portal view
+                courses[courseIndex].status = 'PENDING';
+                courses[courseIndex].adminScheduledDashStatus = 'SCHEDULED';
+                courses[courseIndex].adminInstructorDashStatus = 'SCHEDULED';
+                courses[courseIndex].organizationStatus = 'PENDING';
+                courses[courseIndex].instructorStatus = 'SCHEDULED';
+                courses[courseIndex].adminConfirmed = false;
+                courses[courseIndex].displayInstructorDetails = false;
+                courses[courseIndex].displayOrgDetails = false;
+                courses[courseIndex].hideOrgDetails = true;
+
+                console.log('Updated course state:', courses[courseIndex]);
+
+                // Save changes
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                // Close modal and show success message
+                closeModal('assignInstructorModal');
+                showNotification('Instructor assigned successfully', 'success');
+                
+                // Update all relevant displays
+                updateScheduledCoursesList();
+                updateConfirmedCoursesList();
+                updateInstructorDashboard();
+                
+                console.log('=== Completed assignInstructor function ===');
+            } catch (error) {
+                console.error('Error assigning instructor:', error);
+                showNotification('Error assigning instructor', 'error');
+            }
+        }
+
+        function closeModal(modalId) {
+            try {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'none';
+                } else {
+                    console.error(`Modal ${modalId} not found`);
+                }
+            } catch (error) {
+                console.error('Error closing modal:', error);
+            }
+        }
+
+        // Remove formatDate, formatDateForStorage, and formatDateForDisplay functions
+        // Replace with a single date handling function
+        function getISODate(date) {
+            if (!date) return '';
+            try {
+                const dateObj = new Date(date);
+                if (isNaN(dateObj.getTime())) return '';
+                return dateObj.toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return '';
+            }
+        }
+
+        // Update all date displays to use getISODate
+        function updateAvailabilityTable() {
+            const availability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+            const tbody = document.querySelector('#availabilityTable tbody');
+            tbody.innerHTML = '';
+            
+            availability.forEach(avail => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${getISODate(avail.date)}</td>
+                    <td>${avail.status}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateCourseTable() {
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const tbody = document.querySelector('#courseTable tbody');
+            tbody.innerHTML = '';
+            
+            courses.forEach(course => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${getISODate(course.courseDate)}</td>
+                    <td>${course.location}</td>
+                    <td>${course.status}</td>
+                    <td>${course.instructorName || 'Not Assigned'}</td>
+                    <td>
+                        <button class="btn btn-sm" onclick="showCourseDetails('${course.id}')">Details</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showCourseDetails(courseId) {
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const course = courses.find(c => c.id === courseId);
+            if (!course) return;
+
+            const modal = document.getElementById('courseDetailsModal');
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <span class="close" onclick="closeCourseDetails()">&times;</span>
+                    <h2>Course Details</h2>
+                    <p><strong>Course Date:</strong> ${getISODate(course.courseDate)}</p>
+                    <p><strong>Location:</strong> ${course.location}</p>
+                    <p><strong>Organization:</strong> ${course.organizationName}</p>
+                    <p><strong>Status:</strong> ${course.status}</p>
+                    <p><strong>Completion Date:</strong> ${getISODate(course.completedDate)}</p>
+                    <p><strong>Archive Date:</strong> ${getISODate(course.archivedDate)}</p>
+                </div>
+            `;
+            modal.style.display = 'block';
+        }
+
+        // Update today's date display
+        const today = new Date();
+        document.getElementById('todayDate').textContent = getISODate(today);
+
+        // Update any other date displays
+        function updateAllDateDisplays() {
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            courses.forEach(course => {
+                const courseDateElement = document.querySelector(`[data-course-id="${course.id}"] .course-date`);
+                if (courseDateElement) {
+                    courseDateElement.textContent = getISODate(course.courseDate);
+                }
+            });
+        }
+
+        // Update error messages to use getISODate
+        function showNoInstructorError(course) {
+            showNotification(`No instructors available for ${getISODate(course.courseDate)}`, 'error');
+        }
     </script>
 </body>
 </html> 

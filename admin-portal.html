@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GTA CPR - Course Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="trace-facility.css">
+    <script src="trace-facility.js"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -1450,15 +1452,23 @@
                                 jsonData.forEach(row => {
                                     const organization = organizations.find(org => org.name === row['Organization Name']);
                                     if (organization) {
+                                        // Use the date field as courseDate
+                                        const courseDate = row['date'] || row['Course Date'] || new Date().toISOString().split('T')[0];
+
                                         courses.push({
                                             id: 'course_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                                            date: courseDate, // Keep original date
+                                            courseDate: courseDate, // Set courseDate same as date
                                             organizationId: organization.id,
+                                            organization: { // Include full organization object
+                                                id: organization.id,
+                                                name: organization.name
+                                            },
                                             organizationName: organization.name,
-                                            courseDate: row['Course Date'],
-                                            location: row['Location'],
-                                            classType: row['Class Type'],
+                                            location: row['Location'] || '',
+                                            classType: row['Class Type'] || '',
                                             studentsRegistered: parseInt(row['Students Registered']) || 0,
-                                            notes: row['Notes'],
+                                            notes: row['Notes'] || '',
                                             status: 'PENDING',
                                             adminScheduledDashStatus: 'PENDING',
                                             adminInstructorDashStatus: 'PENDING',
@@ -1568,6 +1578,13 @@
                 let needsUpdate = false;
 
                 courses.forEach(course => {
+                    // Fix undefined course dates
+                    if (!course.courseDate) {
+                        course.courseDate = new Date().toISOString().split('T')[0];
+                        needsUpdate = true;
+                        console.log('Fixed course date for course:', course.id);
+                    }
+
                     // If a course is completed but not confirmed, mark it as confirmed
                     if (course.completionStatus === 'COMPLETED' && !course.adminConfirmed) {
                         course.adminConfirmed = true;
@@ -1583,6 +1600,11 @@
                 if (needsUpdate) {
                     localStorage.setItem('courses', JSON.stringify(courses));
                     console.log('Course data fixed and updated');
+                    // Update displays
+                    updateScheduledCoursesList();
+                    updateConfirmedCoursesList();
+                    updateCompletedCoursesList();
+                    updateDashboardStats();
                 }
             } catch (error) {
                 console.error('Error fixing course data:', error);
@@ -1903,74 +1925,78 @@
 
         function updateScheduledCourses() {
             try {
-                console.log('Starting updateScheduledCourses function');
-                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                console.log('All courses from localStorage:', courses);
-                
-                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-                const tbody = document.getElementById('scheduledCoursesTableBody');
-                
-                if (!tbody) {
-                    console.warn('scheduledCoursesTableBody element not found');
-                    return;
-                }
-                
-                // Filter for courses that are pending or scheduled but not confirmed or completed
-                const scheduledCourses = courses.filter(course => {
-                    console.log('Checking course:', course);
-                    console.log('Course status checks:', {
-                        notArchived: !course.isArchived,
-                        noCompletion: !course.completionStatus,
-                        notConfirmed: !course.adminConfirmed,
-                        status: course.adminScheduledDashStatus
-                    });
-                    
-                    return !course.isArchived && 
-                           !course.completionStatus && 
-                           !course.adminConfirmed &&
-                           (course.adminScheduledDashStatus === 'PENDING' || 
-                            course.adminScheduledDashStatus === 'SCHEDULED');
+                console.log('==================== START updateScheduledCourses ====================');
+                const courses = JSON.parse(localStorage.getItem('courses')) || [];
+                const filteredCourses = courses.filter(course => {
+                    console.log('\nProcessing course:', course);
+                    console.log('Course ID:', course.id);
+                    console.log('Course fields:', course);
+                    return !course.archived && !course.completed;
                 });
                 
-                console.log('Filtered scheduled courses:', scheduledCourses);
+                console.log('\nFiltered scheduled courses:', filteredCourses);
                 
-                tbody.innerHTML = scheduledCourses.length ? 
-                    scheduledCourses.map(course => {
-                        const hasAvailableInstructors = instructors.some(instructor => 
-                            instructor.availability && 
-                            instructor.availability.includes(course.courseDate)
-                        );
-                        
-                        const isPending = course.adminScheduledDashStatus === 'PENDING';
-                        
-                        return `
-                            <tr>
-                                <td>${formatDate(course.courseDate)}</td>
-                                <td>${course.organizationName || '-'}</td>
-                                <td>${course.location || '-'}</td>
-                                <td>${course.classType || '-'}</td>
-                                <td>${course.studentsRegistered || 0}</td>
-                                <td>
-                                    <span class="status-${course.adminScheduledDashStatus.toLowerCase()}">${course.adminScheduledDashStatus}</span>
-                                </td>
-                                <td>${course.instructorName || 'Not Assigned'}</td>
-                                <td>
-                                    ${isPending ? 
-                                        (hasAvailableInstructors ? 
-                                            `<button class="btn btn-primary" onclick="showAssignInstructorModal('${course.id}')">Assign Instructor</button>` :
-                                            `<button class="btn btn-secondary" disabled>No Instructors Available</button>`
-                                        ) :
-                                        `<button class="btn btn-success" onclick="confirmCourse('${course.id}')">Confirm</button>`
-                                    }
-                                    <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('') :
-                    '<tr><td colspan="8" style="text-align: center;">No scheduled courses</td></tr>';
+                const tableBody = document.getElementById('scheduledCoursesBody');
+                tableBody.innerHTML = '';
+                
+                filteredCourses.forEach(course => {
+                    console.log('\nBuilding row for course:', course.id);
+                    console.log('Display date calculation:', { courseDate: course.courseDate });
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${course.id}</td>
+                        <td>${course.courseDate}</td>
+                        <td>${course.organization?.name || 'N/A'}</td>
+                        <td>${course.location || 'N/A'}</td>
+                        <td>${course.instructor?.name || 'Not Assigned'}</td>
+                        <td>
+                            <button onclick="showAssignInstructorModal('${course.id}')" 
+                                    class="btn btn-primary btn-sm">
+                                Assign Instructor
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                console.log('==================== END updateScheduledCourses ====================');
             } catch (error) {
-                console.error('Error updating scheduled courses:', error);
-                showNotification('Error updating scheduled courses', 'error');
+                console.error('Error in updateScheduledCourses:', error);
+            }
+        }
+
+        function formatDate(dateString) {
+            console.log('\n==================== START formatDate ====================');
+            console.log('Input dateString:', dateString);
+            
+            try {
+                if (!dateString) {
+                    console.log('No date string provided, returning "-"');
+                    return '-';
+                }
+
+                // Create a date object from the date string
+                const date = new Date(dateString + 'T00:00:00');
+                console.log('Created Date object:', date);
+                console.log('Date.toString():', date.toString());
+                console.log('Date.toISOString():', date.toISOString());
+
+                // Format the date as YYYY-MM-DD
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                
+                const formattedDate = `${year}-${month}-${day}`;
+                console.log('Formatted result:', formattedDate);
+                
+                console.log('==================== END formatDate ====================');
+                return formattedDate;
+            } catch (error) {
+                console.error('Error in formatDate:', error);
+                console.error('Error stack:', error.stack);
+                console.log('==================== END formatDate (with error) ====================');
+                return dateString || '-';
             }
         }
 
@@ -2251,13 +2277,6 @@
             }
         }
 
-        // Date formatting function
-        function formatDate(dateString) {
-            if (!dateString) return '-';
-            const [year, month, day] = dateString.split('-');
-            return `${month}/${day}/${year}`;
-        }
-
         // Safe notification function
         function safeShowNotification(message, type = 'info') {
             try {
@@ -2511,43 +2530,31 @@
                 );
                 
                 tbody.innerHTML = scheduledCourses.length ? 
-                    scheduledCourses.map(course => {
-                        const isPending = course.adminScheduledDashStatus === 'PENDING';
-                        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-                        const hasAvailableInstructors = instructors.some(instructor => 
-                            instructor.availability && 
-                            instructor.availability.includes(course.courseDate)
-                        );
-
-                        return `
-                            <tr>
-                                <td>${formatDate(course.courseDate)}</td>
-                                <td>${course.organizationName || '-'}</td>
-                                <td>${course.location || '-'}</td>
-                                <td>${course.classType || '-'}</td>
-                                <td>${course.studentsRegistered || 0}</td>
-                                <td>
-                                    <span class="status-${course.adminScheduledDashStatus.toLowerCase()}">${course.adminScheduledDashStatus}</span>
-                                </td>
-                                <td>${course.instructorName || 'Not Assigned'}</td>
-                                <td>
-                                    ${isPending ? 
-                                        (hasAvailableInstructors ? 
-                                            `<button class="btn btn-primary" onclick="showAssignInstructorModal('${course.id}')">Assign Instructor</button>` :
-                                            `<button class="btn btn-secondary" disabled>No Instructors Available</button>`
-                                        ) : 
-                                        `<button class="btn btn-success" onclick="confirmCourse('${course.id}')">Confirm</button>`
-                                    }
-                                    <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('') :
+                    scheduledCourses.map(course => `
+                        <tr>
+                            <td>${getISODate(course.courseDate)}</td>
+                            <td>${course.organizationName || '-'}</td>
+                            <td>${course.location || '-'}</td>
+                            <td>${course.classType || '-'}</td>
+                            <td>${course.studentsRegistered || 0}</td>
+                            <td>
+                                <span class="status-${course.adminScheduledDashStatus.toLowerCase()}">${course.adminScheduledDashStatus}</span>
+                            </td>
+                            <td>${course.instructorName || 'Not Assigned'}</td>
+                            <td>
+                                ${course.adminScheduledDashStatus === 'PENDING' ? 
+                                    `<button class="btn btn-primary" onclick="showAssignInstructorModal('${course.id}')">Assign Instructor</button>` :
+                                    `<button class="btn btn-success" onclick="confirmCourse('${course.id}')">Confirm</button>`
+                                }
+                                <button class="btn btn-info" onclick="viewStudentList('${course.id}')">View Students</button>
+                            </td>
+                        </tr>
+                    `).join('') :
                     '<tr><td colspan="8" style="text-align: center;">No scheduled courses found</td></tr>';
                 
                 console.log('Scheduled courses list updated successfully');
             } catch (error) {
-                console.error('Error in updateScheduledCoursesList:', error);
+                console.error('Error updating scheduled courses list:', error);
                 showNotification('Error updating scheduled courses list', 'error');
             }
         }
@@ -2569,7 +2576,7 @@
 
                 confirmedCoursesTableBody.innerHTML = confirmedCourses.map(course => `
                     <tr>
-                        <td>${formatDate(course.courseDate)}</td>
+                        <td>${getISODate(course.courseDate)}</td>
                         <td>${course.organizationName || '-'}</td>
                         <td>${course.location || '-'}</td>
                         <td>${course.classType || '-'}</td>
@@ -2598,52 +2605,42 @@
 
         function updateInstructorDashboard() {
             try {
-                const instructorDashboardTableBody = document.getElementById('instructorDashboardTableBody');
-                if (!instructorDashboardTableBody) return;
-
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const tbody = document.getElementById('instructorDashboardTableBody');
                 
-                // Filter for courses that are:
-                // 1. Admin confirmed
-                // 2. Not completed
-                // 3. Have an assigned instructor
-                const availableCourses = courses.filter(course => 
-                    course.adminConfirmed && 
-                    course.completionStatus !== 'COMPLETED' &&
-                    course.instructorName &&
-                    course.instructorName.trim() !== ''
+                if (!tbody) return;
+
+                // Filter for courses that are assigned to instructors
+                const assignedCourses = courses.filter(course => 
+                    course.instructorId && 
+                    course.instructorName && 
+                    !course.isArchived
                 );
 
-                console.log('Available courses for instructor dashboard:', availableCourses);
-
-                if (availableCourses.length === 0) {
-                    instructorDashboardTableBody.innerHTML = '<tr><td colspan="7" class="text-center">No available courses found</td></tr>';
+                if (assignedCourses.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center">No courses assigned to instructors</td></tr>';
                     return;
                 }
 
-                instructorDashboardTableBody.innerHTML = availableCourses.map(course => {
-                    const isCompleted = course.completionStatus === 'COMPLETED';
-                    return `
-                        <tr>
-                            <td>${formatDate(course.courseDate)}</td>
-                            <td>${course.organizationName || '-'}</td>
-                            <td>${course.location || '-'}</td>
-                            <td>${course.classType || '-'}</td>
-                            <td>${course.studentsRegistered || 0}</td>
-                            <td>${course.instructorName || 'Not Assigned'}</td>
-                            <td>
-                                <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
-                                    View Students
-                                </button>
-                                <button class="btn btn-primary" onclick="viewCourseDetails('${course.id}')">
-                                    Details
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
+                // Sort courses by date
+                assignedCourses.sort((a, b) => new Date(a.courseDate) - new Date(b.courseDate));
+
+                tbody.innerHTML = assignedCourses.map(course => `
+                    <tr>
+                        <td>${getISODate(course.courseDate)}</td>
+                        <td>${course.organizationName || '-'}</td>
+                        <td>${course.location || '-'}</td>
+                        <td>${course.classType || '-'}</td>
+                        <td>${course.studentsRegistered || 0}</td>
+                        <td><span class="status-${course.instructorStatus.toLowerCase()}">${course.instructorStatus}</span></td>
+                        <td>
+                            <button class="btn btn-info btn-sm" onclick="viewCourseDetails('${course.id}')">View Details</button>
+                        </td>
+                    </tr>
+                `).join('');
             } catch (error) {
                 console.error('Error updating instructor dashboard:', error);
+                showNotification('Error updating instructor dashboard', 'error');
             }
         }
 
@@ -3077,6 +3074,45 @@
                 console.error('Error updating completed courses list:', error);
             }
         }
+
+        // Replace formatDate with getISODate function
+        function getISODate(date) {
+            if (!date) return '';
+            try {
+                const dateObj = new Date(date);
+                if (isNaN(dateObj.getTime())) return '';
+                return dateObj.toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return '';
+            }
+        }
+    </script>
+
+    <script>
+        // Initialize trace facility when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            TraceFacility.init();
+            
+            // Store original functions before they can be wrapped
+            const originalFunctions = {};
+            
+            // Store references to original functions
+            ['updateScheduledCourses', 'updateConfirmedCourses', 
+             'updateInstructorDashboard', 'showAssignInstructorModal', 
+             'assignInstructor'].forEach(funcName => {
+                if (window[funcName]) {
+                    originalFunctions[funcName] = window[funcName];
+                }
+            });
+            
+            // Add function to restore original functions
+            window.restoreOriginalFunction = function(functionName) {
+                if (originalFunctions[functionName]) {
+                    window[functionName] = originalFunctions[functionName];
+                }
+            };
+        });
     </script>
 </body>
 </html> 

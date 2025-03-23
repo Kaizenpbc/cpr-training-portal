@@ -1268,7 +1268,7 @@
                     coursesTableBody.innerHTML = orgCourses.map(course => `
                         <tr>
                             <td>${course.id}</td>
-                            <td>${formatDate(course.date)}</td>
+                            <td>${getISODate(course.date)}</td>
                             <td>${course.location}</td>
                             <td>${course.classType}</td>
                             <td>${course.studentsRegistered || 0}</td>
@@ -1440,10 +1440,12 @@
                     });
                 }
 
-                function formatDate(dateString) {
-                    if (!dateString) return '';
-                    const date = new Date(dateString);
-                    return date.toISOString().split('T')[0];
+                function getISODate(date) {
+                    if (!date) return '-';
+                    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}/)) {
+                        return date.substring(0, 10); // Return just the YYYY-MM-DD part
+                    }
+                    return new Date(date).toISOString().split('T')[0];
                 }
 
                 function showNotification(message, type) {
@@ -1486,7 +1488,7 @@
                         tableBody.innerHTML = archivedCourses.length ? 
                             archivedCourses.map(course => `
                                 <tr>
-                                    <td>${formatDate(course.date)}</td>
+                                    <td>${getISODate(course.date)}</td>
                                     <td>${course.location}</td>
                                     <td>${course.classType}</td>
                                     <td>${course.studentsRegistered || 0}</td>
@@ -1558,384 +1560,6 @@
                     }
                 }
 
-                // Date handling functions
-                function formatDateForStorage(date) {
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                }
-
-                function formatDateForDisplay(dateString) {
-                    if (!dateString) return '-';
-                    const [year, month, day] = dateString.split('-');
-                    return `${month}/${day}/${year}`;
-                }
-
-                function getCurrentDate() {
-                    const now = new Date();
-                    return formatDateForStorage(now);
-                }
-
-                // Update sorting function
-                function sortCourses(courses) {
-                    return courses.sort((a, b) => {
-                        const [yearA, monthA, dayA] = a.date.split('-');
-                        const [yearB, monthB, dayB] = b.date.split('-');
-                        return new Date(yearA, monthA - 1, dayA).getTime() - new Date(yearB, monthB - 1, dayB).getTime();
-                    });
-                }
-
-                // Update bulk scheduling
-                function handleBulkScheduling() {
-                    const startDate = document.getElementById('bulkStartDate').value;
-                    const endDate = document.getElementById('bulkEndDate').value;
-                    
-                    if (!startDate || !endDate) {
-                        showNotification('Please select both start and end dates', 'error');
-                        return;
-                    }
-
-                    // Generate dates in between
-                    const dates = [];
-                    let [startYear, startMonth, startDay] = startDate.split('-').map(Number);
-                    const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
-                    
-                    let currentDate = new Date(startYear, startMonth - 1, startDay);
-                    const lastDate = new Date(endYear, endMonth - 1, endDay);
-
-                    while (currentDate <= lastDate) {
-                        dates.push(formatDateForStorage(currentDate));
-                        currentDate.setDate(currentDate.getDate() + 1);
-                    }
-
-                    // Show preview
-                    showBulkSchedulePreview(dates);
-                }
-
-                // Update course creation
-                function createCourse(courseData) {
-                    try {
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const newCourse = {
-                            ...courseData,
-                            id: 'course_' + Date.now(),
-                            systemDate: getCurrentDate(),
-                            status: 'PENDING',
-                            adminConfirmed: false,
-                            adminScheduledDashStatus: 'PENDING',
-                            adminInstructorDashStatus: 'PENDING',
-                            organizationStatus: 'PENDING',
-                            instructorStatus: '',
-                            studentList: []
-                        };
-                        
-                        courses.push(newCourse);
-                        localStorage.setItem('courses', JSON.stringify(courses));
-                        return true;
-                    } catch (error) {
-                        console.error('Error creating course:', error);
-                        return false;
-                    }
-                }
-
-                // Update course completion
-                function completeCourse(courseId) {
-                    try {
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const courseIndex = courses.findIndex(c => c.id === courseId);
-                        
-                        if (courseIndex === -1) return false;
-                        
-                        const currentDate = getCurrentDate();
-                        courses[courseIndex].completedDate = currentDate;
-                        courses[courseIndex].status = 'Complete';
-                        
-                        // Set auto-archive date to 30 days from completion
-                        const archiveDate = new Date();
-                        archiveDate.setDate(archiveDate.getDate() + 30);
-                        courses[courseIndex].autoArchiveDate = formatDateForStorage(archiveDate);
-                        
-                        localStorage.setItem('courses', JSON.stringify(courses));
-                        return true;
-                    } catch (error) {
-                        console.error('Error completing course:', error);
-                        return false;
-                    }
-                }
-
-                // Update archive handling
-                function checkAutoArchive() {
-                    try {
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const currentDate = getCurrentDate();
-                        let updated = false;
-
-                        courses.forEach(course => {
-                            if (course.autoArchiveDate && 
-                                course.autoArchiveDate <= currentDate && 
-                                !course.isArchived) {
-                                course.isArchived = true;
-                                course.archivedDate = currentDate;
-                                updated = true;
-                            }
-                        });
-
-                        if (updated) {
-                            localStorage.setItem('courses', JSON.stringify(courses));
-                            updateMyCoursesTable();
-                        }
-                    } catch (error) {
-                        console.error('Error checking auto-archive:', error);
-                    }
-                }
-
-                // Certificate Management Functions
-                function viewCertificate(courseId) {
-                    try {
-                        console.log('=== Certificate View Debug ===');
-                        console.log('Course ID:', courseId);
-
-                        const certificates = JSON.parse(localStorage.getItem('certificates') || '[]');
-                        console.log('All Certificates:', certificates);
-                        console.log('Number of certificates found:', certificates.length);
-
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        console.log('All Courses:', courses);
-                        console.log('Number of courses found:', courses.length);
-                        
-                        // Find the certificate
-                        const certificate = certificates.find(cert => {
-                            console.log('Checking certificate:', cert);
-                            console.log('Comparing courseId:', cert.courseId, 'with:', courseId);
-                            return cert.courseId === courseId;
-                        });
-
-                        console.log('Found certificate:', certificate);
-
-                        if (!certificate) {
-                            console.log('Certificate not found. Checking course status...');
-                            const course = courses.find(c => c.id === courseId);
-                            console.log('Course found:', course);
-                            if (course) {
-                                console.log('Course completion status:', course.completionStatus);
-                                console.log('Course student list:', course.studentList);
-                            }
-                            showNotification('Certificate not found. Please ensure the course is completed and attendance has been taken.', 'error');
-                            return;
-                        }
-
-                        // Find the course and student details
-                        const course = courses.find(c => c.id === courseId);
-                        console.log('Found course:', course);
-                        
-                        if (!course) {
-                            console.log('Course not found in courses array');
-                            showNotification('Course details not found', 'error');
-                            return;
-                        }
-
-                        console.log('Updating certificate modal with data...');
-                        // Update certificate modal content
-                        document.getElementById('certificateStudentName').textContent = certificate.metadata.studentName;
-                        document.getElementById('certificateCourseName').textContent = certificate.metadata.courseName;
-                        document.getElementById('certificateNumber').textContent = certificate.certificateNumber;
-                        document.getElementById('certificateIssueDate').textContent = formatDate(certificate.issueDate);
-                        document.getElementById('certificateExpiryDate').textContent = formatDate(certificate.expiryDate);
-                        document.getElementById('certificateInstructorName').textContent = certificate.metadata.instructorName;
-                        document.getElementById('certificateOrganizationName').textContent = certificate.metadata.organizationName;
-                        document.getElementById('certificateCompletionDate').textContent = formatDate(certificate.metadata.completionDate);
-
-                        console.log('Showing certificate modal...');
-                        // Show the modal
-                        const certificateModal = new bootstrap.Modal(document.getElementById('certificateModal'));
-                        certificateModal.show();
-                        console.log('=== End Certificate View Debug ===');
-                    } catch (error) {
-                        console.error('Error in viewCertificate:', error);
-                        console.error('Error stack:', error.stack);
-                        showNotification('Error loading certificate details', 'error');
-                    }
-                }
-
-                function downloadCertificate() {
-                    try {
-                        const certificate = JSON.parse(localStorage.getItem('currentCertificate'));
-                        if (!certificate) {
-                            showNotification('No certificate selected', 'error');
-                            return;
-                        }
-
-                        // Generate PDF using certificate data
-                        const doc = new jsPDF();
-                        // Add certificate content to PDF
-                        // ... PDF generation code ...
-
-                        // Download the PDF
-                        doc.save(`certificate_${certificate.certificateNumber}.pdf`);
-                        showNotification('Certificate downloaded successfully', 'success');
-                    } catch (error) {
-                        console.error('Error downloading certificate:', error);
-                        showNotification('Error downloading certificate', 'error');
-                    }
-                }
-
-                function printCertificate() {
-                    try {
-                        const certificate = JSON.parse(localStorage.getItem('currentCertificate'));
-                        if (!certificate) {
-                            showNotification('No certificate selected', 'error');
-                            return;
-                        }
-
-                        // Open print dialog for certificate content
-                        window.print();
-                        showNotification('Certificate printed successfully', 'success');
-                    } catch (error) {
-                        console.error('Error printing certificate:', error);
-                        showNotification('Error printing certificate', 'error');
-                    }
-                }
-
-                // Update the updateCompletedCourses function to include certificate viewing
-                function updateCompletedCourses() {
-                    const tbody = document.getElementById('completedCoursesTableBody');
-                    if (!tbody) return;
-
-                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                    const completedCourses = courses.filter(course => 
-                        course.completionStatus === 'COMPLETED' && 
-                        course.organizationId === currentOrganization.id
-                    );
-
-                    tbody.innerHTML = completedCourses.map(course => `
-                        <tr>
-                            <td>${formatDate(course.date)}</td>
-                            <td>${course.classType}</td>
-                            <td>${course.location}</td>
-                            <td>${course.instructorName || 'Not Assigned'}</td>
-                            <td>
-                                <button class="btn btn-primary" onclick="viewCertificate('${course.id}')">
-                                    <i class="fas fa-certificate"></i> View Certificate
-                                </button>
-                            </td>
-                        </tr>
-                    `).join('');
-                }
-
-                function closeModal(modalId) {
-                    const modal = document.getElementById(modalId);
-                    if (modal) {
-                        modal.style.display = 'none';
-                        // Reset file input and progress bar if it's the upload modal
-                        if (modalId === 'uploadModal') {
-                            const fileInput = document.getElementById('excelFile');
-                            if (fileInput) fileInput.value = '';
-                            const progressContainer = document.querySelector('.progress-container');
-                            if (progressContainer) progressContainer.style.display = 'none';
-                            selectedFile = null;
-                        }
-                    }
-                }
-
-                // Course ID Generation
-                function generateCourseId(orgName, courseType) {
-                    try {
-                        // Get organization prefix (first 3 letters uppercase)
-                        const orgPrefix = orgName.substring(0, 3).toUpperCase();
-                        
-                        // Get today's date in YYYYMMDD format
-                        const today = new Date();
-                        const dateStr = today.getFullYear().toString() +
-                                      (today.getMonth() + 1).toString().padStart(2, '0') +
-                                      today.getDate().toString().padStart(2, '0');
-                        
-                        // Get existing courses for this org on this date
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const todayCourses = courses.filter(course => {
-                            return course.id.startsWith(`${orgPrefix}_${dateStr}_${courseType}`);
-                        });
-                        
-                        // Generate sequence number
-                        const sequence = (todayCourses.length + 1).toString().padStart(3, '0');
-                        
-                        // Construct ID
-                        const courseId = `${orgPrefix}_${dateStr}_${courseType}_${sequence}`;
-                        console.log('Generated course ID:', courseId);
-                        
-                        return courseId;
-                    } catch (error) {
-                        console.error('Error generating course ID:', error);
-                        // Fallback to a timestamp-based ID if something goes wrong
-                        return `COURSE_${Date.now()}`;
-                    }
-                }
-
-                function handleCourseSubmit(event) {
-                    event.preventDefault();
-                    try {
-                        console.log('=== Course Creation Started ===');
-                        
-                        // Get form values
-                        const courseDate = document.getElementById('courseDate').value;
-                        const location = document.getElementById('location').value;
-                        const classType = document.getElementById('classType').value;
-                        const notes = document.getElementById('notes').value;
-                        
-                        if (!courseDate || !location || !classType) {
-                            showNotification('Please fill in all required fields', 'error');
-                            return;
-                        }
-
-                        // Get current organization
-                        const currentOrg = JSON.parse(localStorage.getItem('currentOrganization'));
-                        if (!currentOrg) {
-                            showNotification('Please log in to create courses', 'error');
-                            return;
-                        }
-
-                        // Generate course ID
-                        const courseId = generateCourseId(currentOrg.name, classType);
-                        console.log('Generated course ID:', courseId);
-
-                        // Create course object
-                        const newCourse = {
-                            id: courseId,
-                            organizationId: currentOrg.id,
-                            date: courseDate,
-                            location: location,
-                            classType: classType,
-                            notes: notes,
-                            status: 'PENDING',
-                            studentsRegistered: 0,
-                            studentList: [],
-                            createdAt: new Date().toISOString(),
-                            lastModified: new Date().toISOString()
-                        };
-
-                        // Get existing courses
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        courses.push(newCourse);
-                        
-                        // Save updated courses
-                        localStorage.setItem('courses', JSON.stringify(courses));
-                        
-                        console.log('Course created:', newCourse);
-                        
-                        // Clear form and close modal
-                        document.getElementById('courseForm').reset();
-                        closeModal('courseModal');
-                        
-                        // Update table and show success message
-                        updateMyCoursesTable();
-                        showNotification('Course created successfully', 'success');
-                        
-                    } catch (error) {
-                        console.error('Error creating course:', error);
-                        showNotification('Error creating course', 'error');
-                    }
-                }
-
                 function viewCourseDetails(courseId) {
                     try {
                         const courses = JSON.parse(localStorage.getItem('courses') || '[]');
@@ -1977,7 +1601,7 @@
                             </div>
                             <div class="modal-body">
                                 <div class="course-details">
-                                    <p><strong>Date:</strong> ${formatDate(course.date)}</p>
+                                    <p><strong>Date:</strong> ${getISODate(course.date)}</p>
                                     <p><strong>Location:</strong> ${course.location}</p>
                                     <p><strong>Class Type:</strong> ${course.classType}</p>
                                     <p><strong>Students Registered:</strong> ${course.studentsRegistered || 0}</p>
