@@ -1241,55 +1241,71 @@
                 }
 
                 function updateMyCoursesTable() {
-                    const coursesTableBody = document.getElementById('coursesTableBody');
-                    if (!coursesTableBody) {
-                        console.error('coursesTableBody not found');
-                        return;
-                    }
+                    try {
+                        console.log('=== Starting updateMyCoursesTable in Organization Portal ===');
+                        const coursesTableBody = document.getElementById('coursesTableBody');
+                        if (!coursesTableBody) {
+                            console.error('coursesTableBody element not found');
+                            return;
+                        }
 
-                    const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                    const currentOrg = JSON.parse(localStorage.getItem('currentOrganization') || '{}');
-                    
-                    console.log('Current organization:', currentOrg);
-                    console.log('All courses:', courses);
-                    
-                    const orgCourses = courses.filter(course => course.organization && course.organization.id === currentOrg.id);
-                    console.log('Organization courses:', orgCourses);
+                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                        const currentOrg = JSON.parse(localStorage.getItem('currentOrganization') || '{}');
+                        
+                        console.log('Current organization:', currentOrg);
+                        console.log('All courses:', courses);
+                        
+                        const orgCourses = courses.filter(course => course.organization && course.organization.id === currentOrg.id);
+                        console.log('Organization courses:', orgCourses);
 
-                    if (orgCourses.length === 0) {
-                        coursesTableBody.innerHTML = `
+                        // Log status for each course
+                        orgCourses.forEach(course => {
+                            console.log(`Course ${course.id} status:`, {
+                                status: course.status,
+                                organizationStatus: course.organizationStatus,
+                                displayInstructorDetails: course.displayInstructorDetails,
+                                instructorName: course.instructorName
+                            });
+                        });
+
+                        if (orgCourses.length === 0) {
+                            coursesTableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="9" class="text-center">No courses available</td>
+                                </tr>
+                            `;
+                            return;
+                        }
+
+                        coursesTableBody.innerHTML = orgCourses.map(course => `
                             <tr>
-                                <td colspan="9" class="text-center">No courses available</td>
+                                <td>${course.id}</td>
+                                <td>${getISODate(course.date)}</td>
+                                <td>${course.location}</td>
+                                <td>${course.classType}</td>
+                                <td>${course.studentsRegistered || 0}</td>
+                                <td>${course.studentsAttended || 0}</td>
+                                <td>
+                                    <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
+                                </td>
+                                <td>${course.displayInstructorDetails ? (course.instructorName || 'Not Assigned') : '-'}</td>
+                                <td class="note-cell" data-full-note="${course.notes || '-'}">${course.notes || '-'}</td>
+                                <td>
+                                    ${course.studentList && course.studentList.length > 0 ? 
+                                        `<button class="btn btn-sm btn-info" onclick="viewStudentList('${course.id}')">View Students</button>` : 
+                                        `<button class="btn btn-sm btn-primary" onclick="uploadStudentList('${course.id}')">Upload Student List</button>`
+                                    }
+                                    ${course.status === 'CONFIRMED' ? 
+                                        `<button class="btn btn-sm btn-success" onclick="viewCourseDetails('${course.id}')">View Details</button>` : 
+                                        `<button class="btn btn-sm btn-warning" onclick="viewCourseDetails('${course.id}')">View Details</button>`
+                                    }
+                                </td>
                             </tr>
-                        `;
-                        return;
+                        `).join('');
+                    } catch (error) {
+                        console.error('Error updating courses table:', error);
+                        showNotification('Error updating courses table', 'error');
                     }
-
-                    coursesTableBody.innerHTML = orgCourses.map(course => `
-                        <tr>
-                            <td>${course.id}</td>
-                            <td>${getISODate(course.date)}</td>
-                            <td>${course.location}</td>
-                            <td>${course.classType}</td>
-                            <td>${course.studentsRegistered || 0}</td>
-                            <td>${course.studentsAttended || 0}</td>
-                            <td>
-                                <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
-                            </td>
-                            <td>${course.displayInstructorDetails ? (course.instructorName || 'Not Assigned') : '-'}</td>
-                            <td class="note-cell" data-full-note="${course.notes || '-'}">${course.notes || '-'}</td>
-                            <td>
-                                ${course.studentList && course.studentList.length > 0 ? 
-                                    `<button class="btn btn-sm btn-info" onclick="viewStudentList('${course.id}')">View Students</button>` : 
-                                    `<button class="btn btn-sm btn-primary" onclick="uploadStudentList('${course.id}')">Upload Student List</button>`
-                                }
-                                ${course.status === 'CONFIRMED' ? 
-                                    `<button class="btn btn-sm btn-success" onclick="viewCourseDetails('${course.id}')">View Details</button>` : 
-                                    `<button class="btn btn-sm btn-warning" onclick="viewCourseDetails('${course.id}')">View Details</button>`
-                                }
-                            </td>
-                        </tr>
-                    `).join('');
                 }
 
                 function uploadStudentList(courseId) {

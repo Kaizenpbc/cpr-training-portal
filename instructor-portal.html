@@ -1524,6 +1524,3251 @@
         // Table updates
         function updateClassList() {
             try {
+                console.log('=== Starting updateClassList ===');
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!currentInstructor) {
+                    console.error('No instructor logged in');
+                    return;
+                }
+                console.log('Current instructor:', currentInstructor);
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const tbody = document.getElementById('classesTableBody');
+                
+                if (!tbody) {
+                    console.error('Classes table body not found');
+                    return;
+                }
+
+                // Get all availability records for this instructor
+                const assignedCourses = courses.filter(course => 
+                    course.instructorId === currentInstructor.id && 
+                    course.displayInInstructorPortal === true
+                );
+                console.log('Assigned courses:', assignedCourses);
+
+                // Get instructor's availability dates
+                const availableDates = currentInstructor.availability || [];
+                console.log('Available dates:', availableDates);
+
+                if (assignedCourses.length === 0 && availableDates.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center;">
+                                No classes assigned yet. Please set your availability in the "Set Availability" section.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                // Combine assigned courses and available dates
+                const tableRows = [];
+
+                // Add assigned courses that should be visible
+                assignedCourses.forEach(course => {
+                    if (course.showOrgToInstructor) {
+                        const status = course.instructorStatus || 'SCHEDULED';
+                        const statusClass = status.toLowerCase();
+
+                        tableRows.push(`
+                            <tr>
+                                <td>${getISODate(course.date)}</td>
+                                <td>${course.organizationName || '-'}</td>
+                                <td>${course.location || '-'}</td>
+                                <td>${course.classType || '-'}</td>
+                                <td>${course.studentsRegistered || '0'}</td>
+                                <td><span class="status-${statusClass}">${status}</span></td>
+                                <td>
+                                    ${status === 'CONFIRMED' ? `
+                                        <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
+                                            View Students
+                                        </button>
+                                        ${course.date === getISODate(new Date()) ? `
+                                            <button class="btn btn-primary" onclick="openAttendance('${course.id}')">
+                                                Take Attendance
+                                            </button>
+                                        ` : ''}
+                                    ` : 'Waiting for confirmation'}
+                                </td>
+                            </tr>
+                        `);
+                    }
+                });
+
+                // Add available dates that don't have assigned courses
+                availableDates.forEach(date => {
+                    const hasAssignedCourse = assignedCourses.some(course => 
+                        getISODate(course.date) === getISODate(date)
+                    );
+
+                    if (!hasAssignedCourse) {
+                        tableRows.push(`
+                            <tr class="available-date">
+                                <td>${getISODate(date)}</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td><span class="status-available">AVAILABLE</span></td>
+                                <td>Waiting for assignment</td>
+                            </tr>
+                        `);
+                    }
+                });
+
+                // Sort all rows by date
+                tableRows.sort((a, b) => {
+                    try {
+                        const dateA = a.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+                        const dateB = b.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+                        
+                        if (!dateA || !dateB) {
+                            console.error('Invalid date format found:', { rowA: a, rowB: b });
+                            return 0;
+                        }
+                        
+                        return new Date(dateA) - new Date(dateB);
+                    } catch (error) {
+                        console.error('Error sorting dates:', error);
+                        return 0;
+                    }
+                });
+
+                tbody.innerHTML = tableRows.join('');
+                console.log('=== Completed updateClassList ===');
+            } catch (error) {
+                console.error('Error updating class list:', error);
+                showNotification('Error updating class list', 'error');
+            }
+        }
+
+        function updateArchivedClassesList() {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const tbody = document.getElementById('archivedClassesTableBody');
+                
+                if (!tbody) return;
+
+                // Filter for completed courses only
+                const completedCourses = courses.filter(course => 
+                    course.completionStatus === 'COMPLETED'
+                );
+
+                if (completedCourses.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No completed courses found</td></tr>';
+                    return;
+                }
+
+                // Sort by completion date (newest first)
+                completedCourses.sort((a, b) => 
+                    new Date(b.completedDate) - new Date(a.completedDate)
+                );
+
+                tbody.innerHTML = completedCourses.map(course => `
+                        <tr>
+                            <td>${getISODate(course.courseDate)}</td>
+                        <td>${course.organizationName}</td>
+                        <td>${course.location}</td>
+                        <td>${course.classType}</td>
+                        <td>${course.studentsAttended}/${course.studentsRegistered}</td>
+                        <td>${getISODate(course.completedDate)}</td>
+                        <td>
+                            <button class="btn btn-info btn-sm" onclick="viewArchivedCourseDetails('${course.id}')">
+                                View Details
+                                </button>
+                            </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error updating archived courses:', error);
+                showNotification('Error loading archived courses', 'error');
+            }
+        }
+
+        function archiveCourse(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
+                if (courseIndex === -1) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Only allow archiving completed courses
+                if (courses[courseIndex].completionStatus !== 'Complete') {
+                    showNotification('Only completed courses can be archived', 'error');
+                    return;
+                }
+
+                // Add archive information using current date
+                courses[courseIndex].isArchived = true;
+                courses[courseIndex].archivedDate = getCurrentDate();
+                
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                // Update both lists
+                updateClassList();
+                updateArchivedClassesList();
+                
+                showSection('archivedClasses');
+                showNotification('Course archived successfully', 'success');
+            } catch (error) {
+                console.error('Error archiving course:', error);
+                showNotification('Error archiving course', 'error');
+            }
+        }
+
+        function unarchiveCourse(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
+                if (courseIndex === -1) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Remove archive information
+                courses[courseIndex].isArchived = false;
+                delete courses[courseIndex].archivedDate;
+                
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                updateClassList();
+                updateArchivedClassesList();
+                showNotification('Course unarchived successfully', 'success');
+            } catch (error) {
+                console.error('Error unarchiving course:', error);
+                showNotification('Error unarchiving course', 'error');
+            }
+        }
+
+        // Add archived course details modal
+        const archivedCourseDetailsModal = `
+            <div id="archivedCourseDetailsModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal" onclick="closeModal('archivedCourseDetailsModal')">&times;</span>
+                    <h3>Archived Course Details</h3>
+                    <div id="archivedCourseDetails"></div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', archivedCourseDetailsModal);
+
+        function viewArchivedCourseDetails(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const course = courses.find(c => c.id === courseId);
+                
+                if (!course) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                const detailsHtml = `
+                    <div class="course-details">
+                        <h4>${course.classType}</h4>
+                        <p><strong>Organization:</strong> ${course.organizationName}</p>
+                        <p><strong>Location:</strong> ${course.location}</p>
+                        <p><strong>Course Date:</strong> ${getISODate(course.courseDate)}</p>
+                        <p><strong>Completion Date:</strong> ${getISODate(course.completedDate)}</p>
+                        <p><strong>Archive Date:</strong> ${getISODate(course.archivedDate)}</p>
+                        <p><strong>Attendance:</strong> ${course.studentsAttended}/${course.studentsRegistered} students</p>
+                        
+                        <div class="completion-notes">
+                            <h5>Completion Notes:</h5>
+                            <p>${course.completionNotes || 'No completion notes'}</p>
+                        </div>
+
+                        <div class="student-list">
+                            <h5>Student List:</h5>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Attendance</th>
+                </tr>
+                                </thead>
+                                <tbody>
+                                    ${course.studentList ? course.studentList.map(student => `
+                                        <tr>
+                                            <td>${student.name}</td>
+                                            <td>${student.email || '-'}</td>
+                                            <td>${student.attendance || 'Not recorded'}</td>
+                                        </tr>
+                                    `).join('') : '<tr><td colspan="3">No student data available</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('archivedCourseDetails').innerHTML = detailsHtml;
+                document.getElementById('archivedCourseDetailsModal').style.display = 'block';
+            } catch (error) {
+                console.error('Error viewing archived course details:', error);
+                showNotification('Error viewing course details', 'error');
+            }
+        }
+
+        function updateTodaysCourses() {
+            try {
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!currentInstructor) {
+                    showNotification('Please log in as an instructor', 'error');
+                    return;
+                }
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Update today's date display
+                document.getElementById('todayDate').textContent = getISODate(today);
+                
+                // Filter courses for today and this instructor, excluding completed courses
+                const todaysCourses = courses.filter(course => 
+                    course.courseDate === today &&
+                    course.instructorId === currentInstructor.id &&
+                    course.completionStatus !== 'COMPLETED' &&
+                    course.adminConfirmed // Only show confirmed courses
+                );
+
+                const courseList = document.getElementById('courseList');
+                const noCourses = document.getElementById('noCourses');
+                
+                if (!courseList || !noCourses) return;
+
+                // Show/hide no courses message
+                noCourses.style.display = todaysCourses.length === 0 ? 'block' : 'none';
+                courseList.style.display = todaysCourses.length === 0 ? 'none' : 'block';
+
+                // Update course list
+                courseList.innerHTML = todaysCourses.map(course => `
+                    <div class="course-card">
+                        <div class="course-info">
+                            <h4>${course.classType}</h4>
+                            <p>Location: ${course.location}</p>
+                            <p>Organization: ${course.organizationName}</p>
+                            <p>Students Registered: ${course.studentsRegistered || 0}</p>
+                            <p>Attendance: ${course.studentsAttended ? 
+                                `${course.studentsAttended}/${course.studentsRegistered} Present` : 
+                                'Not Taken'}</p>
+                        </div>
+                        <div class="course-actions">
+                            <button class="btn btn-primary" onclick="openAttendance('${course.id}')">
+                                Take Attendance
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error updating today\'s courses:', error);
+                showNotification('Error loading courses', 'error');
+            }
+        }
+
+        function generateCertificate(course, student) {
+            try {
+                // Generate a unique ID for the student if they don't have one
+                if (!student.id) {
+                    student.id = 'student_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                }
+
+                const certificates = JSON.parse(localStorage.getItem('certificates') || '[]');
+                
+                // Generate unique certificate number
+                const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Create certificate object
+                const certificate = {
+                    id: `cert_${Date.now()}`,
+                    courseId: course.id,
+                    organizationId: course.organizationId,
+                    studentId: student.id,  // Now we ensure this is set
+                    instructorId: course.instructorId,
+                    issueDate: new Date().toISOString().split('T')[0],
+                    expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0],
+                    certificateNumber: certificateNumber,
+                    status: 'ACTIVE',
+                    metadata: {
+                        courseName: course.classType,
+                        studentName: student.name,
+                        organizationName: course.organizationName,
+                        instructorName: course.instructorName,
+                        completionDate: course.completedDate
+                    }
+                };
+
+                // Add certificate to array
+                certificates.push(certificate);
+
+                // Save to localStorage
+                localStorage.setItem('certificates', JSON.stringify(certificates));
+
+                // Update student's certificate reference in the course
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === course.id);
+                if (courseIndex !== -1) {
+                    if (!courses[courseIndex].studentList) {
+                        courses[courseIndex].studentList = [];
+                    }
+                    const studentIndex = courses[courseIndex].studentList.findIndex(s => s.id === student.id);
+                    if (studentIndex !== -1) {
+                        if (!courses[courseIndex].studentList[studentIndex].certificates) {
+                            courses[courseIndex].studentList[studentIndex].certificates = [];
+                        }
+                        courses[courseIndex].studentList[studentIndex].certificates.push(certificate.id);
+                    }
+                    localStorage.setItem('courses', JSON.stringify(courses));
+                }
+
+                return certificate;
+            } catch (error) {
+                console.error('Error generating certificate:', error);
+                showNotification('Error generating certificate', 'error');
+                return null;
+            }
+        }
+
+        function completeCourse() {
+            try {
+                const courseId = localStorage.getItem('currentAttendanceCourseId');
+                if (!courseId) {
+                    showNotification('No course selected', 'error');
+                    return;
+                }
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
+                if (courseIndex === -1) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                const course = courses[courseIndex];
+                
+                // Update all status fields for different views
+                course.completionStatus = 'COMPLETED';
+                course.completedDate = new Date().toISOString().split('T')[0];
+                course.status = 'COMPLETED';
+                course.adminInstructorDashStatus = 'COMPLETED';
+                course.adminScheduledDashStatus = 'COMPLETED';
+                course.organizationStatus = 'COMPLETED';
+                course.instructorStatus = 'COMPLETED';
+                // Removed automatic archiving to keep course visible in Organization Portal
+
+                // Generate certificates for all students who attended
+                if (course.studentList && course.studentList.length > 0) {
+                    course.studentList.forEach(student => {
+                        if (student.attendance === 'present') {
+                            generateCertificate(course, student);
+                        }
+                    });
+                }
+
+                localStorage.setItem('courses', JSON.stringify(courses));
+                showNotification('Course completed successfully', 'success');
+                updateClassList();
+                updateArchivedClassesList(); // Update archived classes list
+                closeModal('attendanceModal');
+            } catch (error) {
+                console.error('Error completing course:', error);
+                showNotification('Error completing course', 'error');
+            }
+        }
+
+        function updateConfirmedCoursesDash() {
+            const confirmedCoursesTableBody = document.getElementById('confirmedCoursesTableBody');
+            if (!confirmedCoursesTableBody) return;
+
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const confirmedCourses = courses.filter(course => 
+                course.adminConfirmed && 
+                course.completionStatus !== 'COMPLETED'
+            );
+
+            confirmedCoursesTableBody.innerHTML = confirmedCourses.map(course => `
+                <tr>
+                    <td>${formatDate(course.courseDate)}</td>
+                    <td>${course.courseName}</td>
+                    <td>${course.organization}</td>
+                    <td>${course.location}</td>
+                    <td>${course.instructorName || 'Not Assigned'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateCompletedCoursesDash() {
+            const completedCoursesTableBody = document.getElementById('completedCoursesTableBody');
+            if (!completedCoursesTableBody) return;
+
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const completedCourses = courses.filter(course => 
+                course.completionStatus === 'COMPLETED'
+            );
+
+            completedCoursesTableBody.innerHTML = completedCourses.map(course => `
+                <tr>
+                    <td>${formatDate(course.courseDate)}</td>
+                    <td>${course.courseName}</td>
+                    <td>${course.organization}</td>
+                    <td>${course.location}</td>
+                    <td>${course.instructorName || 'Not Assigned'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function openAttendance(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const course = courses.find(c => c.id === courseId);
+                
+                if (!course) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Store current course ID for saving attendance and completion
+                localStorage.setItem('currentAttendanceCourseId', courseId);
+
+                // Update course info in modal
+                document.getElementById('attendanceCourseInfo').textContent = course.classType;
+                document.getElementById('attendanceLocationInfo').textContent = course.location;
+                document.getElementById('attendanceOrgInfo').textContent = course.organizationName;
+
+                // Populate attendance table
+                const tableBody = document.getElementById('attendanceTableBody');
+                if (!course.studentList) {
+                    course.studentList = [];
+                }
+
+                tableBody.innerHTML = course.studentList.map((student, index) => `
+                    <tr>
+                        <td>${student.name}</td>
+                        <td>${student.email}</td>
+                        <td>
+                            ${student.status === 'NOT REGISTERED' ? 
+                                `<span class="status-not-registered">NOT REGISTERED</span>` : 
+                                student.status || 'Registered'}
+                            ${student.notes ? `<br><small><em>Note: ${student.notes}</em></small>` : ''}
+                        </td>
+                        <td>
+                            <label class="attendance-radio">
+                                <input type="radio" name="attendance_${index}" value="present"
+                                    ${student.attendance === 'present' ? 'checked' : ''}>
+                                Present
+                            </label>
+                            <label class="attendance-radio">
+                                <input type="radio" name="attendance_${index}" value="absent"
+                                    ${student.attendance === 'absent' ? 'checked' : ''}>
+                                Absent
+                            </label>
+                        </td>
+                </tr>
+            `).join('');
+
+                // Update attendance summary
+                updateAttendanceSummary();
+
+                // Show modal
+                document.getElementById('attendanceModal').style.display = 'block';
+            } catch (error) {
+                console.error('Error opening attendance:', error);
+                showNotification('Error loading attendance form', 'error');
+            }
+        }
+
+        function updateAttendanceSummary() {
+            try {
+                const totalStudents = document.querySelectorAll('#attendanceTableBody tr').length;
+                const presentStudents = document.querySelectorAll('#attendanceTableBody input[value="present"]:checked').length;
+                
+                document.getElementById('presentCount').textContent = presentStudents;
+                document.getElementById('totalCount').textContent = totalStudents;
+            } catch (error) {
+                console.error('Error updating attendance summary:', error);
+            }
+        }
+
+        function saveAttendance() {
+            try {
+                const courseId = localStorage.getItem('currentAttendanceCourseId');
+                if (!courseId) {
+                    showNotification('No course selected', 'error');
+                    return;
+                }
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+
+                if (courseIndex === -1) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Get attendance data
+                const tableBody = document.getElementById('attendanceTableBody');
+                const rows = tableBody.querySelectorAll('tr');
+                let presentCount = 0;
+                let totalCount = 0;
+
+                rows.forEach((row, index) => {
+                    const attendance = row.querySelector(`input[name="attendance_${index}"]:checked`)?.value || 'absent';
+                    if (attendance === 'present') presentCount++;
+                    totalCount++;
+
+                    // Update student attendance
+                    if (!courses[courseIndex].studentList) {
+                        courses[courseIndex].studentList = [];
+                    }
+                    if (!courses[courseIndex].studentList[index]) {
+                        courses[courseIndex].studentList[index] = {};
+                    }
+                    courses[courseIndex].studentList[index].attendance = attendance;
+                });
+
+                // Update course attendance counts
+                courses[courseIndex].studentsAttended = presentCount;
+                courses[courseIndex].studentsRegistered = totalCount;
+
+                // Get completion notes and mark complete status
+                const markCompleteCheckbox = document.getElementById('markAsComplete');
+                const markComplete = markCompleteCheckbox ? markCompleteCheckbox.checked : false;
+                const completionNotes = document.getElementById('completionNotesText')?.value.trim() || '';
+
+                // Validate attendance before allowing completion
+                if (markComplete) {
+                    if (presentCount === 0) {
+                        showNotification('Cannot mark course as complete without taking attendance', 'error');
+                        return;
+                    }
+                    courses[courseIndex].completionStatus = 'COMPLETED';
+                    courses[courseIndex].completedDate = new Date().toISOString();
+                    courses[courseIndex].completionNotes = completionNotes;
+                }
+
+                // Save changes
+                localStorage.setItem('courses', JSON.stringify(courses));
+
+                // Close modal and show success message
+                closeModal('attendanceModal');
+                showNotification('Attendance saved successfully', 'success');
+
+                // Refresh course list
+                updateClassList();
+            } catch (error) {
+                console.error('Error saving attendance:', error);
+                showNotification('Error saving attendance', 'error');
+            }
+        }
+
+        // Add event listeners for attendance radio buttons
+        document.addEventListener('change', function(e) {
+            if (e.target.type === 'radio' && e.target.name.startsWith('attendance_')) {
+                updateAttendanceSummary();
+            }
+        });
+
+        // Add event listener for completion checkbox
+        document.getElementById('markAsComplete')?.addEventListener('change', function(e) {
+            const notesDiv = document.getElementById('completionNotes');
+            if (notesDiv) {
+                notesDiv.style.display = e.target.checked ? 'block' : 'none';
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('=== Starting initialization ===');
+            checkSession();
+            
+            // Add event listener for section changes
+            document.addEventListener('sectionChanged', (event) => {
+                const section = event.detail.section;
+                console.log('Section changed to:', section);
+                
+                if (section === 'availability') {
+                    console.log('Showing availability section, updating table...');
+                    updateMyAvailabilityTable();
+                    // Initialize calendar when showing availability section
+                    initializeCalendar();
+                    // Load instructor's availability into calendar
+                    const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor') || '{}');
+                    if (currentInstructor.availability) {
+                        selectedDates = new Set(currentInstructor.availability);
+                        renderCalendar();
+                    }
+                } else if (section === 'classes') {
+                    console.log('Showing classes section, updating class list...');
+                    updateClassList();
+                } else if (section === 'archivedClasses') {
+                    console.log('Showing archived classes section, updating archived list...');
+                    updateArchivedClassesList();
+                }
+            });
+        });
+
+        // Add notification system that works across browsers
+        function showNotification(message, type) {
+            try {
+                // Create notification element if it doesn't exist
+                let notificationDiv = document.getElementById('notification');
+                if (!notificationDiv) {
+                    notificationDiv = document.createElement('div');
+                    notificationDiv.id = 'notification';
+                    document.body.appendChild(notificationDiv);
+                }
+
+                notificationDiv.textContent = message;
+                notificationDiv.className = `notification ${type}`;
+                notificationDiv.style.display = 'block';
+
+                // Auto-hide after 3 seconds
+                setTimeout(() => {
+                    notificationDiv.style.display = 'none';
+                }, 3000);
+            } catch (error) {
+                // Fallback to alert if notification fails
+                alert(message);
+            }
+        }
+
+        function closeModal(modalId) {
+            try {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'none';
+                } else {
+                    console.error(`Modal ${modalId} not found`);
+                }
+            } catch (error) {
+                console.error('Error closing modal:', error);
+            }
+        }
+
+        function editCourse(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const course = courses.find(c => c.id === courseId);
+                
+                if (!course) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // For now, just show the course details
+                // You can expand this to show a modal with editable fields
+                showNotification('Course editing will be implemented in the next update', 'success');
+            } catch (error) {
+                console.error('Error editing course:', error);
+                showNotification('Error editing course', 'error');
+            }
+        }
+
+        function handleNavClick(section) {
+            const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
+            if (!instructor && section !== 'login') {
+                showNotification('PLEASE LOG IN', 'error');
+                return;
+            }
+            
+            if (section === 'reset') {
+                showResetDataConfirmation();
+            } else {
+                showSection(section);
+            }
+        }
+
+        function updateNavButtons() {
+            console.log('=== Updating Nav Buttons ===');
+            const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
+            const isLoggedIn = !!instructor;
+            console.log('Is logged in:', isLoggedIn);
+            console.log('Current instructor:', instructor);
+
+            // Get all nav buttons
+            const buttons = {
+                availabilityBtn: document.getElementById('availabilityBtn'),
+                classesBtn: document.getElementById('classesBtn'),
+                attendanceBtn: document.getElementById('attendanceBtn'),
+                analyticsBtn: document.getElementById('analyticsBtn'),
+                archivedBtn: document.getElementById('archivedBtn'),
+                resetBtn: document.getElementById('resetBtn'),
+                logoutBtn: document.getElementById('logoutBtn'),
+                loginBtn: document.getElementById('loginBtn')
+            };
+
+            console.log('Found buttons:', Object.keys(buttons).filter(key => buttons[key]));
+            console.log('Missing buttons:', Object.keys(buttons).filter(key => !buttons[key]));
+
+            if (isLoggedIn) {
+                // Enable all buttons except login when logged in
+                Object.entries(buttons).forEach(([key, btn]) => {
+                    if (btn) {
+                        if (key === 'loginBtn') {
+                            btn.classList.add('disabled');
+                            console.log('Disabled login button');
+                        } else {
+                            btn.classList.remove('disabled');
+                            console.log('Enabled button:', key);
+                        }
+                    }
+                });
+            } else {
+                // Disable all buttons except login when not logged in
+                Object.entries(buttons).forEach(([key, btn]) => {
+                    if (btn) {
+                        if (key === 'loginBtn') {
+                            btn.classList.remove('disabled');
+                            console.log('Enabled login button');
+                        } else {
+                            btn.classList.add('disabled');
+                            console.log('Disabled button:', key);
+                        }
+                    }
+                });
+            }
+            console.log('=== Nav Buttons Update Complete ===');
+        }
+
+        function showAddUnregisteredModal() {
+            try {
+            // Clear previous values
+            document.getElementById('unregisteredName').value = '';
+            document.getElementById('unregisteredEmail').value = '';
+            document.getElementById('unregisteredNotes').value = '';
+            
+            // Show the modal
+                const modal = document.getElementById('addUnregisteredModal');
+                if (modal) {
+                    modal.style.display = 'block';
+                } else {
+                    console.error('Add unregistered modal not found');
+                }
+            } catch (error) {
+                console.error('Error showing unregistered modal:', error);
+                showNotification('Error opening add student form', 'error');
+            }
+        }
+
+        function addUnregisteredStudent() {
+            try {
+                const name = document.getElementById('unregisteredName').value.trim();
+                const email = document.getElementById('unregisteredEmail').value.trim();
+                const notes = document.getElementById('unregisteredNotes').value.trim();
+                
+                if (!name) {
+                    showNotification('Student name is required', 'error');
+                    return;
+                }
+
+                const courseId = localStorage.getItem('currentAttendanceCourseId');
+                if (!courseId) {
+                    showNotification('No course selected', 'error');
+                    return;
+                }
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+
+                if (courseIndex === -1) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Create new student object
+                const newStudent = {
+                    name: name,
+                    email: email || 'Not provided',
+                    status: 'NOT REGISTERED',
+                    attendance: 'present',
+                    notes: notes,
+                    addedDuringAttendance: true
+                };
+
+                // Add student to the list
+                if (!courses[courseIndex].studentList) {
+                    courses[courseIndex].studentList = [];
+                }
+                courses[courseIndex].studentList.push(newStudent);
+
+                // Update registered and attended counts
+                courses[courseIndex].studentsRegistered = (courses[courseIndex].studentsRegistered || 0) + 1;
+                courses[courseIndex].studentsAttended = (courses[courseIndex].studentsAttended || 0) + 1;
+
+                // Save changes
+                localStorage.setItem('courses', JSON.stringify(courses));
+
+                // Close unregistered modal
+                closeModal('addUnregisteredModal');
+
+                // Refresh attendance table
+                openAttendance(courseId);
+
+                showNotification('Unregistered student added successfully', 'success');
+            } catch (error) {
+                console.error('Error adding unregistered student:', error);
+                showNotification('Error adding unregistered student', 'error');
+            }
+        }
+
+        function updateAnalytics() {
+            try {
+                const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!instructor) return;
+
+                const period = document.getElementById('analyticsPeriod').value;
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                
+                // Filter courses for current instructor
+                const myCourses = courses.filter(course => course.instructorId === instructor.id);
+                
+                // Calculate date range
+                const endDate = new Date();
+                const startDate = new Date();
+                if (period !== 'all') {
+                    startDate.setDate(endDate.getDate() - parseInt(period));
+                }
+
+                // Filter courses by date range if not "all"
+                const periodCourses = period === 'all' ? 
+                    myCourses : 
+                    myCourses.filter(course => {
+                        const courseDate = new Date(course.courseDate);
+                        return courseDate >= startDate && courseDate <= endDate;
+                    });
+
+                updateKeyMetrics(periodCourses);
+                updatePerformanceChart(periodCourses);
+                updateCourseTypeChart(periodCourses);
+                updateAvailabilityChart(periodCourses);
+                updateEngagementChart(periodCourses);
+                updateOrganizationChart(periodCourses);
+
+            } catch (error) {
+                console.error('Error updating analytics:', error);
+                showNotification('Error updating analytics', 'error');
+            }
+        }
+
+        function updateKeyMetrics(courses) {
+            // Total Courses
+            document.getElementById('totalCourses').textContent = courses.length;
+
+            // Average Class Size
+            const avgSize = courses.reduce((sum, course) => sum + (course.studentsRegistered || 0), 0) / courses.length || 0;
+            document.getElementById('avgClassSize').textContent = avgSize.toFixed(1);
+
+            // Completion Rate
+            const completedCourses = courses.filter(course => course.completionStatus === 'Complete').length;
+            const completionRate = (completedCourses / courses.length) * 100 || 0;
+            document.getElementById('completionRate').textContent = completionRate.toFixed(1) + '%';
+
+            // Attendance Rate
+            const attendanceRate = courses.reduce((sum, course) => {
+                if (course.studentsAttended && course.studentsRegistered) {
+                    return sum + (course.studentsAttended / course.studentsRegistered);
+                }
+                return sum;
+            }, 0) / courses.length * 100 || 0;
+            document.getElementById('attendanceRate').textContent = attendanceRate.toFixed(1) + '%';
+        }
+
+        function updatePerformanceChart(courses) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            // Group courses by month
+            const monthlyData = {};
+            courses.forEach(course => {
+                const month = new Date(course.courseDate).toLocaleString('default', { month: 'short', year: '2-digit' });
+                if (!monthlyData[month]) {
+                    monthlyData[month] = { total: 0, completed: 0 };
+                }
+                monthlyData[month].total++;
+                if (course.completionStatus === 'Complete') {
+                    monthlyData[month].completed++;
+                }
+            });
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(monthlyData),
+                    datasets: [{
+                        label: 'Total Courses',
+                        data: Object.values(monthlyData).map(d => d.total),
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }, {
+                        label: 'Completed Courses',
+                        data: Object.values(monthlyData).map(d => d.completed),
+                        borderColor: 'rgb(54, 162, 235)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function updateCourseTypeChart(courses) {
+            const ctx = document.getElementById('courseTypeChart').getContext('2d');
+            
+            // Count courses by type
+            const typeData = {};
+            courses.forEach(course => {
+                const type = course.classType || 'Unknown';
+                typeData[type] = (typeData[type] || 0) + 1;
+            });
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(typeData),
+                    datasets: [{
+                        data: Object.values(typeData),
+                        backgroundColor: [
+                            'rgb(255, 99, 132)',
+                            'rgb(54, 162, 235)',
+                            'rgb(255, 205, 86)',
+                            'rgb(75, 192, 192)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function updateAvailabilityChart(courses) {
+            const ctx = document.getElementById('availabilityChart').getContext('2d');
+            
+            // Count courses by day of week
+            const dayData = {
+                'Sunday': 0, 'Monday': 0, 'Tuesday': 0, 'Wednesday': 0,
+                'Thursday': 0, 'Friday': 0, 'Saturday': 0
+            };
+            courses.forEach(course => {
+                const day = new Date(course.courseDate).toLocaleString('default', { weekday: 'long' });
+                dayData[day]++;
+            });
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(dayData),
+                    datasets: [{
+                        label: 'Courses by Day',
+                        data: Object.values(dayData),
+                        backgroundColor: 'rgb(75, 192, 192)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function updateEngagementChart(courses) {
+            const ctx = document.getElementById('engagementChart').getContext('2d');
+            
+            // Calculate attendance rates over time
+            const monthlyAttendance = {};
+            courses.forEach(course => {
+                if (course.studentsAttended && course.studentsRegistered) {
+                    const month = new Date(course.courseDate).toLocaleString('default', { month: 'short', year: '2-digit' });
+                    if (!monthlyAttendance[month]) {
+                        monthlyAttendance[month] = { total: 0, count: 0 };
+                    }
+                    monthlyAttendance[month].total += course.studentsAttended / course.studentsRegistered;
+                    monthlyAttendance[month].count++;
+                }
+            });
+
+            const attendanceData = Object.entries(monthlyAttendance).map(([month, data]) => ({
+                month,
+                rate: (data.total / data.count) * 100
+            }));
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: attendanceData.map(d => d.month),
+                    datasets: [{
+                        label: 'Average Attendance Rate (%)',
+                        data: attendanceData.map(d => d.rate),
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function updateOrganizationChart(courses) {
+            const ctx = document.getElementById('organizationChart').getContext('2d');
+            
+            // Count courses by organization
+            const orgData = {};
+            courses.forEach(course => {
+                const org = course.organizationName || 'Unknown';
+                orgData[org] = (orgData[org] || 0) + 1;
+            });
+
+            // Sort and take top 5 organizations
+            const topOrgs = Object.entries(orgData)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topOrgs.map(([org]) => org),
+                    datasets: [{
+                        label: 'Courses per Organization',
+                        data: topOrgs.map(([, count]) => count),
+                        backgroundColor: 'rgb(54, 162, 235)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y'
+                }
+            });
+        }
+
+        // Update analytics when the section is shown
+        document.addEventListener('DOMContentLoaded', () => {
+            const analyticsBtn = document.getElementById('analyticsBtn');
+            if (analyticsBtn) {
+                analyticsBtn.addEventListener('click', () => {
+                    setTimeout(updateAnalytics, 100); // Small delay to ensure charts render properly
+                });
+            }
+        });
+
+        // Add dump function for debugging
+        function dumpState() {
+            console.log('=== System State Dump ===');
+            console.log('localStorage contents:');
+            Object.keys(localStorage).forEach(key => {
+                try {
+                    const value = localStorage.getItem(key);
+                    console.log(`${key}:`, value);
+                    if (value) {
+                        console.log(`${key} (parsed):`, JSON.parse(value));
+                    }
+                } catch (e) {
+                    console.log(`${key}: [Error parsing]`, e);
+                }
+            });
+
+            console.log('\nDOM Structure:');
+            console.log('Sections:', Array.from(document.querySelectorAll('.section')).map(s => ({
+                id: s.id,
+                display: s.style.display,
+                classes: Array.from(s.classList)
+            })));
+
+            console.log('Navigation buttons:', Array.from(document.querySelectorAll('button')).map(b => ({
+                id: b.id,
+                text: b.textContent.trim(),
+                disabled: b.classList.contains('disabled')
+            })));
+
+            console.log('=== End State Dump ===');
+        }
+
+        // Add new function to handle course completion
+        function markCourseAsCompleted(courseId) {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
+                if (courseIndex === -1) {
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Update course status
+                courses[courseIndex].completionStatus = 'Complete';
+                courses[courseIndex].completedDate = new Date().toISOString().split('T')[0];
+                
+                // Update status for all views
+                courses[courseIndex].status = 'Complete';
+                courses[courseIndex].adminInstructorDashStatus = 'Complete';
+                courses[courseIndex].adminScheduledDashStatus = 'Complete';
+                courses[courseIndex].organizationStatus = 'Complete';
+                courses[courseIndex].orgStatus = 'Complete';
+
+                localStorage.setItem('courses', JSON.stringify(courses));
+                showNotification('Course marked as completed successfully', 'success');
+                updateClassList();
+            } catch (error) {
+                console.error('Error marking course as completed:', error);
+                showNotification('Error marking course as completed', 'error');
+            }
+        }
+
+        function updateAssignedCourses() {
+            const assignedCoursesTable = document.getElementById('assignedCoursesTable');
+            if (!assignedCoursesTable) return;
+
+            const tbody = assignedCoursesTable.querySelector('tbody');
+            tbody.innerHTML = '';
+
+            const instructorId = localStorage.getItem('currentInstructorId');
+            if (!instructorId) return;
+
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const instructorCourses = courses.filter(course => 
+                course.instructorId === instructorId && 
+                course.instructorStatus !== 'COMPLETED'
+            );
+
+            instructorCourses.forEach(course => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${course.courseType}</td>
+                    <td>${course.organizationName}</td>
+                    <td>${course.date}</td>
+                    <td>${course.time}</td>
+                    <td>${course.location}</td>
+                    <td>${course.instructorStatus}</td>
+                    <td>
+                        <button onclick="viewCourseDetails('${course.id}')" class="btn btn-info btn-sm">View Details</button>
+                        ${course.instructorStatus === 'SCHEDULED' ? 
+                            `<button onclick="startCourse('${course.id}')" class="btn btn-success btn-sm">Start Course</button>` : 
+                            ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateMyCoursesTable() {
+            try {
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                
+                if (!currentInstructor) {
+                    showNotification('Please log in first', 'error');
+                    return;
+                }
+
+                const instructorCourses = courses.filter(course => 
+                    course.instructorId === currentInstructor.id && 
+                    course.adminConfirmed
+                );
+
+                const tableBody = document.getElementById('coursesTableBody');
+                if (!tableBody) return;
+
+                if (instructorCourses.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center">No confirmed courses available</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tableBody.innerHTML = instructorCourses.map(course => `
+                    <tr>
+                        <td>${course.id}</td>
+                        <td>${formatDate(course.courseDate)}</td>
+                        <td>${course.location}</td>
+                        <td>${course.classType}</td>
+                        <td>${course.organizationName || '-'}</td>
+                        <td>${course.studentsRegistered || 0}</td>
+                        <td>
+                            <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewCourseDetails('${course.id}')">View Details</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error updating courses table:', error);
+                showNotification('Error loading courses', 'error');
+            }
+        }
+
+        function updateMyAvailabilityTable() {
+            console.log('=== updateMyAvailabilityTable called ===');
+            const availabilityTableBody = document.getElementById('availabilityTableBody');
+            console.log('Table body element:', availabilityTableBody);
+            
+            if (!availabilityTableBody) {
+                console.error('availabilityTableBody not found');
+                return;
+            }
+
+            const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor') || '{}');
+            const allAvailability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+            
+            console.log('Current instructor:', currentInstructor);
+            console.log('All availability:', allAvailability);
+            
+            // Get availability from both sources
+            const instructorAvailability = allAvailability.filter(a => a.instructorId === currentInstructor.id);
+            const directAvailability = currentInstructor.availability || [];
+            
+            console.log('Instructor availability:', instructorAvailability);
+            console.log('Direct availability:', directAvailability);
+
+            // Combine and deduplicate availability dates
+            const combinedAvailability = [
+                ...instructorAvailability.map(a => ({
+                    date: a.date,
+                    status: a.status || 'AVAILABLE',
+                    source: 'bulk'
+                })),
+                ...directAvailability.map(date => ({
+                    date: date,
+                    status: 'AVAILABLE',
+                    source: 'direct'
+                }))
+            ].filter((item, index, self) => 
+                index === self.findIndex(t => t.date === item.date)
+            ).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            console.log('Combined availability:', combinedAvailability);
+
+            if (combinedAvailability.length === 0) {
+                availabilityTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center">No availability records found</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            availabilityTableBody.innerHTML = combinedAvailability.map(record => `
+                <tr>
+                    <td>${getISODate(record.date)}</td>
+                    <td>${record.status}</td>
+                    <td>
+                        ${record.source === 'direct' ? `
+                            <button class="btn btn-sm btn-danger" onclick="deleteAvailability('${record.date}')">
+                                Delete
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteAvailability(date) {
+            try {
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!currentInstructor) return;
+
+                // Remove from instructor's direct availability
+                currentInstructor.availability = currentInstructor.availability.filter(d => d !== date);
+                
+                // Update instructor in localStorage
+                let instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const index = instructors.findIndex(i => i.id === currentInstructor.id);
+                if (index !== -1) {
+                    instructors[index] = currentInstructor;
+                }
+                
+                localStorage.setItem('instructors', JSON.stringify(instructors));
+                localStorage.setItem('currentInstructor', JSON.stringify(currentInstructor));
+                
+                // Update the table
+                updateMyAvailabilityTable();
+                showNotification('Availability deleted successfully', 'success');
+            } catch (error) {
+                console.error('Error deleting availability:', error);
+                showNotification('Error deleting availability', 'error');
+            }
+        }
+
+        // Call updateMyAvailabilityTable when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            updateMyAvailabilityTable();
+        });
+
+        function updateInstructorAvailabilityTable() {
+            try {
+                const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!currentInstructor) {
+                    console.log('No instructor logged in');
+                    return;
+                }
+
+                const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
+                const instructorAvailabilities = availabilities.filter(a => a.instructorId === currentInstructor.id);
+                
+                const tableBody = document.getElementById('availabilityTableBody');
+                if (!tableBody) return;
+
+                if (instructorAvailabilities.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="3">No availability records found</td></tr>';
+                    return;
+                }
+
+                tableBody.innerHTML = instructorAvailabilities.map(avail => `
+                    <tr>
+                        <td>${formatDate(avail.date)}</td>
+                        <td>${avail.status}</td>
+                        <td>
+                            <button onclick="updateAvailability('${avail.id}', 'UNAVAILABLE')" class="btn btn-danger btn-sm">
+                                Mark Unavailable
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error updating availability table:', error);
+            }
+        }
+
+        // Add this to your DOMContentLoaded event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing code ...
+            updateInstructorAvailabilityTable();
+        });
+
+        function showAssignInstructorModal(courseId) {
+            try {
+                console.log('=== Starting showAssignInstructorModal ===');
+                console.log('Course ID:', courseId);
+                
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                
+                console.log('Total courses:', courses.length);
+                console.log('Total instructors:', instructors.length);
+                
+                const course = courses.find(c => c.id === courseId);
+                console.log('Found course:', course);
+                
+                if (!course) {
+                    console.error('Course not found:', courseId);
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Filter available instructors for the course date
+                const availableInstructors = instructors.filter(instructor => {
+                    console.log('\nChecking instructor:', instructor.name);
+                    console.log('Instructor availability:', instructor.availability);
+                    console.log('Course date:', course.courseDate);
+                    
+                    const hasDate = instructor.availability && 
+                        instructor.availability.includes(course.courseDate);
+                    
+                    if (!hasDate) {
+                        console.log('Instructor does not have date in availability');
+                        return false;
+                    }
+
+                    const isAlreadyAssigned = courses.some(c => 
+                        c.courseDate === course.courseDate && 
+                        c.instructorId === instructor.id &&
+                        c.id !== courseId
+                    );
+
+                    console.log('Instructor status:', {
+                        hasDate,
+                        isAlreadyAssigned,
+                        availability: instructor.availability
+                    });
+                    
+                    return hasDate && !isAlreadyAssigned;
+                });
+
+                console.log('\nAvailable instructors:', availableInstructors);
+
+                if (!availableInstructors || availableInstructors.length === 0) {
+                    console.log('No available instructors found');
+                    showNotification(`No instructors available for ${formatDateForDisplay(course.courseDate)}`, 'error');
+                    return;
+                }
+
+                // Store courseId for the assign function
+                localStorage.setItem('currentCourseId', courseId);
+
+                // Populate and show modal
+                const select = document.getElementById('instructorSelect');
+                select.innerHTML = availableInstructors.map(instructor => 
+                    `<option value="${instructor.id}">${instructor.name}</option>`
+                ).join('');
+
+                const modal = document.getElementById('assignInstructorModal');
+                modal.style.display = 'block';
+                
+                console.log('=== Completed showAssignInstructorModal ===');
+            } catch (error) {
+                console.error('Error showing assign instructor modal:', error);
+                showNotification('Error loading instructor assignment modal', 'error');
+            }
+        }
+
+        function assignInstructor() {
+            try {
+                console.log('=== Starting assignInstructor function ===');
+                const courseId = localStorage.getItem('currentCourseId');
+                const selectedInstructor = document.getElementById('instructorSelect').value;
+                
+                console.log('CourseId:', courseId);
+                console.log('Selected Instructor:', selectedInstructor);
+                
+                if (!courseId || !selectedInstructor) {
+                    console.error('Missing course or instructor information');
+                    showNotification('Missing course or instructor information', 'error');
+                    return;
+                }
+
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const courseIndex = courses.findIndex(c => c.id === courseId);
+                
+                if (courseIndex === -1) {
+                    console.error('Course not found:', courseId);
+                    showNotification('Course not found', 'error');
+                    return;
+                }
+
+                // Get instructor details
+                const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const instructor = instructors.find(i => i.id === selectedInstructor);
+                
+                if (!instructor) {
+                    console.error('Instructor not found:', selectedInstructor);
+                    showNotification('Instructor not found', 'error');
+                    return;
+                }
+
+                console.log('Current course state:', courses[courseIndex]);
+                console.log('Selected instructor:', instructor);
+
+                // Update course with instructor information and status
+                courses[courseIndex].instructorId = selectedInstructor;
+                courses[courseIndex].instructorName = instructor.name;
+                
+                // Update statuses for each portal view
+                courses[courseIndex].status = 'PENDING';
+                courses[courseIndex].adminScheduledDashStatus = 'SCHEDULED';
+                courses[courseIndex].adminInstructorDashStatus = 'SCHEDULED';
+                courses[courseIndex].organizationStatus = 'PENDING';
+                courses[courseIndex].instructorStatus = 'SCHEDULED';
+                courses[courseIndex].adminConfirmed = false;
+                courses[courseIndex].displayInstructorDetails = false;
+                courses[courseIndex].displayOrgDetails = false;
+                courses[courseIndex].hideOrgDetails = true;
+
+                console.log('Updated course state:', courses[courseIndex]);
+
+                // Save changes
+                localStorage.setItem('courses', JSON.stringify(courses));
+                
+                // Close modal and show success message
+                closeModal('assignInstructorModal');
+                showNotification('Instructor assigned successfully', 'success');
+                
+                // Update all relevant displays
+                updateScheduledCoursesList();
+                updateConfirmedCoursesList();
+                updateInstructorDashboard();
+                
+                console.log('=== Completed assignInstructor function ===');
+            } catch (error) {
+                console.error('Error assigning instructor:', error);
+                showNotification('Error assigning instructor', 'error');
+            }
+        }
+
+        function closeModal(modalId) {
+            try {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'none';
+                } else {
+                    console.error(`Modal ${modalId} not found`);
+                }
+            } catch (error) {
+                console.error('Error closing modal:', error);
+            }
+        }
+
+        // Remove formatDate, formatDateForStorage, and formatDateForDisplay functions
+        // Replace with a single date handling function
+        function getISODate(date) {
+            if (!date) return '';
+            try {
+                const dateObj = new Date(date);
+                if (isNaN(dateObj.getTime())) return '';
+                return dateObj.toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return '';
+            }
+        }
+
+        // Update all date displays to use getISODate
+        function updateAvailabilityTable() {
+            const availability = JSON.parse(localStorage.getItem('instructorAvailability') || '[]');
+            const tbody = document.querySelector('#availabilityTable tbody');
+            tbody.innerHTML = '';
+            
+            availability.forEach(avail => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${getISODate(avail.date)}</td>
+                    <td>${avail.status}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateCourseTable() {
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const tbody = document.querySelector('#courseTable tbody');
+            tbody.innerHTML = '';
+            
+            courses.forEach(course => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${getISODate(course.courseDate)}</td>
+                    <td>${course.location}</td>
+                    <td>${course.status}</td>
+                    <td>${course.instructorName || 'Not Assigned'}</td>
+                    <td>
+                        <button class="btn btn-sm" onclick="showCourseDetails('${course.id}')">Details</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showCourseDetails(courseId) {
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const course = courses.find(c => c.id === courseId);
+            if (!course) return;
+
+            const modal = document.getElementById('courseDetailsModal');
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <span class="close" onclick="closeCourseDetails()">&times;</span>
+                    <h2>Course Details</h2>
+                    <p><strong>Course Date:</strong> ${getISODate(course.courseDate)}</p>
+                    <p><strong>Location:</strong> ${course.location}</p>
+                    <p><strong>Organization:</strong> ${course.organizationName}</p>
+                    <p><strong>Status:</strong> ${course.status}</p>
+                    <p><strong>Completion Date:</strong> ${getISODate(course.completedDate)}</p>
+                    <p><strong>Archive Date:</strong> ${getISODate(course.archivedDate)}</p>
+                </div>
+            `;
+            modal.style.display = 'block';
+        }
+
+        // Update today's date display
+        const today = new Date();
+        document.getElementById('todayDate').textContent = getISODate(today);
+
+        // Update any other date displays
+        function updateAllDateDisplays() {
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            courses.forEach(course => {
+                const courseDateElement = document.querySelector(`[data-course-id="${course.id}"] .course-date`);
+                if (courseDateElement) {
+                    courseDateElement.textContent = getISODate(course.courseDate);
+                }
+            });
+        }
+
+        // Update error messages to use getISODate
+        function showNoInstructorError(course) {
+            showNotification(`No instructors available for ${getISODate(course.courseDate)}`, 'error');
+        }
+
+        // Add global error handling
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
+            showNotification('An error occurred. Please check the console for details.', 'error');
+            return false;
+        };
+
+        // Add unhandled promise rejection handling
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            showNotification('An error occurred. Please check the console for details.', 'error');
+        });
+
+        // Add cleanup for event listeners and intervals
+        function cleanup() {
+            // Clear all intervals and timeouts
+            const highestTimeoutId = setTimeout(";");
+            for (let i = 0; i < highestTimeoutId; i++) {
+                clearTimeout(i);
+            }
+        }
+
+        // Add beforeunload handler
+        window.addEventListener('beforeunload', cleanup);
+
+        // Debounce function to prevent too many rapid updates
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Debounce heavy operations
+        const debouncedUpdateAvailability = debounce(updateAvailabilityTable, 250);
+        const debouncedUpdateCourses = debounce(updateCourseTable, 250);
+    </script>
+</body>
+</html> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA CPR - Instructor Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --background-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --header-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .main-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0 20px;
+            height: var(--header-height);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .main-nav {
+            display: flex;
+            gap: 20px;
+            margin-left: auto;
+        }
+
+        .main-nav a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .main-nav a:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .main-nav a.active {
+            background-color: var(--secondary-color);
+        }
+
+        .content-wrapper {
+            display: flex;
+            margin-top: var(--header-height);
+            min-height: calc(100vh - var(--header-height));
+        }
+
+        .left-nav {
+            width: 250px;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        .left-nav button {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            background-color: #ccc;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .left-nav button i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .left-nav button.active {
+            background-color: var(--secondary-color);
+        }
+
+        .left-nav button:hover {
+            background-color: var(--primary-color);
+        }
+
+        .left-nav button.disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .left-nav button.disabled:hover {
+            background-color: #ccc;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            background-color: var(--background-color);
+        }
+
+        .welcome-banner {
+            background-color: #f5f5f5;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .portal-title {
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .portal-title h1 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        .welcome-banner p {
+            margin: 0;
+            text-align: right;
+        }
+
+        .section {
+            display: none;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-color);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            margin-top: 10px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .calendar-header button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .calendar-header button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .calendar-header h3 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            padding: 2px;
+            text-align: center;
+            background-color: white;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+        }
+
+        .calendar-day.header {
+            background-color: var(--secondary-color);
+            color: white;
+            font-weight: bold;
+            font-size: 0.7em;
+        }
+
+        .calendar-day.empty {
+            background-color: transparent;
+            border: none;
+            cursor: default;
+        }
+
+        .calendar-day:not(.header):not(.empty):not(.disabled):hover {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .calendar-day.available {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        .calendar-day.past {
+            background-color: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .calendar {
+                max-width: 300px;
+            }
+
+            .calendar-header {
+                max-width: 300px;
+            }
+
+            .calendar-day {
+                padding: 1px;
+                font-size: 0.6em;
+            }
+        }
+
+        .status-pending {
+            background-color: #f1c40f;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .status-confirmed, .status-complete, .status-available {
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            font-weight: bold;
+        }
+
+        .status-confirmed { background-color: #28a745; color: white; }
+        .status-complete { background-color: #17a2b8; color: white; }
+        .status-available { background-color: #ffc107; color: black; }
+
+        .status-not-available {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+
+            .left-nav {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            .calendar {
+                gap: 5px;
+            }
+
+            .calendar-day {
+                padding: 5px;
+                font-size: 0.8em;
+            }
+
+            .calendar-day.today::after {
+                display: none;
+            }
+        }
+
+        /* Add these styles */
+        .today-courses {
+            margin: 20px 0;
+        }
+
+        .course-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .course-info {
+            flex-grow: 1;
+        }
+
+        .attendance-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        .attendance-table th,
+        .attendance-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .attendance-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .attendance-summary {
+            margin: 20px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .attendance-radio {
+            margin: 0 5px;
+        }
+
+        .course-info {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            color: white;
+            z-index: 1000;
+            display: none;
+        }
+
+        .notification.success {
+            background-color: #2ecc71;
+        }
+
+        .notification.error {
+            background-color: #e74c3c;
+        }
+
+        .btn-danger {
+            background-color: #e74c3c !important;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b !important;
+        }
+        
+        #resetDataModal ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        #resetDataModal p {
+            margin: 10px 0;
+        }
+
+        /* Remove recurring-related styles */
+        .quick-actions,
+        .checkbox-group {
+            display: none;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        /* Add styles for the unregistered student form */
+        .add-unregistered {
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        #addUnregisteredModal .form-group {
+            margin-bottom: 15px;
+        }
+
+        #addUnregisteredModal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        #addUnregisteredModal input,
+        #addUnregisteredModal textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #addUnregisteredModal textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .status-not-registered {
+            background-color: #ffc107;
+            color: black;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .status-complete {
+            background-color: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        #completionNotes textarea {
+            height: 80px;
+            resize: vertical;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .view-toggle {
+            text-align: right;
+        }
+
+        .archived-date {
+            color: var(--secondary-color);
+            font-size: 0.9em;
+        }
+
+        .completion-notes {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .analytics-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .period-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .period-selector select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .metrics-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .metric-card h3 {
+            margin: 0 0 10px 0;
+            color: var(--primary-color);
+            font-size: 1.1em;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--secondary-color);
+            margin: 10px 0;
+        }
+
+        .metric-trend {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .analytics-sections {
+            display: grid;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .analytics-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .analytics-section h3 {
+            margin: 0 0 20px 0;
+            color: var(--primary-color);
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .metrics-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .metrics-overview {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .chart-container {
+                height: 250px;
+            }
+        }
+
+        .available-date {
+            background-color: #f0f9ff;
+        }
+        
+        .status-assigned {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        /* Add modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .close-modal:hover {
+            color: #000;
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .modal-buttons button {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="logo">GTA CPR</div>
+        <nav class="main-nav">
+            <a href="Index.html">Home</a>
+            <a href="instructor-portal.html">Instructors</a>
+            <a href="organization-portal.html">Organizations</a>
+            <a href="admin-portal.html">Course Management</a>
+            <a href="support-portal.html">Support</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+    </header>
+
+    <div class="content-wrapper">
+        <nav class="left-nav">
+            <button onclick="showSection('login')" id="loginBtn" class="active">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Login</span>
+            </button>
+            <button onclick="handleNavClick('availability')" id="availabilityBtn">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Set Availability</span>
+            </button>
+            <button onclick="handleNavClick('classes')" id="classesBtn">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <span>My Classes</span>
+            </button>
+            <button onclick="handleNavClick('attendance')" id="attendanceBtn">
+                <i class="fas fa-clipboard-check"></i>
+                <span>Take Attendance</span>
+            </button>
+            <button onclick="handleNavClick('analytics')" id="analyticsBtn">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics Dashboard</span>
+            </button>
+            <button onclick="handleNavClick('archivedClasses')" id="archivedBtn">
+                <i class="fas fa-archive"></i>
+                <span>Archived Classes</span>
+            </button>
+            <button onclick="handleLogout()">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </button>
+        </nav>
+
+        <main class="main-content">
+            <div class="welcome-banner">
+                <div class="portal-title">
+                    <h1>Instructor Portal</h1>
+                </div>
+                <p id="welcomeMessage">Please log in to continue.</p>
+            </div>
+
+            <section id="login" class="section active">
+                <h2>Instructor Login</h2>
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+            </section>
+
+            <section id="availability" class="section">
+                <h2>Set Your Availability</h2>
+                <div class="calendar-header">
+                    <button class="btn btn-primary" onclick="previousMonth()">Previous</button>
+                    <h3 id="currentMonth"></h3>
+                    <button class="btn btn-primary" onclick="nextMonth()">Next</button>
+                </div>
+                <div class="calendar" id="availabilityCalendar"></div>
+                <button class="btn btn-primary" onclick="saveAvailability()">Save Availability</button>
+                
+                <h3>My Availability</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="availabilityTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="classes" class="section">
+                <div class="section-header">
+                <h2>My Classes</h2>
+                    <div class="view-toggle">
+                        <button class="btn btn-secondary" onclick="showSection('archivedClasses')">View Archived Classes</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Organization</th>
+                            <th>Location</th>
+                            <th>Class Type</th>
+                            <th>Students Registered</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="classesTableBody"></tbody>
+                </table>
+                </div>
+            </section>
+
+            <section id="archivedClasses" class="section">
+                <div class="section-header">
+                    <h2>Archived Classes</h2>
+                    <div class="view-toggle">
+                        <button class="btn btn-secondary" onclick="showSection('classes')">Back to Active Classes</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                                <th>Course Date</th>
+                            <th>Organization</th>
+                            <th>Location</th>
+                                <th>Class Type</th>
+                                <th>Students Attended</th>
+                                <th>Completion Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archivedClassesTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="attendance" class="section">
+                <div class="section-header">
+                    <h2>Take Attendance</h2>
+                    <p>Today's Courses: <span id="todayDate"></span></p>
+                </div>
+                
+                <!-- Today's Courses List -->
+                <div id="todayCourses" class="today-courses">
+                    <div id="noCourses" class="no-courses" style="display: none;">
+                        <p>No courses scheduled for today</p>
+                    </div>
+                    <div id="courseList" class="course-list"></div>
+                </div>
+
+                <!-- Attendance Modal -->
+                <div id="attendanceModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close-modal" onclick="closeModal('attendanceModal')">&times;</span>
+                        <h3>Take Attendance</h3>
+                        <div class="course-info">
+                            <p><strong>Course:</strong> <span id="attendanceCourseInfo"></span></p>
+                            <p><strong>Location:</strong> <span id="attendanceLocationInfo"></span></p>
+                            <p><strong>Organization:</strong> <span id="attendanceOrgInfo"></span></p>
+                        </div>
+                        <div class="attendance-list">
+                            <table class="attendance-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                            <th>Status</th>
+                                        <th>Attendance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody"></tbody>
+                </table>
+                        </div>
+                        <div class="attendance-summary">
+                            <p>Present: <span id="presentCount">0</span> / <span id="totalCount">0</span></p>
+                        </div>
+                        <div class="add-unregistered">
+                            <button class="btn btn-secondary" onclick="showAddUnregisteredModal()">Add Unregistered Student</button>
+                        </div>
+                        <div class="modal-buttons">
+                            <button class="btn btn-primary" onclick="saveAttendance()">Save Attendance</button>
+                            <button class="btn btn-success" onclick="completeCourse()">COMPLETE</button>
+                            <button class="btn btn-secondary" onclick="closeModal('attendanceModal')">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Add Analytics Section -->
+            <section id="analytics" class="section">
+                <h2>Analytics Dashboard</h2>
+                
+                <!-- Time Period Selector -->
+                <div class="analytics-controls">
+                    <div class="period-selector">
+                        <label for="analyticsPeriod">Time Period:</label>
+                        <select id="analyticsPeriod" onchange="updateAnalytics()">
+                            <option value="30">Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                            <option value="180">Last 6 Months</option>
+                            <option value="365">Last 12 Months</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Key Metrics Overview -->
+                <div class="metrics-overview">
+                    <div class="metric-card">
+                        <h3>Total Courses</h3>
+                        <div class="metric-value" id="totalCourses">-</div>
+                        <div class="metric-trend" id="coursesTrend"></div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Average Class Size</h3>
+                        <div class="metric-value" id="avgClassSize">-</div>
+                        <div class="metric-trend" id="classSizeTrend"></div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Completion Rate</h3>
+                        <div class="metric-value" id="completionRate">-</div>
+                        <div class="metric-trend" id="completionTrend"></div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Attendance Rate</h3>
+                        <div class="metric-value" id="attendanceRate">-</div>
+                        <div class="metric-trend" id="attendanceTrend"></div>
+                    </div>
+                </div>
+
+                <!-- Detailed Analytics Sections -->
+                <div class="analytics-sections">
+                    <!-- Performance Metrics -->
+                    <div class="analytics-section">
+                        <h3>Performance Metrics</h3>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                        <div class="metrics-details" id="performanceMetrics"></div>
+                    </div>
+
+                    <!-- Course Distribution -->
+                    <div class="analytics-section">
+                        <h3>Course Type Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="courseTypeChart"></canvas>
+                        </div>
+                        <div class="metrics-details" id="courseTypeMetrics"></div>
+                    </div>
+
+                    <!-- Time & Availability -->
+                    <div class="analytics-section">
+                        <h3>Time & Availability Analysis</h3>
+                        <div class="chart-container">
+                            <canvas id="availabilityChart"></canvas>
+                        </div>
+                        <div class="metrics-details" id="availabilityMetrics"></div>
+                    </div>
+
+                    <!-- Student Engagement -->
+                    <div class="analytics-section">
+                        <h3>Student Engagement</h3>
+                        <div class="chart-container">
+                            <canvas id="engagementChart"></canvas>
+                        </div>
+                        <div class="metrics-details" id="engagementMetrics"></div>
+                    </div>
+
+                    <!-- Organization Analysis -->
+                    <div class="analytics-section">
+                        <h3>Organization Analysis</h3>
+                        <div class="chart-container">
+                            <canvas id="organizationChart"></canvas>
+                        </div>
+                        <div class="metrics-details" id="organizationMetrics"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="confirmedCourses" class="section">
+                <h2>Confirmed Courses</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Course</th>
+                                <th>Organization</th>
+                                <th>Location</th>
+                                <th>Instructor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="confirmedCoursesTableBody"></tbody>
+                    </table>
+    </div>
+            </section>
+
+            <section id="completedCourses" class="section">
+                <h2>Completed Courses</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Course</th>
+                                <th>Organization</th>
+                                <th>Location</th>
+                                <th>Instructor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="completedCoursesTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="dashboard" class="section">
+                <h2>My Dashboard</h2>
+                <button onclick="openInstructorAvailabilityModal()" class="btn btn-primary" style="margin-bottom: 20px;">Set Availability</button>
+                
+                <!-- Instructor Availability Table -->
+                <h3>My Availability</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="instructorAvailabilityTableBody">
+                            <!-- JavaScript will populate this -->
+                        </tbody>
+                    </table>
+            </div>
+
+                <h3>My Courses</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Course ID</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th>Class Type</th>
+                                <th>Students</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="myCoursesTableBody">
+                            <!-- JavaScript will populate this -->
+                        </tbody>
+                    </table>
+        </div>
+            </section>
+
+            <!-- Include the instructor availability modal -->
+            <iframe id="availabilityFrame" src="instructor-availability.html" style="display: none;"></iframe>
+
+            <!-- Add this section after the login section -->
+            <section id="instructorDashboard" style="display: none;">
+                <h2>Instructor Dashboard</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Course Date</th>
+                                <th>Organization</th>
+                                <th>Location</th>
+                                <th>Class Type</th>
+                                <th>Students</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="instructorDashboardTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Add this modal for instructor assignment -->
+            <div id="assignInstructorModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal" onclick="closeModal('assignInstructorModal')">&times;</span>
+                    <h3>Assign Instructor</h3>
+                    <div class="form-group">
+                        <label for="instructorSelect">Select Instructor:</label>
+                        <select id="instructorSelect" required>
+                            <option value="">Choose an instructor...</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="assignInstructor()">Assign</button>
+                </div>
+            </div>
+
+            <script>
+                // Add these functions for instructor availability
+                function openInstructorAvailabilityModal() {
+                    const frame = document.getElementById('availabilityFrame');
+                    frame.contentWindow.openInstructorAvailabilityModal();
+                }
+
+                function updateInstructorAvailabilityTable() {
+                    const tableBody = document.getElementById('instructorAvailabilityTableBody');
+                    const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
+                    const currentUser = localStorage.getItem('currentUser');
+
+                    if (!currentUser) return;
+
+                    const myAvailabilities = availabilities.filter(a => a.instructorName === currentUser);
+
+                    if (myAvailabilities.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="3" class="text-center">No availabilities set</td></tr>';
+                        return;
+                    }
+
+                    tableBody.innerHTML = myAvailabilities
+                        .sort((a, b) => new Date(a.date) - new Date(b.date))
+                        .map(availability => `
+                            <tr>
+                                <td>${formatDate(availability.date)}</td>
+                                <td><span class="status status-${availability.status.toLowerCase()}">${availability.status}</span></td>
+                                <td>
+                                    <button class="btn btn-danger" onclick="deleteInstructorAvailability('${availability.instructorName}', '${availability.date}')">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('');
+                }
+
+                function deleteInstructorAvailability(instructorName, date) {
+                    const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
+                    const updatedAvailabilities = availabilities.filter(a => 
+                        !(a.instructorName === instructorName && a.date === date)
+                    );
+                    localStorage.setItem('instructorAvailabilities', JSON.stringify(updatedAvailabilities));
+                    updateInstructorAvailabilityTable();
+                }
+
+                // Add this to your existing DOMContentLoaded event listener
+                document.addEventListener('DOMContentLoaded', function() {
+                    updateInstructorAvailabilityTable();
+                });
+            </script>
+        </main>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <!-- Add Unregistered Student Modal -->
+    <div id="addUnregisteredModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('addUnregisteredModal')">&times;</span>
+            <h3>Add Unregistered Student</h3>
+            <div class="form-group">
+                <label for="unregisteredName">Name:</label>
+                <input type="text" id="unregisteredName" required>
+            </div>
+            <div class="form-group">
+                <label for="unregisteredEmail">Email (optional):</label>
+                <input type="email" id="unregisteredEmail">
+            </div>
+            <div class="form-group">
+                <label for="unregisteredNotes">Notes:</label>
+                <textarea id="unregisteredNotes" placeholder="Add any additional notes"></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="addUnregisteredStudent()">Add Student</button>
+                <button class="btn btn-secondary" onclick="closeModal('addUnregisteredModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Add browser compatibility checks and polyfills
+        function ensureBrowserCompatibility() {
+            // Check for localStorage support
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+            } catch (e) {
+                alert('Your browser does not support local storage. Please use a modern browser.');
+                return false;
+            }
+
+            // Check for required DOM APIs
+            if (!document.querySelector || !document.querySelectorAll) {
+                alert('Your browser is outdated. Please use a modern browser.');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Add date handling helper to ensure consistent date handling across browsers
+        function formatDateForStorage(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDateForDisplay(dateString) {
+            if (!dateString) return '-';
+            const [year, month, day] = dateString.split('-');
+            return `${month}/${day}/${year}`;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const [year, month, day] = dateString.split('-');
+            return `${month}/${day}/${year}`;
+        }
+
+        // Session management
+        function checkSession() {
+            console.log('=== Starting checkSession ===');
+            const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
+            console.log('Current instructor from localStorage:', instructor);
+            
+            // Remove active class from all nav buttons
+            document.querySelectorAll('.left-nav button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (instructor) {
+                console.log('Instructor found, showing welcome banner and classes');
+                showWelcomeBanner(instructor.name);
+                showSection('classes');
+            } else {
+                console.log('No instructor found, showing login section');
+                // Only highlight the login button
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) {
+                    loginBtn.classList.add('active');
+                }
+                showSection('login');
+            }
+            console.log('Updating nav buttons');
+            updateNavButtons();
+            console.log('=== End checkSession ===');
+        }
+
+        function showWelcomeBanner(name) {
+            document.getElementById('welcomeMessage').textContent = `Welcome, ${name}!`;
+        }
+
+        // Login/Logout handling
+        function handleLogin(event) {
+            event.preventDefault();
+            try {
+                console.log('=== Starting handleLogin ===');
+                const instructorName = document.getElementById('username')?.value.trim();
+                console.log('Login attempt for instructor:', instructorName);
+                
+                if (!instructorName) {
+                    console.warn('No instructor name provided');
+                    showNotification('Please enter your name', 'error');
+                    return;
+                }
+            
+                let instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                console.log('Current instructors in system:', instructors);
+            
+                let instructor = instructors.find(inst => inst.name === instructorName);
+                console.log('Found matching instructor:', instructor);
+
+                if (!instructor) {
+                    console.log('Creating new instructor');
+                    instructor = {
+                        id: 'inst_' + Date.now(),
+                        name: instructorName,
+                        availability: []
+                    };
+                    instructors.push(instructor);
+                    localStorage.setItem('instructors', JSON.stringify(instructors));
+                    console.log('New instructor created:', instructor);
+                }
+                
+                localStorage.setItem('currentInstructor', JSON.stringify(instructor));
+                console.log('Current instructor set in localStorage:', instructor);
+                
+                // Reset calendar before loading new instructor's availability
+                resetCalendar();
+                
+                // Load the instructor's availability into the calendar
+                if (instructor.availability) {
+                    selectedDates = new Set(instructor.availability);
+                    renderCalendar();
+                }
+                
+                showWelcomeBanner(instructor.name);
+                showSection('classes');
+                updateNavButtons();
+
+                console.log('=== Login Process Completed Successfully ===');
+                showNotification('Login successful', 'success');
+            } catch (error) {
+                console.error('Login error:', error);
+                console.error('Error stack:', error.stack);
+                showNotification('Error during login', 'error');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('currentInstructor');
+            showWelcomeBanner('Welcome!');
+            showSection('login');
+            updateNavButtons();  // Update nav buttons after logout
+            resetCalendar();     // Reset calendar state
+            showNotification('Logged out successfully', 'success');
+        }
+
+        // Reset calendar state
+        function resetCalendar() {
+            selectedDates = new Set(); // Clear selected dates
+            const calendar = document.getElementById('availabilityCalendar');
+            if (calendar) {
+                // Remove all available markers
+                const days = calendar.getElementsByClassName('calendar-day');
+                Array.from(days).forEach(day => {
+                    day.classList.remove('available');
+                });
+            }
+            // Reset to current month/year
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth();
+            renderCalendar();
+        }
+
+        // Section visibility
+        function showSection(sectionId) {
+            console.log('=== Showing Section ===');
+            console.log('Requested section:', sectionId);
+            
+            const section = document.getElementById(sectionId);
+            console.log('Section element exists:', !!section);
+            
+            if (!section) {
+                console.error('Section not found:', sectionId);
+                return;
+            }
+            
+            // Hide all sections
+            const allSections = document.querySelectorAll('.section');
+            console.log('Total sections found:', allSections.length);
+            console.log('All sections:', Array.from(allSections).map(s => s.id));
+            
+            allSections.forEach(s => {
+                console.log('Hidden section:', s.id);
+                s.style.display = 'none';
+            });
+
+            // Show requested section
+            section.style.display = 'block';
+                console.log('Displayed section:', sectionId);
+                
+            // Update navigation
+            updateNavButtons();
+
+            // Dispatch section change event
+            const event = new CustomEvent('sectionChanged', { 
+                detail: { section: sectionId }
+            });
+            document.dispatchEvent(event);
+
+            console.log('=== Section Display Complete ===');
+        }
+
+        // Calendar functionality
+        let currentYear, currentMonth;
+        let selectedDates = new Set();
+
+        function initializeCalendar() {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth();
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const calendar = document.getElementById('availabilityCalendar');
+            const monthYear = document.getElementById('currentMonth');
+            calendar.innerHTML = '';
+            
+            // Get first and last day of month
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            monthYear.textContent = new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+            
+            // Add day headers
+            ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'calendar-day header';
+                dayHeader.textContent = day;
+                calendar.appendChild(dayHeader);
+            });
+            
+            // Add blank days
+            for (let i = 0; i < firstDay; i++) {
+                const blankDay = document.createElement('div');
+                blankDay.className = 'calendar-day empty';
+                calendar.appendChild(blankDay);
+            }
+            
+            // Add month days
+            for (let day = 1; day <= lastDate; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = day;
+                
+                // Create date string in YYYY-MM-DD format
+                const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                // Check if date is in the past (before today)
+                const currentDate = new Date(currentYear, currentMonth, day);
+                currentDate.setHours(0, 0, 0, 0);
+                
+                if (currentDate < today) {
+                    dayElement.classList.add('past');
+                } else {
+                    // Check if date is selected
+                    if (selectedDates.has(dateString)) {
+                        dayElement.classList.add('available');
+                    }
+                    
+                    // Add click handler for future dates
+                    dayElement.addEventListener('click', () => {
+                        if (!dayElement.classList.contains('past')) {
+                            if (selectedDates.has(dateString)) {
+                                selectedDates.delete(dateString);
+                                dayElement.classList.remove('available');
+                            } else {
+                                selectedDates.add(dateString);
+                                dayElement.classList.add('available');
+                            }
+                            // Update the availability table when a date is selected/deselected
+                            updateMyAvailabilityTable();
+                        }
+                    });
+                }
+                
+                calendar.appendChild(dayElement);
+            }
+            
+            // Add remaining blank days to complete the grid
+            const totalDays = calendar.children.length;
+            const remainingDays = 42 - totalDays; // 6 rows × 7 days = 42
+            for (let i = 0; i < remainingDays; i++) {
+                const blankDay = document.createElement('div');
+                blankDay.className = 'calendar-day empty';
+                calendar.appendChild(blankDay);
+            }
+        }
+
+        function previousMonth() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }
+
+        function loadAvailability() {
+            const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
+            if (instructor && instructor.availability) {
+                selectedDates = new Set(instructor.availability);
+                renderCalendar();
+            }
+        }
+
+        function saveAvailability() {
+            try {
+                const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
+                if (!instructor) {
+                    showNotification('Please log in first', 'error');
+                    return;
+                }
+
+                // Update current instructor's availability
+                instructor.availability = Array.from(selectedDates);
+                
+                // Update instructor in the instructors array
+                let instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+                const index = instructors.findIndex(i => i.id === instructor.id);
+                if (index !== -1) {
+                    instructors[index] = instructor;
+                } else {
+                    instructors.push(instructor);
+                }
+                
+                // Save back to localStorage
+                localStorage.setItem('instructors', JSON.stringify(instructors));
+                localStorage.setItem('currentInstructor', JSON.stringify(instructor));
+                
+                // Update the availability table
+                updateMyAvailabilityTable();
+                
+                showNotification('Availability saved successfully', 'success');
+            } catch (error) {
+                console.error('Error saving availability:', error);
+                showNotification('Error saving availability', 'error');
+            }
+        }
+
+        // Table updates
+        function updateClassList() {
+            try {
                 const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
                 if (!instructor) return;
 

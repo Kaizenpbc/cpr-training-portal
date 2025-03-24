@@ -258,8 +258,8 @@ class AdminPortal {
         const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
         const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
 
-        // Get all courses
-        const scheduledCourses = courses;
+        // Get only unconfirmed courses
+        const scheduledCourses = courses.filter(course => !course.adminConfirmed);
         
         if (scheduledCourses.length === 0) {
             tableBody.innerHTML = `
@@ -290,7 +290,7 @@ class AdminPortal {
             return `
                 <tr>
                     <td>${course.date}</td>
-                    <td>${organization ? organization.name : 'N/A'}</td>
+                    <td>${organization ? organization.name : course.organizationName || 'N/A'}</td>
                     <td>${course.location || 'N/A'}</td>
                     <td>${course.classType || 'N/A'}</td>
                     <td>${course.studentsRegistered || '0'}</td>
@@ -308,9 +308,58 @@ class AdminPortal {
     }
 
     updateConfirmedCoursesTable() {
-        const courses = this.getCoursesFromStorage();
-        const confirmedCourses = courses.filter(course => course.status === 'CONFIRMED');
-        this.displayCoursesList('confirmedCoursesTableBody', confirmedCourses);
+        console.log('=== Starting updateConfirmedCoursesTable ===');
+        const tableBody = document.getElementById('confirmedCoursesTableBody');
+        if (!tableBody) {
+            console.error('confirmedCoursesTableBody not found');
+            return;
+        }
+
+        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+        const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+
+        // Get confirmed courses
+        const confirmedCourses = courses.filter(course => 
+            course.status === 'CONFIRMED' && course.adminConfirmed
+        );
+        
+        if (confirmedCourses.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center">No confirmed courses</td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Sort courses by date
+        confirmedCourses.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        tableBody.innerHTML = confirmedCourses.map(course => {
+            const organization = organizations.find(org => org.id === course.organizationId);
+            const instructor = instructors.find(inst => inst.id === course.instructorId);
+
+            return `
+                <tr>
+                    <td>${course.date}</td>
+                    <td>${organization ? organization.name : 'N/A'}</td>
+                    <td>${course.location || 'N/A'}</td>
+                    <td>${course.classType || 'N/A'}</td>
+                    <td>${course.studentsRegistered || '0'}</td>
+                    <td><span class="status-confirmed">CONFIRMED</span></td>
+                    <td>${instructor ? instructor.name : 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-info btn-sm" onclick="adminPortal.viewCourseDetails('${course.id}')">
+                            View Details
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="adminPortal.billCourse('${course.id}')">
+                            Bill
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
     updateCompletedCoursesTable() {
@@ -424,10 +473,21 @@ class AdminPortal {
         let rows = [];
 
         instructors.forEach(instructor => {
-            // Get instructor's available dates
-            const availableDates = instructor.availability || [];
+            // Get all dates where instructor is assigned
+            const assignedDates = courses
+                .filter(course => course.instructorId === instructor.id)
+                .map(course => course.date);
+
+            console.log('Instructor:', instructor.name);
+            console.log('Assigned dates:', assignedDates);
             
-            // Add rows for available dates
+            // Add rows for available dates (only if not assigned to a course)
+            const availableDates = (instructor.availability || []).filter(date => 
+                !assignedDates.includes(date)
+            );
+
+            console.log('Available dates:', availableDates);
+            
             availableDates.forEach(date => {
                 rows.push({
                     name: instructor.name,
@@ -447,12 +507,16 @@ class AdminPortal {
             );
 
             assignedCourses.forEach(course => {
+                // Get organization name with multiple fallbacks
                 const organization = organizations.find(org => org.id === course.organizationId);
+                const organizationName = organization ? organization.name : 
+                    (course.organizationName || course.organization?.name || 'N/A');
+
                 rows.push({
                     name: instructor.name,
                     date: course.date,
-                    status: 'SCHEDULED',  // Always show as SCHEDULED in Instructor Dashboard
-                    organization: organization ? organization.name : 'N/A',
+                    status: course.adminInstructorDashStatus || course.status || 'SCHEDULED',
+                    organization: organizationName,
                     location: course.location || 'N/A',
                     classType: course.classType || 'N/A',
                     studentsRegistered: course.studentsRegistered || '0',
@@ -476,6 +540,8 @@ class AdminPortal {
                 <td>${row.notes}</td>
             </tr>
         `).join('');
+
+        console.log('=== Completed updateInstructorAvailability ===');
     }
 
     updateCourseAssignments() {
@@ -680,28 +746,69 @@ class AdminPortal {
     }
 
     confirmCourse(courseId) {
+        console.log('=== Starting confirmCourse ===');
+        
         if (!confirm('Are you sure you want to confirm this course?')) {
             return;
         }
 
         const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
         const courseIndex = courses.findIndex(c => c.id === courseId);
 
         if (courseIndex === -1) {
-            alert('Course not found');
+            console.error('Course not found');
             return;
         }
 
-        // Update course status to confirmed
-        courses[courseIndex].status = 'CONFIRMED';
+        // Get existing course data
+        const existingCourse = courses[courseIndex];
+        console.log('Existing course before confirmation:', existingCourse);
+
+        // Get instructor data
+        const instructor = instructors.find(i => i.id === existingCourse.instructorId);
+        
+        // Update course status and visibility flags
+        courses[courseIndex] = {
+            ...existingCourse,
+            // Status updates
+            status: 'CONFIRMED',           // Organization Portal
+            adminStatus: 'CONFIRMED',      // Admin Portal main status
+            adminDashboardStatus: 'CONFIRMED', // Admin Dashboard status
+            adminInstructorDashStatus: 'CONFIRMED', // Admin Instructor Dashboard status
+            instructorStatus: 'CONFIRMED', // Now show as CONFIRMED in Instructor Portal
+            
+            // Instructor details
+            instructorId: existingCourse.instructorId,
+            instructorName: instructor ? instructor.name : existingCourse.instructorName,
+            
+            // Visibility flags - Now show everything
+            showInstructorToOrg: true,      // Show instructor to org
+            displayInstructorDetails: true,  // Display instructor details
+            showOrgToInstructor: true,      // Show org to instructor
+            displayInInstructorPortal: true, // Now show in instructor portal
+            displayOrgDetails: true,         // Show org details
+            hideOrgDetails: false,          // Don't hide org details
+            adminConfirmed: true,
+            
+            // Organization details
+            organizationName: existingCourse.organizationName || existingCourse.organization?.name,
+            organizationId: existingCourse.organizationId
+        };
+
+        console.log('Updated course after confirmation:', courses[courseIndex]);
         localStorage.setItem('courses', JSON.stringify(courses));
 
-        // Update the tables
+        // Update all views
+        this.updateDashboardData();
         this.updateScheduledCoursesTable();
         this.updateConfirmedCoursesTable();
-        this.updateDashboardData();
+        this.updateInstructorAvailability();
 
-        alert('Course confirmed successfully');
+        // Show success message
+        this.showNotification('Course confirmed successfully', 'success');
+        
+        console.log('=== Completed confirmCourse ===');
     }
 
     formatAvailableDates(availability) {
@@ -869,67 +976,98 @@ class AdminPortal {
 
     assignInstructor(courseId, instructorId) {
         console.log('=== Starting assignInstructor ===');
+        
         const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-        const courseIndex = courses.findIndex(c => c.id === courseId);
         const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-        const instructor = instructors.find(inst => inst.id === instructorId);
+        const courseIndex = courses.findIndex(c => c.id === courseId);
+        const instructorIndex = instructors.findIndex(i => i.id === instructorId);
 
-        if (courseIndex === -1 || !instructor) {
+        if (courseIndex === -1 || instructorIndex === -1) {
             console.error('Course or instructor not found');
             return;
         }
 
-        // Get the existing course data
+        // Get existing course and instructor data
         const existingCourse = courses[courseIndex];
-        console.log('Existing course before update:', existingCourse);
+        const instructor = instructors[instructorIndex];
+        console.log('Existing course before assignment:', existingCourse);
+        console.log('Instructor before update:', instructor);
+
+        // Remove the assigned date from instructor's availability
+        instructor.availability = (instructor.availability || []).filter(date => 
+            date !== existingCourse.date
+        );
+        localStorage.setItem('instructors', JSON.stringify(instructors));
+        console.log('Updated instructor availability:', instructor.availability);
 
         // Update course with instructor and status
         courses[courseIndex] = {
             ...existingCourse,
             instructorId: instructorId,
             instructorName: instructor.name,
-            // Organization Portal shows PENDING
-            status: 'PENDING',
-            // Instructor Portal shows AVAILABLE
-            instructorStatus: 'AVAILABLE',
+            
+            // Status updates
+            status: 'PENDING',           // Organization Portal
+            adminStatus: 'SCHEDULED',    // Admin Portal main status
+            adminDashboardStatus: 'SCHEDULED', // Admin Dashboard status
+            adminInstructorDashStatus: 'SCHEDULED', // Admin Instructor Dashboard status
+            instructorStatus: 'AVAILABLE',  // Instructor Portal - stays AVAILABLE
+            
             // Visibility flags
-            showInstructorToOrg: false,
-            displayInstructorDetails: false,
-            showOrgToInstructor: true,
-            displayInInstructorPortal: true,
-            displayOrgDetails: true,
-            hideOrgDetails: false,
-            adminConfirmed: false
+            showInstructorToOrg: false,     // Don't show instructor to org yet
+            displayInstructorDetails: false, // Don't display instructor details yet
+            showOrgToInstructor: false,     // Don't show org to instructor yet
+            displayInInstructorPortal: false, // Don't show in instructor portal yet
+            displayOrgDetails: true,        // Show org details in admin view
+            hideOrgDetails: false,          // Don't hide org details in admin view
+            adminConfirmed: false,
+            
+            // Organization details
+            organizationName: existingCourse.organizationName || existingCourse.organization?.name,
+            organizationId: existingCourse.organizationId
         };
 
-        // Remove instructor's availability entry for this date
-        const instructorIndex = instructors.findIndex(i => i.id === instructorId);
-        if (instructorIndex !== -1) {
-            const availability = instructors[instructorIndex].availability || [];
-            instructors[instructorIndex].availability = availability.filter(date => 
-                date !== existingCourse.date
-            );
-            localStorage.setItem('instructors', JSON.stringify(instructors));
-        }
-
-        console.log('Updated course after changes:', courses[courseIndex]);
+        console.log('Updated course after assignment:', courses[courseIndex]);
         localStorage.setItem('courses', JSON.stringify(courses));
 
-        // Update Admin Portal views
+        // Update all views
         this.updateDashboardData();
         this.updateScheduledCoursesTable();
+        this.updateConfirmedCoursesTable();
         this.updateInstructorAvailability();
-        
-        console.log('=== Completed assignInstructor ===');
-        
-        // Close the modal
-        const modal = document.querySelector('.modal');
+
+        // Hide modal if it exists
+        const modal = document.getElementById('instructorSelectionModal');
         if (modal) {
-            const modalInstance = bootstrap.Modal.getInstance(modal);
-            if (modalInstance) {
-                modalInstance.hide();
-            }
+            modal.style.display = 'none';
         }
+
+        console.log('=== Completed assignInstructor ===');
+    }
+
+    showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} notification`;
+        notification.textContent = message;
+        
+        // Position the notification
+        notification.style.position = 'fixed';
+        notification.style.top = '20px';
+        notification.style.right = '20px';
+        notification.style.zIndex = '1000';
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+    billCourse(courseId) {
+        // Placeholder for billing functionality
+        console.log('Billing course:', courseId);
+        this.showNotification('Billing feature coming soon', 'info');
     }
 }
 
