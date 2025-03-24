@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA CPR - System Administration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --background-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --border-color: #bdc3c7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .main-nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .main-nav a:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .main-nav a.active {
+            background-color: var(--secondary-color);
+        }
+
+        .dashboard {
+            padding: 20px;
+        }
+
+        .section-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .section-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-buttons button.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .section-buttons button:hover {
+            background-color: #e0e0e0;
+        }
+
+        .section-buttons button.active:hover {
+            background-color: #0056b3;
+        }
+
+        .section-buttons button i {
+            font-size: 1.2em;
+        }
+
+        section {
+            display: none;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        section.active {
+            display: block;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            display: none;
+            z-index: 1000;
+        }
+
+        .notification-success {
+            background-color: #28a745;
+        }
+
+        .notification-error {
+            background-color: #dc3545;
+        }
+
+        .notification-info {
+            background-color: #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="logo">GTA CPR</div>
+        <nav class="main-nav">
+            <a href="Index.html">Home</a>
+            <a href="admin-portal.html">Admin Portal</a>
+            <a href="system-admin-portal.html" class="active">System Admin</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+    </header>
+
+    <div class="dashboard">
+        <h1 class="dashboard-title">System Administration</h1>
+        <div class="section-buttons">
+            <button onclick="showSection('organizations')" class="active">
+                <i class="fas fa-building"></i>
+                <span>Organizations</span>
+            </button>
+            <button onclick="showSection('courseTypes')">
+                <i class="fas fa-book"></i>
+                <span>Course Types</span>
+            </button>
+            <button onclick="showSection('users')">
+                <i class="fas fa-users"></i>
+                <span>User Management</span>
+            </button>
+            <button onclick="showSection('settings')">
+                <i class="fas fa-cog"></i>
+                <span>System Settings</span>
+            </button>
+            <button onclick="handleLogout()">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+
+        <main class="main-content">
+            <!-- Organizations Section -->
+            <section id="organizations" class="section active">
+                <div class="container">
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h2>Organizations Management</h2>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary" onclick="showAddOrganizationModal()">
+                                <i class="fas fa-plus"></i> Add Organization
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Organization Name</th>
+                                    <th>Contact Person</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Active Courses</th>
+                                    <th>Completed Courses</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="organizationsTableBody">
+                                <!-- Organizations will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Course Types Section -->
+            <section id="courseTypes" class="section">
+                <div class="container">
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h2>Course Type Management</h2>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary" onclick="showAddCourseTypeModal()">
+                                <i class="fas fa-plus"></i> Add Course Type
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Course Type</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="courseTypesTableBody">
+                                <!-- Course types will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Add Organization Modal -->
+            <div class="modal" id="addOrganizationModal">
+                <div class="modal-content">
+                    <h2>Add Organization</h2>
+                    <form id="addOrganizationForm" onsubmit="handleAddOrganization(event)">
+                        <div class="form-group">
+                            <label for="orgName">Organization Name</label>
+                            <input type="text" id="orgName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="contactPerson">Contact Person</label>
+                            <input type="text" id="contactPerson" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="orgEmail">Email</label>
+                            <input type="email" id="orgEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="orgPhone">Phone</label>
+                            <input type="tel" id="orgPhone" class="form-control" required>
+                        </div>
+                        <div class="modal-buttons">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('addOrganizationModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Organization</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Add Course Type Modal -->
+            <div class="modal" id="courseTypeModal">
+                <div class="modal-content">
+                    <h2 id="courseTypeModalTitle">Add Course Type</h2>
+                    <form id="courseTypeForm" onsubmit="handleAddCourseType(event)">
+                        <div class="form-group">
+                            <label for="courseTypeName">Course Type Name</label>
+                            <input type="text" id="courseTypeName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="courseTypeDescription">Description</label>
+                            <textarea id="courseTypeDescription" class="form-control" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="courseTypeStatus">Status</label>
+                            <select id="courseTypeStatus" class="form-control" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <input type="hidden" id="courseTypeId">
+                        <div class="modal-buttons">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('courseTypeModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Course Type</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // System Admin Portal initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            showSection('organizations');
+            updateOrganizationsList();
+            updateCourseTypesList();
+        });
+
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('section');
+            sections.forEach(section => section.style.display = 'none');
+
+            const selectedSection = document.getElementById(sectionId);
+            if (selectedSection) {
+                selectedSection.style.display = 'block';
+            }
+
+            const buttons = document.querySelectorAll('.section-buttons button');
+            buttons.forEach(button => {
+                button.classList.toggle('active', button.getAttribute('onclick').includes(sectionId));
+            });
+        }
+
+        // Organization Management Functions
+        function updateOrganizationsList() {
+            try {
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const tbody = document.getElementById('organizationsTableBody');
+                
+                if (!tbody) return;
+
+                tbody.innerHTML = organizations.length ? 
+                    organizations.map(org => {
+                        const orgCourses = courses.filter(c => c.organizationName === org.name);
+                        const activeCourses = orgCourses.filter(c => !c.completionStatus).length;
+                        const completedCourses = orgCourses.filter(c => c.completionStatus === 'COMPLETED').length;
+                        
+                        return `
+                            <tr>
+                                <td>${org.name || '-'}</td>
+                                <td>${org.contactPerson || '-'}</td>
+                                <td>${org.email || '-'}</td>
+                                <td>${org.phone || '-'}</td>
+                                <td>${activeCourses}</td>
+                                <td>${completedCourses}</td>
+                                <td>
+                                    <button class="btn btn-primary" onclick="editOrganization('${org.id}')">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="btn btn-info" onclick="viewOrganizationCourses('${org.id}')">
+                                        <i class="fas fa-list"></i> View Courses
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('') :
+                    '<tr><td colspan="7" style="text-align: center;">No organizations found</td></tr>';
+            } catch (error) {
+                console.error('Error updating organizations list:', error);
+                showNotification('Error updating organizations list', 'error');
+            }
+        }
+
+        function showAddOrganizationModal() {
+            const modal = document.getElementById('addOrganizationModal');
+            if (modal) {
+                modal.style.display = 'block';
+                document.getElementById('addOrganizationForm').reset();
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function handleAddOrganization(event) {
+            event.preventDefault();
+            try {
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                
+                const newOrg = {
+                    id: 'org_' + Date.now(),
+                    name: document.getElementById('orgName').value,
+                    contactPerson: document.getElementById('contactPerson').value,
+                    email: document.getElementById('orgEmail').value,
+                    phone: document.getElementById('orgPhone').value,
+                    createdAt: new Date().toISOString()
+                };
+                
+                organizations.push(newOrg);
+                localStorage.setItem('organizations', JSON.stringify(organizations));
+                
+                closeModal('addOrganizationModal');
+                updateOrganizationsList();
+                showNotification('Organization added successfully', 'success');
+                
+                // Reset form
+                document.getElementById('addOrganizationForm').reset();
+            } catch (error) {
+                console.error('Error adding organization:', error);
+                showNotification('Error adding organization', 'error');
+            }
+        }
+
+        function editOrganization(orgId) {
+            try {
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const org = organizations.find(o => o.id === orgId);
+                
+                if (!org) {
+                    showNotification('Organization not found', 'error');
+                    return;
+                }
+
+                // Populate form with organization data
+                document.getElementById('orgName').value = org.name;
+                document.getElementById('contactPerson').value = org.contactPerson;
+                document.getElementById('orgEmail').value = org.email;
+                document.getElementById('orgPhone').value = org.phone;
+
+                // Show modal
+                showAddOrganizationModal();
+            } catch (error) {
+                console.error('Error editing organization:', error);
+                showNotification('Error editing organization', 'error');
+            }
+        }
+
+        function viewOrganizationCourses(orgId) {
+            try {
+                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+                const org = organizations.find(o => o.id === orgId);
+                
+                if (!org) {
+                    showNotification('Organization not found', 'error');
+                    return;
+                }
+
+                const orgCourses = courses.filter(c => c.organizationName === org.name);
+                showNotification(`${org.name} has ${orgCourses.length} courses`, 'info');
+            } catch (error) {
+                console.error('Error viewing organization courses:', error);
+                showNotification('Error viewing organization courses', 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function handleLogout() {
+            // Clear any session data
+            localStorage.removeItem('currentUser');
+            // Redirect to login page
+            window.location.href = 'login.html';
+        }
+
+        // Course Type Management Functions
+        function updateCourseTypesList() {
+            try {
+                const courseTypes = JSON.parse(localStorage.getItem('courseTypes') || '[]');
+                const tbody = document.getElementById('courseTypesTableBody');
+                
+                if (!tbody) return;
+
+                tbody.innerHTML = courseTypes.length ? 
+                    courseTypes.map(type => `
+                        <tr>
+                            <td>${type.name || '-'}</td>
+                            <td>${type.description || '-'}</td>
+                            <td><span class="status-${type.status}">${type.status}</span></td>
+                            <td>
+                                <button class="btn btn-primary" onclick="editCourseType('${type.id}')">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteCourseType('${type.id}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('') :
+                    '<tr><td colspan="4" style="text-align: center;">No course types found</td></tr>';
+            } catch (error) {
+                console.error('Error updating course types list:', error);
+                showNotification('Error updating course types list', 'error');
+            }
+        }
+
+        function showAddCourseTypeModal() {
+            const modal = document.getElementById('courseTypeModal');
+            if (modal) {
+                document.getElementById('courseTypeModalTitle').textContent = 'Add Course Type';
+                document.getElementById('courseTypeForm').reset();
+                document.getElementById('courseTypeId').value = '';
+                modal.style.display = 'block';
+            }
+        }
+
+        function handleAddCourseType(event) {
+            event.preventDefault();
+            try {
+                const courseTypes = JSON.parse(localStorage.getItem('courseTypes') || '[]');
+                const courseTypeId = document.getElementById('courseTypeId').value;
+                
+                const courseType = {
+                    id: courseTypeId || 'ct_' + Date.now(),
+                    name: document.getElementById('courseTypeName').value,
+                    description: document.getElementById('courseTypeDescription').value,
+                    status: document.getElementById('courseTypeStatus').value,
+                    updatedAt: new Date().toISOString()
+                };
+
+                if (courseTypeId) {
+                    // Update existing course type
+                    const index = courseTypes.findIndex(ct => ct.id === courseTypeId);
+                    if (index !== -1) {
+                        courseTypes[index] = { ...courseTypes[index], ...courseType };
+                    }
+                } else {
+                    // Add new course type
+                    courseType.createdAt = courseType.updatedAt;
+                    courseTypes.push(courseType);
+                }
+
+                localStorage.setItem('courseTypes', JSON.stringify(courseTypes));
+                closeModal('courseTypeModal');
+                updateCourseTypesList();
+                showNotification(`Course type ${courseTypeId ? 'updated' : 'added'} successfully`, 'success');
+            } catch (error) {
+                console.error('Error handling course type:', error);
+                showNotification('Error handling course type', 'error');
+            }
+        }
+
+        function editCourseType(typeId) {
+            try {
+                const courseTypes = JSON.parse(localStorage.getItem('courseTypes') || '[]');
+                const courseType = courseTypes.find(ct => ct.id === typeId);
+                
+                if (!courseType) {
+                    showNotification('Course type not found', 'error');
+                    return;
+                }
+
+                document.getElementById('courseTypeModalTitle').textContent = 'Edit Course Type';
+                document.getElementById('courseTypeName').value = courseType.name;
+                document.getElementById('courseTypeDescription').value = courseType.description;
+                document.getElementById('courseTypeStatus').value = courseType.status;
+                document.getElementById('courseTypeId').value = courseType.id;
+
+                const modal = document.getElementById('courseTypeModal');
+                if (modal) {
+                    modal.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error editing course type:', error);
+                showNotification('Error editing course type', 'error');
+            }
+        }
+
+        function deleteCourseType(typeId) {
+            if (confirm('Are you sure you want to delete this course type?')) {
+                try {
+                    const courseTypes = JSON.parse(localStorage.getItem('courseTypes') || '[]');
+                    const updatedTypes = courseTypes.filter(ct => ct.id !== typeId);
+                    localStorage.setItem('courseTypes', JSON.stringify(updatedTypes));
+                    updateCourseTypesList();
+                    showNotification('Course type deleted successfully', 'success');
+                } catch (error) {
+                    console.error('Error deleting course type:', error);
+                    showNotification('Error deleting course type', 'error');
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -62,8 +62,8 @@ class EmailService {
                         <p><strong>To:</strong> ${organization.name}</p>
                         <p><strong>Attention:</strong> ${invoice.attention}</p>
                         <p><strong>Address:</strong> ${organization.address}</p>
-                        <p><strong>Date:</strong> ${new Date(invoice.invoiceDate).toLocaleDateString()}</p>
-                        <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
+                        <p><strong>Date:</strong> ${formatDate(invoice.invoiceDate)}</p>
+                        <p><strong>Due Date:</strong> ${formatDate(invoice.dueDate)}</p>
                     </div>
 
                     <table>
@@ -77,7 +77,7 @@ class EmailService {
                         <tbody>
                             ${invoice.lineItems.map(item => `
                                 <tr>
-                                    <td>${new Date(item.date).toLocaleDateString()}</td>
+                                    <td>${formatDate(item.date)}</td>
                                     <td>${item.description}</td>
                                     <td>$${item.amount.toFixed(2)}</td>
                                 </tr>
@@ -136,8 +136,8 @@ class EmailService {
                 doc.moveDown();
 
                 // Invoice details
-                doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`);
-                doc.text(`Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}`);
+                doc.text(`Date: ${formatDate(invoice.invoiceDate)}`);
+                doc.text(`Due Date: ${formatDate(invoice.dueDate)}`);
                 doc.moveDown();
 
                 // Line items
@@ -148,7 +148,7 @@ class EmailService {
                 y += 20;
 
                 invoice.lineItems.forEach(item => {
-                    doc.text(new Date(item.date).toLocaleDateString(), 50, y);
+                    doc.text(formatDate(item.date), 50, y);
                     doc.text(item.description, 150, y);
                     doc.text(`$${item.amount.toFixed(2)}`, 400, y);
                     y += 20;
@@ -181,6 +181,17 @@ class EmailService {
                 reject(error);
             }
         });
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return '';
     }
 }
 

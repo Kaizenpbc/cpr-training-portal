@@ -1267,13 +1267,7 @@
             try {
                 if (!dateString) return 'N/A';
                 const date = new Date(dateString);
-                // Add timezone offset to get local date
-                const localDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
-                return localDate.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit'
-                });
+                return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
             } catch (error) {
                 console.error('Error formatting date:', error);
                 return 'Invalid Date';

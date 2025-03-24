@@ -3,2008 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GTA CPR - Course Management</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="trace-facility.css">
-    <script src="trace-facility.js"></script>
+    <title>Admin Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="css/admin-portal.css">
     <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --accent-color: #e74c3c;
-            --background-color: #ecf0f1;
-            --text-color: #2c3e50;
-            --border-color: #bdc3c7;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-
-        body {
-            background-color: var(--background-color);
-            color: var(--text-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .main-header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .main-nav {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .main-nav a {
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            transition: background-color 0.3s;
-        }
-
-        .main-nav a:hover {
-            background-color: var(--secondary-color);
-        }
-
-        .main-nav a.active {
-            background-color: var(--secondary-color);
-        }
-
-        .dashboard {
-            padding: 1rem;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .dashboard-title {
-            margin-bottom: 1rem;
-            color: var(--primary-color);
-            font-size: 1.5rem;
-        }
-
-        .filter-section {
-            background-color: white;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .filter-group label {
-            color: var(--text-color);
-            font-weight: bold;
-        }
-
-        .filter-group select {
-            padding: 0.5rem;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--text-color);
-        }
-
-        .btn {
-            background-color: var(--secondary-color);
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .btn:hover {
-            background-color: #2980b9;
-        }
-
+        /* Add this to your existing styles */
         .btn-reset {
-            background-color: var(--accent-color);
+            background-color: #dc3545 !important;
+            color: white !important;
         }
-
         .btn-reset:hover {
-            background-color: #c0392b;
-        }
-
-        .btn-assign {
-            background-color: var(--secondary-color);
-        }
-
-        .btn-confirm {
-            background-color: #27ae60;
-        }
-
-        .btn-confirm:hover {
-            background-color: #219a52;
-        }
-
-        .btn-bill {
-            background-color: #f39c12;
-        }
-
-        .btn-bill:hover {
-            background-color: #d68910;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            table-layout: fixed;
-        }
-
-        th, td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        th {
-            background-color: var(--primary-color);
-            color: white;
-            cursor: pointer;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        /* Add specific column widths */
-        th:nth-child(1), td:nth-child(1) { width: 15%; } /* Name */
-        th:nth-child(2), td:nth-child(2) { width: 10%; } /* Status */
-        th:nth-child(3), td:nth-child(3) { width: 12%; } /* Date */
-        th:nth-child(4), td:nth-child(4) { width: 18%; } /* Organization */
-        th:nth-child(5), td:nth-child(5) { width: 15%; } /* Location */
-        th:nth-child(6), td:nth-child(6) { width: 12%; } /* Class Type */
-        th:nth-child(7), td:nth-child(7) { width: 10%; } /* Students Registered */
-        th:nth-child(8), td:nth-child(8) { width: 8%; } /* Actions */
-
-        thead {
-            width: 100%;
-            display: table;
-            table-layout: fixed;
-        }
-
-        tbody {
-            width: 100%;
-            display: table;
-            table-layout: fixed;
-        }
-
-        tr {
-            width: 100%;
-            display: table-row;
-        }
-
-        .table-container {
-            width: 100%;
-            overflow-x: auto;
-            margin-bottom: 2rem;
-        }
-
-        th.sortable:hover {
-            background-color: #34495e;
-        }
-
-        th.asc::after {
-            content: ' ↑';
-        }
-
-        th.desc::after {
-            content: ' ↓';
-        }
-
-        tr:hover {
-            background-color: var(--background-color);
-        }
-
-        .instructor-row {
-            background-color: #f8f9fa;
-            font-weight: bold;
-        }
-
-        .date-status-row {
-            background-color: white;
-        }
-
-        .nested-row td:first-child {
-            padding-left: 30px;
-        }
-
-        .status-available {
-            background-color: #2ecc71;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-
-        .status-scheduled {
-            background-color: #f39c12;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-
-        .status-confirmed {
-            background-color: #3498db;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-
-        .status-complete {
-            background-color: #28a745;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-
-        .notes-cell {
-            max-width: 200px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        section {
-            margin-bottom: 2rem;
-        }
-
-        section h2 {
-            color: var(--primary-color);
-            margin-bottom: 1rem;
-        }
-
-        @media (max-width: 768px) {
-            .dashboard {
-                padding: 1rem;
-            }
-
-            .filter-section {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filter-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            table {
-                font-size: 0.9rem;
-            }
-
-            .btn {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 15% auto;
-            padding: 20px;
-            border-radius: 5px;
-            width: 80%;
-            max-width: 500px;
-        }
-
-        .modal-buttons {
-            margin-top: 20px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px;
-            border-radius: 4px;
-            color: white;
-            display: none;
-            z-index: 1001;
-        }
-
-        .notification-success {
-            background-color: #2ecc71;
-        }
-
-        .notification-error {
-            background-color: #e74c3c;
-        }
-
-        .btn-secondary {
-            background-color: #95a5a6;
-        }
-
-        .btn-secondary:hover {
-            background-color: #7f8c8d;
-        }
-
-        .btn-danger {
-            background-color: #e74c3c;
-        }
-
-        .btn-danger:hover {
-            background-color: #c0392b;
-        }
-
-        #resetDataModal ul {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-        
-        #resetDataModal p {
-            margin: 10px 0;
-        }
-
-        .table-responsive td:last-child {
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        .table-responsive .btn {
-            display: inline-block;
-            margin: 0;
-            min-width: 80px;
-        }
-
-        .btn-primary {
-            background-color: #3498db;
-            color: white;
-        }
-
-        .btn-success {
-            background-color: #2ecc71;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #2980b9;
-        }
-
-        .btn-success:hover {
-            background-color: #27ae60;
-        }
-
-        /* Update column widths for scheduled courses table */
-        .table-responsive table {
-            table-layout: fixed;
-            width: 100%;
-        }
-
-        .table-responsive table th,
-        .table-responsive table td {
-            padding: 0.75rem;
-            text-align: left;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        /* Specific column widths for scheduled courses table */
-        .table-responsive table th:nth-child(1), 
-        .table-responsive table td:nth-child(1) { width: 12%; }  /* Course Date */
-        
-        .table-responsive table th:nth-child(2), 
-        .table-responsive table td:nth-child(2) { width: 15%; }  /* Organization */
-        
-        .table-responsive table th:nth-child(3), 
-        .table-responsive table td:nth-child(3) { width: 10%; }  /* Location */
-        
-        .table-responsive table th:nth-child(4), 
-        .table-responsive table td:nth-child(4) { width: 10%; }  /* Class Type */
-        
-        .table-responsive table th:nth-child(5), 
-        .table-responsive table td:nth-child(5) { width: 10%; }  /* Students Registered */
-        
-        .table-responsive table th:nth-child(6), 
-        .table-responsive table td:nth-child(6) { width: 15%; }  /* Status */
-        
-        .table-responsive table th:nth-child(7), 
-        .table-responsive table td:nth-child(7) { width: 15%; }  /* Instructor */
-        
-        .table-responsive table th:nth-child(8), 
-        .table-responsive table td:nth-child(8) { width: 13%; }  /* Actions */
-
-        /* Ensure the table header and cells align properly */
-        .table-responsive thead {
-            background-color: var(--primary-color);
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-
-        .table-responsive th {
-            font-weight: bold;
-            color: white;
-            background-color: var(--primary-color);
-        }
-
-        /* Ensure consistent padding and text alignment */
-        .table-responsive td {
-            vertical-align: middle;
-        }
-
-        /* Make sure the action buttons stay in their column */
-        .table-responsive td:last-child {
-            text-align: center;
-            white-space: nowrap;
-            overflow: visible;
-        }
-
-        .table-responsive .btn {
-            margin: 2px;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.9rem;
-        }
-
-        /* Add these styles to your existing CSS */
-        .section {
-            display: none;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        .section.active {
-            display: block;
-        }
-
-        .left-nav {
-            display: flex;
-            flex-direction: row;
-            gap: 10px;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .left-nav button {
-            padding: 8px 15px;
-            border: none;
-            background: #f8f9fa;
-            border-radius: 4px;
-            cursor: pointer;
-            text-align: center;
-            transition: background-color 0.3s;
-            min-width: 120px;
-            white-space: nowrap;
-        }
-
-        .left-nav button:hover {
-            background: #e9ecef;
-        }
-
-        .left-nav button.active {
-            background: var(--secondary-color);
-            color: white;
-        }
-
-        .left-nav button.btn-danger {
-            background: var(--accent-color);
-            color: white;
-        }
-
-        .left-nav button.btn-danger:hover {
-            background: #c0392b;
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 20px;
-        }
-
-        .dashboard {
-            display: flex;
-            gap: 20px;
-        }
-
-        /* Add these styles to your existing CSS */
-        .dashboard-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 5px;
-            margin-top: 5px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 5px;
-            border-radius: 4px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .stat-card h3 {
-            color: var(--primary-color);
-            margin-bottom: 2px;
-            font-size: 0.8rem;
-        }
-
-        .stat-card p {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--secondary-color);
-            margin: 0;
-        }
-
-        /* Add these styles to your existing CSS */
-        .banner-box {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .banner-box h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-
-        .banner-box .nav-links {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .banner-box .nav-links a {
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            transition: background-color 0.3s;
-        }
-
-        .banner-box .nav-links a:hover {
-            background-color: var(--secondary-color);
-        }
-
-        .banner-box .nav-links a.active {
-            background-color: var(--secondary-color);
-        }
-
-        /* Update table styles for proper alignment */
-        .table-responsive {
-            overflow-x: auto;
-            margin-bottom: 1rem;
-        }
-
-        .table-responsive table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .table-responsive th,
-        .table-responsive td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Specific column widths for scheduled courses table */
-        .table-responsive table th:nth-child(1), 
-        .table-responsive table td:nth-child(1) { width: 12%; }  /* Course Date */
-        
-        .table-responsive table th:nth-child(2), 
-        .table-responsive table td:nth-child(2) { width: 15%; }  /* Organization */
-        
-        .table-responsive table th:nth-child(3), 
-        .table-responsive table td:nth-child(3) { width: 10%; }  /* Location */
-        
-        .table-responsive table th:nth-child(4), 
-        .table-responsive table td:nth-child(4) { width: 10%; }  /* Class Type */
-        
-        .table-responsive table th:nth-child(5), 
-        .table-responsive table td:nth-child(5) { width: 10%; }  /* Students Registered */
-        
-        .table-responsive table th:nth-child(6), 
-        .table-responsive table td:nth-child(6) { width: 15%; }  /* Status */
-        
-        .table-responsive table th:nth-child(7), 
-        .table-responsive table td:nth-child(7) { width: 15%; }  /* Instructor */
-        
-        .table-responsive table th:nth-child(8), 
-        .table-responsive table td:nth-child(8) { width: 13%; }  /* Actions */
-
-        /* Ensure header stays fixed */
-        .table-responsive thead {
-            position: sticky;
-            top: 0;
-            z-index: 1;
-            background-color: var(--primary-color);
-        }
-
-        /* Ensure content cells are properly aligned */
-        .table-responsive tbody td {
-            vertical-align: middle;
-            background-color: white;
-        }
-
-        /* Status styling */
-        .status-scheduled {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-            background-color: #f39c12;
-            color: white;
-        }
-
-        /* Action buttons alignment */
-        .table-responsive td:last-child {
-            text-align: center;
-            white-space: nowrap;
-            overflow: visible;
-        }
-
-        .table-responsive .btn {
-            margin: 2px;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.9rem;
-        }
-
-        .section-buttons {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .section-buttons button {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .section-buttons button:hover {
-            background-color: #2980b9;
-        }
-
-        .section-buttons button.active {
-            background-color: var(--primary-color);
-        }
-
-        .bulk-upload-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-top: 1rem;
-        }
-
-        .upload-section {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .upload-section h3 {
-            margin-bottom: 1rem;
-            color: var(--primary-color);
-        }
-
-        .button-group {
-            margin-top: 1rem;
-            display: flex;
-            gap: 1rem;
-        }
-
-        /* Organizations Section Styles */
-        #organizations .container {
-            padding: 20px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        #organizations .row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        #organizations .col {
-            flex: 1;
-        }
-
-        #organizations .col-auto {
-            flex: 0 0 auto;
-        }
-
-        #organizations h2 {
-            margin: 0;
-            color: var(--primary-color);
-        }
-
-        #organizations .table {
-            margin-bottom: 0;
-        }
-
-        #organizations .btn {
-            padding: 8px 16px;
-            font-size: 14px;
-        }
-
-        #organizations .btn i {
-            margin-right: 8px;
-        }
-
-        #organizations .table th {
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 500;
-            padding: 12px;
-        }
-
-        #organizations .table td {
-            vertical-align: middle;
-            padding: 12px;
-        }
-
-        #organizations .table td:last-child {
-            text-align: center;
-        }
-
-        #organizations .table td .btn {
-            margin: 0 4px;
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-
-        #organizations .table td .btn i {
-            margin-right: 4px;
-        }
-
-        /* Organization Modal Styles */
-        #addOrganizationModal .modal-content {
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        #addOrganizationModal .modal-header {
-            background-color: var(--primary-color);
-            color: white;
-            border-radius: 8px 8px 0 0;
-            padding: 16px;
-        }
-
-        #addOrganizationModal .modal-title {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 500;
-        }
-
-        #addOrganizationModal .modal-body {
-            padding: 20px;
-        }
-
-        #addOrganizationModal .form-label {
-            font-weight: 500;
-            color: var(--text-color);
-            margin-bottom: 8px;
-        }
-
-        #addOrganizationModal .form-control {
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 14px;
-        }
-
-        #addOrganizationModal .form-control:focus {
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
-        }
-
-        #addOrganizationModal .modal-footer {
-            padding: 16px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        #addOrganizationModal .btn {
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        #addOrganizationModal .btn-secondary {
-            background-color: #95a5a6;
-            color: white;
-            border: none;
-        }
-
-        #addOrganizationModal .btn-secondary:hover {
-            background-color: #7f8c8d;
-        }
-
-        #addOrganizationModal .btn-primary {
-            background-color: var(--secondary-color);
-            color: white;
-            border: none;
-        }
-
-        #addOrganizationModal .btn-primary:hover {
-            background-color: #2980b9;
-        }
-
-        /* Responsive Styles */
-        @media (max-width: 768px) {
-            #organizations .row {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 16px;
-            }
-
-            #organizations .btn {
-                width: 100%;
-            }
-
-            #organizations .table td:last-child .btn {
-                display: block;
-                margin: 4px 0;
-            }
+            background-color: #c82333 !important;
         }
     </style>
 </head>
 <body>
-    <header class="main-header">
-        <div class="logo">GTA CPR</div>
-        <nav class="main-nav">
-            <a href="Index.html">Home</a>
-            <a href="instructor-portal.html">Instructors</a>
-            <a href="organization-portal.html">Organizations</a>
-            <a href="admin-portal.html" class="active">Course Management</a>
-            <a href="support-portal.html">Support</a>
-            <a href="#" onclick="handleLogout()">Logout</a>
-        </nav>
-    </header>
-
-    <div class="dashboard">
-        <h1 class="dashboard-title">Admin Dashboard</h1>
-        <div class="section-buttons">
-            <button onclick="showSection('dashboard')" id="dashboardBtn" class="active">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
+    <div class="admin-portal">
+        <nav class="nav-buttons">
+            <button class="nav-button nav-button--active" data-section="dashboard">
+                <i class="nav-button__icon fas fa-tachometer-alt"></i>
+                <span class="nav-button__text">Dashboard</span>
             </button>
-            <button onclick="showSection('organizations')" id="organizationsBtn">
-                <i class="fas fa-building"></i>
-                <span>Organizations</span>
+            <button class="nav-button" data-section="scheduledCourses">
+                <i class="nav-button__icon fas fa-calendar"></i>
+                <span class="nav-button__text">Scheduled Courses</span>
             </button>
-            <button onclick="showSection('scheduledCourses')" id="scheduledCoursesBtn">
-                <i class="fas fa-calendar-check"></i>
-                <span>Scheduled Courses</span>
+            <button class="nav-button" data-section="confirmedCourses">
+                <i class="nav-button__icon fas fa-check-circle"></i>
+                <span class="nav-button__text">Confirmed Courses</span>
             </button>
-            <button onclick="showSection('instructorAvailability')" id="instructorAvailabilityBtn">
-                <i class="fas fa-user-clock"></i>
-                <span>Instructor Availability</span>
+            <button class="nav-button" data-section="completedCourses">
+                <i class="nav-button__icon fas fa-flag-checkered"></i>
+                <span class="nav-button__text">Completed Courses</span>
             </button>
-            <button onclick="showSection('instructorDash')" id="instructorDashBtn">
-                <i class="fas fa-chart-line"></i>
-                <span>Instructor Dashboard</span>
+            <button class="nav-button" data-section="instructorDash">
+                <i class="nav-button__icon fas fa-chalkboard-teacher"></i>
+                <span class="nav-button__text">Instructors Dashboard</span>
             </button>
-            <button onclick="showSection('organizationDash')" id="organizationDashBtn">
-                <i class="fas fa-building"></i>
-                <span>Organization Dashboard</span>
+            <button id="resetDataBtn" class="nav-button btn-reset" data-section="reset">
+                <i class="nav-button__icon fas fa-trash-alt"></i>
+                <span class="nav-button__text">Reset All Data</span>
             </button>
-            <button onclick="showSection('bulkUpload')" id="bulkUploadBtn">
-                <i class="fas fa-file-upload"></i>
-                <span>Bulk Upload</span>
+            <button class="nav-button" id="logoutBtn">
+                <i class="nav-button__icon fas fa-sign-out-alt"></i>
+                <span class="nav-button__text">Logout</span>
             </button>
-            <button onclick="showSection('confirmedCourses')" class="btn btn-primary">Confirmed Courses</button>
-            <button onclick="showSection('completedCourses')" class="btn btn-primary">Completed Courses</button>
-            <button onclick="showSection('courseTypes')" class="btn btn-primary">Course Types</button>
-            <button onclick="showSection('instructors')">Instructors</button>
-            <button onclick="showSection('userManagement')">User Management</button>
-            <button onclick="showSection('analytics')">Analytics</button>
-            <button class="btn-danger" onclick="showResetDataConfirmation()">Reset All Data</button>
-            <button onclick="handleLogout()">Logout</button>
-        </div>
-
-        <nav class="left-nav">
-            <button onclick="showSection('dashboard')" class="active">Dashboard</button>
-            <button onclick="showSection('organizations')">Organizations</button>
-            <button onclick="showSection('scheduledCourses')">Scheduled Courses</button>
-            <button onclick="showSection('confirmedCourses')">Confirmed Courses</button>
-            <button onclick="showSection('completedCourses')">Completed Courses</button>
-            <button onclick="showSection('instructors')">Instructors</button>
-            <button onclick="showSection('userManagement')">User Management</button>
-            <button onclick="showSection('courseTypes')">Course Types</button>
-            <button onclick="showSection('analytics')">Analytics</button>
-            <button class="btn-danger" onclick="showResetDataConfirmation()">Reset All Data</button>
-            <button onclick="handleLogout()">Logout</button>
         </nav>
 
         <main class="main-content">
-            <!-- Dashboard Section -->
-            <section id="dashboard" class="section">
-                <div style="display: flex; gap: 10px;">
-                    <!-- Left side - Stats -->
-                    <div style="flex: 2;">
-                        <div class="dashboard-stats" style="margin-bottom: 20px;">
-                            <div class="stat-card">
-                                <h3>Total Courses</h3>
-                                <p id="totalCoursesCount">0</p>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Pending</h3>
-                                <p id="pendingCoursesCount">0</p>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Scheduled</h3>
-                                <p id="scheduledCoursesCount">0</p>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Confirmed</h3>
-                                <p id="confirmedCoursesCount">0</p>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Completed</h3>
-                                <p id="completedCoursesCount">0</p>
-                            </div>
-                        </div>
-                        <div class="table-responsive" style="background: white; padding: 15px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: left;">Date</th>
-                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: left;">Organization</th>
-                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: left;">Course Type</th>
-                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: left;">Instructor</th>
-                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: center;">Pending</th>
-                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: center;">Scheduled</th>
-                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: center;">Confirmed</th>
-                                        <th scope="col" style="background-color: var(--primary-color); color: white; font-size: 0.9rem; text-align: center;">Completed</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="courseStatusTableBody">
-                                    <!-- JavaScript will populate this -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Right side - Monthly Instructor Summary -->
-                    <div style="max-width: 300px; margin-left: 20px;">
-                        <div style="background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                            <h3 style="color: white; margin: 0 0 15px 0; font-size: 1.1rem; text-align: center; border-bottom: 2px solid rgba(255,255,255,0.2); padding-bottom: 10px;">Monthly Summary</h3>
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
-                                <table style="width: 100%; color: white; border-collapse: separate; border-spacing: 0 8px;">
-                                    <thead>
-                                        <tr>
-                                            <th style="padding: 8px; text-align: left; font-size: 0.9rem; color: #a3c2e3;">Instructor</th>
-                                            <th style="padding: 8px; text-align: center; font-size: 0.9rem; color: #a3c2e3;">Confirmed</th>
-                                            <th style="padding: 8px; text-align: center; font-size: 0.9rem; color: #a3c2e3;">Completed</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="monthlyConfirmedCoursesBody">
-                                        <tr>
-                                            <td colspan="3" style="text-align: center; padding: 15px 5px; color: white; font-style: italic;">No confirmed courses</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Organizations Section -->
-            <section id="organizations" style="display: none;">
-                <div class="container">
-                    <div class="row mb-4">
-                        <div class="col">
-                            <h2>Organizations Management</h2>
-                        </div>
-                        <div class="col-auto">
-                            <button class="btn btn-primary" onclick="showAddOrganizationModal()">
-                                <i class="fas fa-plus"></i> Add Organization
-                            </button>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Organization Name</th>
-                                    <th>Contact Person</th>
-                                    <th>Email</th>
-                                    <th>Phone</th>
-                                    <th>Active Courses</th>
-                                    <th>Completed Courses</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="organizationsTableBody">
-                                <!-- Organizations will be loaded here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Add Organization Modal -->
-            <div class="modal" id="addOrganizationModal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Add Organization</h5>
-                            <button type="button" class="btn-close" onclick="closeModal('addOrganizationModal')"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="addOrganizationForm" onsubmit="handleAddOrganization(event)">
-                                <div class="mb-3">
-                                    <label for="orgName" class="form-label">Organization Name</label>
-                                    <input type="text" class="form-control" id="orgName" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="contactPerson" class="form-label">Contact Person</label>
-                                    <input type="text" class="form-control" id="contactPerson" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="orgEmail" class="form-label">Email</label>
-                                    <input type="email" class="form-control" id="orgEmail" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="orgPhone" class="form-label">Phone</label>
-                                    <input type="tel" class="form-control" id="orgPhone" required>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" onclick="closeModal('addOrganizationModal')">Cancel</button>
-                                    <button type="submit" class="btn btn-primary">Save Organization</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Add User Management Section -->
-            <section id="userManagement" class="section">
-                <h2>User Management</h2>
+            <!-- Dashboard Summary (shown at top of all sections except Dashboard) -->
+            <div id="dashboardSummary" class="dashboard-summary" style="display: none;">
+                <h3 class="section__subtitle">Dashboard Summary</h3>
                 <div class="table-container">
-                    <div class="table-header">
-                        <h3>System Users</h3>
-                        <button class="btn btn-primary" onclick="showAddUserModal()">Add New User</button>
-                    </div>
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Username</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Last Login</th>
-                                <th>Actions</th>
+                                <th>Week</th>
+                                <th>Name</th>
+                                <th>Scheduled</th>
+                                <th>Confirmed</th>
+                                <th>Completed</th>
+                                <th>Total</th>
                             </tr>
                         </thead>
-                        <tbody id="userManagementTableBody"></tbody>
+                        <tbody id="dashboardSummaryBody">
+                            <!-- Will be populated by JavaScript -->
+                        </tbody>
                     </table>
-                </div>
-            </section>
-
-            <!-- Add User Modal -->
-            <div id="addUserModal" class="modal">
-                <div class="modal-content">
-                    <h2>Add New User</h2>
-                    <form onsubmit="handleAddUser(event)">
-                        <div class="form-group">
-                            <label for="newUsername">Username:</label>
-                            <input type="text" id="newUsername" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="newPassword">Password:</label>
-                            <input type="password" id="newPassword" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="userRole">Role:</label>
-                            <select id="userRole" required>
-                                <option value="">Select Role</option>
-                                <option value="admin">Admin</option>
-                                <option value="instructor">Instructor</option>
-                                <option value="organization">Organization</option>
-                                <option value="accounting">Accounting</option>
-                            </select>
-                        </div>
-                        <div class="modal-buttons">
-                            <button type="submit" class="btn btn-primary">Add User</button>
-                            <button type="button" class="btn btn-secondary" onclick="closeModal('addUserModal')">Cancel</button>
-                        </div>
-                    </form>
                 </div>
             </div>
 
-            <!-- Instructor Dashboard -->
-            <section id="instructorDash" style="display: none;">
-                <div class="section-header">
-                    <h2>Instructor Dashboard</h2>
-                </div>
-                <div class="instructor-dashboard">
-                    <div class="table-responsive">
+            <!-- All sections container -->
+            <div class="sections-container">
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="section">
+                    <div class="section__header">
+                        <h2 class="section__title">Dashboard</h2>
+                    </div>
+                    <div class="table-container">
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Course Name</th>
-                                    <th>Status</th>
+                                    <th>Week</th>
+                                    <th>Name</th>
+                                    <th>Scheduled</th>
+                                    <th>Confirmed</th>
+                                    <th>Completed</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboardTableBody">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Confirmed Courses Section -->
+                <section id="confirmedCourses" class="section">
+                    <div class="section__header">
+                        <h2 class="section__title">Confirmed Courses</h2>
+                    </div>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
                                     <th>Date</th>
                                     <th>Organization</th>
                                     <th>Location</th>
                                     <th>Class Type</th>
                                     <th>Students</th>
+                                    <th>Status</th>
+                                    <th>Instructor</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="instructorTableBody">
-                                <!-- Table content will be dynamically populated -->
+                            <tbody id="confirmedCoursesTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Completed Courses Section -->
+                <section id="completedCourses" class="section">
+                    <div class="section__header">
+                        <h2 class="section__title">Completed Courses</h2>
+                    </div>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Organization</th>
+                                    <th>Location</th>
+                                    <th>Class Type</th>
+                                    <th>Students</th>
+                                    <th>Status</th>
+                                    <th>Instructor</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completedCoursesTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Instructors Dashboard -->
+                <section id="instructorDash" class="section">
+                    <div class="section__header">
+                        <h2 class="section__title">Instructors Dashboard</h2>
+                    </div>
+                    <div class="instructor-dashboard">
+                        <!-- Instructor Availability Overview -->
+                        <div class="availability-overview">
+                            <div class="table-container">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" data-sort="name">Name <i class="fas fa-sort"></i></th>
+                                            <th class="sortable" data-sort="date">Date <i class="fas fa-sort"></i></th>
+                                            <th class="sortable" data-sort="status">Status <i class="fas fa-sort"></i></th>
+                                            <th class="sortable" data-sort="organization">Organization <i class="fas fa-sort"></i></th>
+                                            <th>Location</th>
+                                            <th>Type of Course</th>
+                                            <th>Students Registered</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="instructorAvailabilityBody">
+                                        <!-- Will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Scheduled Courses Section -->
+                <section id="scheduledCourses" class="section" style="display: none;">
+                    <div class="section-header">
+                        <h2>Scheduled Courses</h2>
+                        <div class="filter-container">
+                            <select id="organizationFilter" class="form-select" onchange="adminPortal.updateScheduledCoursesTable()">
+                                <option value="">All Organizations</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Organization</th>
+                                    <th>Location</th>
+                                    <th>Class Type</th>
+                                    <th>Students</th>
+                                    <th>Status</th>
+                                    <th>Instructor</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduledCoursesTableBody">
+                                <!-- Course rows will be populated here -->
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </section>
-
-            <!-- Add instructor assignment modal -->
-            <div id="assignInstructorModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2>Assign Instructor</h2>
-                        <span class="close" onclick="closeModal('assignInstructorModal')">&times;</span>
-                    </div>
-                    <div class="modal-body">
-                        <select id="instructorSelect" class="form-control">
-                            <option value="">Choose an instructor...</option>
-                        </select>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="closeModal('assignInstructorModal')">Cancel</button>
-                        <button class="btn btn-primary" onclick="handleAssignInstructor()">Assign</button>
-                    </div>
-                </div>
+                </section>
             </div>
-
-            <!-- Add notification div -->
-            <div id="notification" class="notification"></div>
-
-            <!-- Scheduled Courses -->
-            <section id="scheduledCourses" class="section">
-                <h2>Scheduled Courses</h2>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Course Date</th>
-                                <th>Organization</th>
-                                <th>Location</th>
-                                <th>Class Type</th>
-                                <th>Students</th>
-                                <th>Status</th>
-                                <th>Instructor</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="scheduledCoursesTableBody"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Confirmed Courses -->
-            <section id="confirmedCourses" class="section">
-                <h2>Confirmed Courses</h2>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Course Date</th>
-                                <th>Organization</th>
-                                <th>Location</th>
-                                <th>Class Type</th>
-                                <th>Students Registered</th>
-                                <th>Status</th>
-                                <th>Instructor</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="confirmedCoursesTableBody"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Completed Courses -->
-            <section id="completedCourses" class="section">
-                <h2>Completed Courses</h2>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Course Date</th>
-                                <th>Organization</th>
-                                <th>Location</th>
-                                <th>Class Type</th>
-                                <th>Students Registered</th>
-                                <th>Students Attended</th>
-                                <th>Status</th>
-                                <th>Billing Status</th>
-                                <th>Instructor</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="completedCoursesTableBody"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section id="courseTypes" class="section">
-                <h2>Course Type Management</h2>
-                <div class="section-content">
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Course Type</th>
-                                    <th>Description</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="courseTypesTableBody"></tbody>
-                        </table>
-                    </div>
-                    <button class="btn btn-primary" onclick="showAddCourseTypeModal()">Add Course Type</button>
-                </div>
-            </section>
-
-            <!-- Add Course Type Modal -->
-            <div id="courseTypeModal" class="modal">
-                <div class="modal-content">
-                    <span class="close-modal" onclick="closeModal('courseTypeModal')">&times;</span>
-                    <h3 id="courseTypeModalTitle">Add Course Type</h3>
-                    <form id="courseTypeForm" onsubmit="saveCourseType(event)">
-                        <div class="form-group">
-                            <label for="courseTypeName">Course Type Name:</label>
-                            <input type="text" id="courseTypeName" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="courseTypeDescription">Description:</label>
-                            <textarea id="courseTypeDescription" required></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="courseTypeStatus">Status:</label>
-                            <select id="courseTypeStatus" required>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                        <input type="hidden" id="courseTypeId">
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Add Student Management Section -->
-            <div id="studentManagementSection" class="section" style="display: none;">
-                <h2>Student Management</h2>
-                <div class="search-filters">
-                    <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="updateStudentTable()">
-                </div>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Registration Date</th>
-                            <th>Courses</th>
-                            <th>Certificates</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="studentTableBody"></tbody>
-                </table>
-            </div>
-
-            <section id="bulkUpload" class="section">
-                <h2>Bulk Upload</h2>
-                <div class="bulk-upload-container">
-                    <div class="upload-section">
-                        <h3>Instructor Availability</h3>
-                        <div class="form-group">
-                            <label for="instructorAvailabilityFile">Upload Instructor Availability Excel File:</label>
-                            <input type="file" id="instructorAvailabilityFile" accept=".xlsx,.xls" onchange="handleInstructorAvailabilityFileSelect(event)">
-                        </div>
-                        <div class="progress-container" id="instructorAvailabilityProgress" style="display: none;">
-                            <div class="progress">
-                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                            </div>
-                            <div class="progress-text">Processing: 0%</div>
-                        </div>
-                        <div class="button-group">
-                            <button id="uploadInstructorAvailabilityBtn" class="btn btn-primary" onclick="handleInstructorAvailabilityUpload()" disabled>
-                                Upload Availability
-                            </button>
-                            <button class="btn btn-secondary" onclick="downloadInstructorAvailabilityTemplate()">
-                                Download Template
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="upload-section">
-                        <h3>Organization Course Schedule</h3>
-                        <div class="form-group">
-                            <label for="organizationCoursesFile">Upload Organization Course Schedule Excel File:</label>
-                            <input type="file" id="organizationCoursesFile" accept=".xlsx,.xls" onchange="handleOrganizationCoursesFileSelect(event)">
-                        </div>
-                        <div class="progress-container" id="organizationCoursesProgress" style="display: none;">
-                            <div class="progress">
-                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                            </div>
-                            <div class="progress-text">Processing: 0%</div>
-                        </div>
-                        <div class="button-group">
-                            <button id="uploadOrganizationCoursesBtn" class="btn btn-primary" onclick="handleOrganizationCoursesUpload()" disabled>
-                                Upload Course Schedule
-                            </button>
-                            <button class="btn btn-secondary" onclick="downloadOrganizationCoursesTemplate()">
-                                Download Template
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <style>
-                .bulk-upload-container {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 2rem;
-                    margin-top: 1rem;
-                }
-
-                .upload-section {
-                    background: white;
-                    padding: 1.5rem;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-
-                .upload-section h3 {
-                    margin-bottom: 1rem;
-                    color: var(--primary-color);
-                }
-
-                .button-group {
-                    margin-top: 1rem;
-                    display: flex;
-                    gap: 1rem;
-                }
-            </style>
-
-            <script>
-                // Initialize TraceFacility
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Initialize TraceFacility
-                    TraceFacility.init('Admin Portal');
-                    
-                    // Initialize AdminPortal
-                    AdminPortal.init();
-                });
-
-                // Define showSection function in global scope
-                function showSection(sectionId) {
-                    TraceFacility.trace('showSection', `Switching to section: ${sectionId}`);
-                    // Hide all sections
-                    const sections = document.querySelectorAll('section');
-                    sections.forEach(section => section.style.display = 'none');
-
-                    // Show selected section
-                    const selectedSection = document.getElementById(sectionId);
-                    if (selectedSection) {
-                        selectedSection.style.display = 'block';
-                    }
-
-                    // Update active button state
-                    const buttons = document.querySelectorAll('.section-buttons button, .left-nav button');
-                    buttons.forEach(button => {
-                        button.classList.toggle('active', button.getAttribute('onclick').includes(sectionId));
-                    });
-
-                    // Update content based on section
-                    if (sectionId === 'organizations') {
-                        updateOrganizationsList();
-                    } else if (sectionId === 'scheduledCourses') {
-                        updateScheduledCoursesList();
-                    } else if (sectionId === 'confirmedCourses') {
-                        updateConfirmedCoursesList();
-                    } else if (sectionId === 'completedCourses') {
-                        updateCompletedCoursesList();
-                    } else if (sectionId === 'instructorDash') {
-                        updateInstructorDashboard();
-                    }
-                }
-
-                function updateScheduledCoursesList() {
-                    TraceFacility.trace('updateScheduledCoursesList', 'Updating scheduled courses list');
-                    try {
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        TraceFacility.trace('updateScheduledCoursesList', `Found ${courses.length} total courses`);
-                        const scheduledCourses = courses.filter(course => course.status === 'SCHEDULED');
-                        TraceFacility.trace('updateScheduledCoursesList', `Found ${scheduledCourses.length} scheduled courses`);
-                        const tbody = document.getElementById('scheduledCoursesTableBody');
-                        
-                        if (!tbody) return;
-
-                        tbody.innerHTML = scheduledCourses.length ? 
-                            scheduledCourses.map(course => `
-                                <tr>
-                                    <td>${course.date || '-'}</td>
-                                    <td>${course.organizationName || '-'}</td>
-                                    <td>${course.location || '-'}</td>
-                                    <td>${course.classType || '-'}</td>
-                                    <td>${course.studentsRegistered || 0}</td>
-                                    <td><span class="status-scheduled">${course.status || '-'}</span></td>
-                                    <td>${course.instructorId || 'Unassigned'}</td>
-                                    <td>
-                                        <button class="btn btn-primary" onclick="assignInstructor('${course.id}')">
-                                            <i class="fas fa-user-plus"></i> Assign
-                                        </button>
-                                        <button class="btn btn-success" onclick="confirmCourse('${course.id}')">
-                                            <i class="fas fa-check"></i> Confirm
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('') :
-                            '<tr><td colspan="8" style="text-align: center;">No scheduled courses found</td></tr>';
-                    } catch (error) {
-                        TraceFacility.trace('updateScheduledCoursesList', `Error: ${error.message}`, 'error');
-                        console.error('Error updating scheduled courses list:', error);
-                        showNotification('Error updating scheduled courses list', 'error');
-                    }
-                }
-
-                // Define AdminPortal object
-                const AdminPortal = {
-                    init: function() {
-                        TraceFacility.trace('AdminPortal.init', 'Initializing Admin Portal');
-                        this.setupEventListeners();
-                        this.updateAllDisplays();
-                    },
-
-                    setupEventListeners: function() {
-                        TraceFacility.trace('AdminPortal.setupEventListeners', 'Setting up event listeners');
-                        // Add event listeners for section buttons
-                        const sectionButtons = document.querySelectorAll('.section-buttons button');
-                        sectionButtons.forEach(button => {
-                            button.addEventListener('click', () => {
-                                const sectionId = button.getAttribute('onclick').match(/'([^']+)'/)[1];
-                                showSection(sectionId);
-                            });
-                        });
-                    },
-
-                    updateAllDisplays: function() {
-                        TraceFacility.trace('AdminPortal.updateAllDisplays', 'Updating all displays');
-                        this.updateDashboardStats();
-                        this.updateCourseStatusTable();
-                        this.updateMonthlySummary();
-                        updateScheduledCoursesList();
-                    },
-
-                    updateDashboardStats: function() {
-                        try {
-                            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                            const stats = {
-                                total: courses.length,
-                                pending: courses.filter(c => c.status === 'PENDING').length,
-                                scheduled: courses.filter(c => c.status === 'SCHEDULED').length,
-                                confirmed: courses.filter(c => c.status === 'CONFIRMED').length,
-                                completed: courses.filter(c => c.status === 'COMPLETED').length
-                            };
-
-                            document.getElementById('totalCoursesCount').textContent = stats.total;
-                            document.getElementById('pendingCoursesCount').textContent = stats.pending;
-                            document.getElementById('scheduledCoursesCount').textContent = stats.scheduled;
-                            document.getElementById('confirmedCoursesCount').textContent = stats.confirmed;
-                            document.getElementById('completedCoursesCount').textContent = stats.completed;
-                        } catch (error) {
-                            console.error('Error updating dashboard stats:', error);
-                        }
-                    },
-
-                    updateCourseStatusTable: function() {
-                        try {
-                            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                            const tbody = document.getElementById('courseStatusTableBody');
-                            
-                            if (!tbody) return;
-
-                            // Group courses by date
-                            const groupedCourses = courses.reduce((acc, course) => {
-                                const date = course.date || 'No Date';
-                                if (!acc[date]) {
-                                    acc[date] = {
-                                        pending: 0,
-                                        scheduled: 0,
-                                        confirmed: 0,
-                                        completed: 0
-                                    };
-                                }
-                                acc[date][course.status.toLowerCase()]++;
-                                return acc;
-                            }, {});
-
-                            tbody.innerHTML = Object.entries(groupedCourses)
-                                .map(([date, counts]) => `
-                                    <tr>
-                                        <td>${date}</td>
-                                        <td>${counts.pending}</td>
-                                        <td>${counts.scheduled}</td>
-                                        <td>${counts.confirmed}</td>
-                                        <td>${counts.completed}</td>
-                                    </tr>
-                                `).join('');
-                        } catch (error) {
-                            console.error('Error updating course status table:', error);
-                        }
-                    },
-
-                    updateMonthlySummary: function() {
-                        try {
-                            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                            const tbody = document.getElementById('monthlyConfirmedCoursesBody');
-                            
-                            if (!tbody) return;
-
-                            // Group courses by instructor
-                            const instructorStats = courses.reduce((acc, course) => {
-                                if (course.instructorId) {
-                                    if (!acc[course.instructorId]) {
-                                        acc[course.instructorId] = {
-                                            confirmed: 0,
-                                            completed: 0
-                                        };
-                                    }
-                                    if (course.status === 'CONFIRMED') acc[course.instructorId].confirmed++;
-                                    if (course.status === 'COMPLETED') acc[course.instructorId].completed++;
-                                }
-                                return acc;
-                            }, {});
-
-                            tbody.innerHTML = Object.entries(instructorStats)
-                                .map(([instructorId, stats]) => `
-                                    <tr>
-                                        <td>${instructorId}</td>
-                                        <td>${stats.confirmed}</td>
-                                        <td>${stats.completed}</td>
-                                    </tr>
-                                `).join('');
-                        } catch (error) {
-                            console.error('Error updating monthly summary:', error);
-                        }
-                    },
-
-                    // Remove the showSection method from AdminPortal since we're using the global one
-                };
-
-                // Add showNotification function
-                function showNotification(message, type = 'info') {
-                    const notification = document.getElementById('notification');
-                    if (!notification) return;
-
-                    notification.textContent = message;
-                    notification.className = `notification notification-${type}`;
-                    notification.style.display = 'block';
-
-                    setTimeout(() => {
-                        notification.style.display = 'none';
-                    }, 3000);
-                }
-
-                // Add updateInstructorDashboard function
-                function updateInstructorDashboard() {
-                    try {
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-                        const tbody = document.getElementById('instructorTableBody');
-                        
-                        if (!tbody) {
-                            console.error('Instructor table body not found');
-                            return;
-                        }
-
-                        tbody.innerHTML = courses.length ? 
-                            courses.map(course => `
-                                <tr>
-                                    <td>${course.name || '-'}</td>
-                                    <td><span class="status-${course.status?.toLowerCase()}">${course.status || '-'}</span></td>
-                                    <td>${course.date || '-'}</td>
-                                    <td>${course.organizationName || '-'}</td>
-                                    <td>${course.location || '-'}</td>
-                                    <td>${course.classType || '-'}</td>
-                                    <td>${course.studentsRegistered || 0}</td>
-                                    <td>
-                                        ${course.status === 'SCHEDULED' ? `
-                                            <button class="btn btn-primary" onclick="assignInstructor('${course.id}')">
-                                                <i class="fas fa-user-plus"></i> Assign
-                                            </button>
-                                        ` : ''}
-                                        ${course.status === 'SCHEDULED' && course.instructorId ? `
-                                            <button class="btn btn-success" onclick="confirmCourse('${course.id}')">
-                                                <i class="fas fa-check"></i> Confirm
-                                            </button>
-                                        ` : ''}
-                                    </td>
-                                </tr>
-                            `).join('') :
-                            '<tr><td colspan="8" style="text-align: center;">No courses found</td></tr>';
-
-                        // Update instructor select if it exists
-                        const instructorSelect = document.getElementById('instructorSelect');
-                        if (instructorSelect) {
-                            instructorSelect.innerHTML = `
-                                <option value="">Choose an instructor...</option>
-                                ${instructors.map(instructor => `
-                                    <option value="${instructor.id}">${instructor.name}</option>
-                                `).join('')}
-                            `;
-                        }
-                    } catch (error) {
-                        console.error('Error updating instructor dashboard:', error);
-                        showNotification('Error updating instructor dashboard', 'error');
-                    }
-                }
-
-                // Add confirmCourse function
-                function confirmCourse(courseId) {
-                    TraceFacility.trace('confirmCourse', `Confirming course: ${courseId}`);
-                    try {
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const courseIndex = courses.findIndex(c => c.id === courseId);
-                        
-                        if (courseIndex === -1) {
-                            showNotification('Course not found', 'error');
-                            return;
-                        }
-
-                        courses[courseIndex].status = 'CONFIRMED';
-                        localStorage.setItem('courses', JSON.stringify(courses));
-                        
-                        // Update all displays
-                        AdminPortal.updateAllDisplays();
-                        showNotification('Course confirmed successfully', 'success');
-                    } catch (error) {
-                        TraceFacility.trace('confirmCourse', `Error: ${error.message}`, 'error');
-                        console.error('Error confirming course:', error);
-                        showNotification('Error confirming course', 'error');
-                    }
-                }
-
-                // Add assignInstructor function
-                function assignInstructor(courseId) {
-                    TraceFacility.trace('assignInstructor', `Assigning instructor to course: ${courseId}`);
-                    try {
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-                        const course = courses.find(c => c.id === courseId);
-                        
-                        if (!course) {
-                            showNotification('Course not found', 'error');
-                            return;
-                        }
-
-                        // Populate instructor select
-                        const instructorSelect = document.getElementById('instructorSelect');
-                        instructorSelect.innerHTML = '<option value="">Choose an instructor...</option>' +
-                            instructors.map(instructor => 
-                                `<option value="${instructor.id}" ${course.instructorId === instructor.id ? 'selected' : ''}>
-                                    ${instructor.name}
-                                </option>`
-                            ).join('');
-
-                        // Show modal
-                        const modal = document.getElementById('assignInstructorModal');
-                        if (modal) {
-                            modal.style.display = 'block';
-                            modal.dataset.courseId = courseId;
-                        }
-                    } catch (error) {
-                        TraceFacility.trace('assignInstructor', `Error: ${error.message}`, 'error');
-                        console.error('Error assigning instructor:', error);
-                        showNotification('Error assigning instructor', 'error');
-                    }
-                }
-
-                // Add handleAssignInstructor function
-                function handleAssignInstructor() {
-                    try {
-                        const modal = document.getElementById('assignInstructorModal');
-                        const courseId = modal.dataset.courseId;
-                        const instructorId = document.getElementById('instructorSelect').value;
-                        
-                        if (!instructorId) {
-                            showNotification('Please select an instructor', 'error');
-                            return;
-                        }
-
-                        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                        const courseIndex = courses.findIndex(c => c.id === courseId);
-                        
-                        if (courseIndex === -1) {
-                            showNotification('Course not found', 'error');
-                            return;
-                        }
-
-                        courses[courseIndex].instructorId = instructorId;
-                        localStorage.setItem('courses', JSON.stringify(courses));
-                        
-                        // Update all displays
-                        AdminPortal.updateAllDisplays();
-                        closeModal('assignInstructorModal');
-                        showNotification('Instructor assigned successfully', 'success');
-                    } catch (error) {
-                        console.error('Error handling instructor assignment:', error);
-                        showNotification('Error assigning instructor', 'error');
-                    }
-                }
-            </script>
         </main>
     </div>
 
-    <script>
-        // Add global error handling
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
-            showNotification('An error occurred. Please check the console for details.', 'error');
-            return false;
-        };
-
-        // Add unhandled promise rejection handling
-        window.addEventListener('unhandledrejection', function(event) {
-            console.error('Unhandled promise rejection:', event.reason);
-            showNotification('An error occurred. Please check the console for details.', 'error');
-        });
-
-        // Add cleanup for event listeners
-        function cleanup() {
-            // Clear all intervals and timeouts
-            const highestTimeoutId = setTimeout(";");
-            for (let i = 0; i < highestTimeoutId; i++) {
-                clearTimeout(i);
-            }
-        }
-
-        // Add beforeunload handler
-        window.addEventListener('beforeunload', cleanup);
-
-        // Debounce function to prevent too many rapid updates
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // Debounce heavy operations
-        const debouncedUpdateDashboard = debounce(updateInstructorDashboard, 250);
-        const debouncedUpdateTables = debounce(updateScheduledCoursesList, 250);
-    </script>
-
-    <script>
-        // Organization Management Functions
-        function updateOrganizationsList() {
-            try {
-                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
-                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const tbody = document.getElementById('organizationsTableBody');
-                
-                if (!tbody) return;
-
-                tbody.innerHTML = organizations.length ? 
-                    organizations.map(org => {
-                        const orgCourses = courses.filter(c => c.organizationName === org.name);
-                        const activeCourses = orgCourses.filter(c => !c.completionStatus).length;
-                        const completedCourses = orgCourses.filter(c => c.completionStatus === 'COMPLETED').length;
-                        
-                        return `
-                            <tr>
-                                <td>${org.name || '-'}</td>
-                                <td>${org.contactPerson || '-'}</td>
-                                <td>${org.email || '-'}</td>
-                                <td>${org.phone || '-'}</td>
-                                <td>${activeCourses}</td>
-                                <td>${completedCourses}</td>
-                                <td>
-                                    <button class="btn btn-primary" onclick="editOrganization('${org.id}')">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                    <button class="btn btn-info" onclick="viewOrganizationCourses('${org.id}')">
-                                        <i class="fas fa-list"></i> View Courses
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('') :
-                    '<tr><td colspan="7" style="text-align: center;">No organizations found</td></tr>';
-            } catch (error) {
-                console.error('Error updating organizations list:', error);
-                showNotification('Error updating organizations list', 'error');
-            }
-        }
-
-        function showAddOrganizationModal() {
-            const modal = document.getElementById('addOrganizationModal');
-            if (modal) {
-                modal.style.display = 'block';
-                document.getElementById('addOrganizationForm').reset();
-            }
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        }
-
-        function handleAddOrganization(event) {
-            event.preventDefault();
-            try {
-                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
-                
-                const newOrg = {
-                    id: 'org_' + Date.now(),
-                    name: document.getElementById('orgName').value,
-                    contactPerson: document.getElementById('contactPerson').value,
-                    email: document.getElementById('orgEmail').value,
-                    phone: document.getElementById('orgPhone').value,
-                    createdAt: new Date().toISOString()
-                };
-                
-                organizations.push(newOrg);
-                localStorage.setItem('organizations', JSON.stringify(organizations));
-                
-                closeModal('addOrganizationModal');
-                updateOrganizationsList();
-                showNotification('Organization added successfully', 'success');
-                
-                // Reset form
-                document.getElementById('addOrganizationForm').reset();
-            } catch (error) {
-                console.error('Error adding organization:', error);
-                showNotification('Error adding organization', 'error');
-            }
-        }
-
-        function editOrganization(orgId) {
-            try {
-                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
-                const org = organizations.find(o => o.id === orgId);
-                
-                if (!org) {
-                    showNotification('Organization not found', 'error');
-                    return;
-                }
-
-                // Populate form with organization data
-                document.getElementById('orgName').value = org.name;
-                document.getElementById('contactPerson').value = org.contactPerson;
-                document.getElementById('orgEmail').value = org.email;
-                document.getElementById('orgPhone').value = org.phone;
-
-                // Show modal
-                showAddOrganizationModal();
-            } catch (error) {
-                console.error('Error editing organization:', error);
-                showNotification('Error editing organization', 'error');
-            }
-        }
-
-        function viewOrganizationCourses(orgId) {
-            try {
-                const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
-                const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const org = organizations.find(o => o.id === orgId);
-                
-                if (!org) {
-                    showNotification('Organization not found', 'error');
-                    return;
-                }
-
-                const orgCourses = courses.filter(c => c.organizationName === org.name);
-                
-                // Show courses in a modal or redirect to a filtered view
-                showNotification(`${org.name} has ${orgCourses.length} courses`, 'info');
-            } catch (error) {
-                console.error('Error viewing organization courses:', error);
-                showNotification('Error viewing organization courses', 'error');
-            }
-        }
-
-        // Add updateOrganizationsList to the AdminPortal's updateAllDisplays method
-        const originalUpdateAllDisplays = AdminPortal.updateAllDisplays;
-        AdminPortal.updateAllDisplays = function() {
-            originalUpdateAllDisplays.call(this);
-            updateOrganizationsList();
-        };
-
-        // Add updateOrganizationsList to the initialization
-        const originalSetupEventListeners = AdminPortal.setupEventListeners;
-        AdminPortal.setupEventListeners = function() {
-            originalSetupEventListeners.call(this);
-            document.addEventListener('DOMContentLoaded', updateOrganizationsList);
-        };
-    </script>
-
-    <!-- Add Trace UI elements -->
-    <div id="traceControls" class="trace-controls">
-        <button onclick="TraceFacility.toggleTrace()" class="btn btn-primary">
-            <i class="fas fa-bug"></i> Toggle Trace
-        </button>
-        <div id="traceStatus" class="trace-status">Trace: OFF</div>
-    </div>
+    <!-- Add Bootstrap CSS and JS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/admin-portal.js"></script>
 </body>
 </html> 
