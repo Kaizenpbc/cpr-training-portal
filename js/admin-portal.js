@@ -248,120 +248,63 @@ class AdminPortal {
 
     updateScheduledCoursesTable() {
         console.log('=== Starting updateScheduledCoursesTable ===');
-        
-        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-        console.log('All courses from localStorage:', courses);
-        
-        const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
-        console.log('All organizations from localStorage:', organizations);
-        
-        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-        console.log('All instructors from localStorage:', instructors);
-        
-        // Filter for both PENDING and SCHEDULED courses
-        const scheduledCourses = courses.filter(course => 
-            course.status === 'SCHEDULED' || course.status === 'PENDING'
-        );
-        console.log('Filtered scheduled courses:', scheduledCourses);
-        
-        // Get the table body and organization filter
         const tableBody = document.getElementById('scheduledCoursesTableBody');
-        const orgFilter = document.getElementById('organizationFilter');
-        
         if (!tableBody) {
-            console.error('scheduledCoursesTableBody element not found!');
+            console.error('scheduledCoursesTableBody not found');
             return;
         }
-        console.log('Found scheduledCoursesTableBody element');
 
-        // Update organization filter options
-        if (orgFilter) {
-            orgFilter.innerHTML = `
-                <option value="">All Organizations</option>
-                ${organizations.map(org => `
-                    <option value="${org.id}">${org.name}</option>
-                `).join('')}
-            `;
-        }
+        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+        const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
 
-        // Filter courses by selected organization
-        const selectedOrgId = orgFilter ? orgFilter.value : '';
-        const filteredCourses = selectedOrgId 
-            ? scheduledCourses.filter(course => course.organizationId === selectedOrgId)
-            : scheduledCourses;
-        console.log('Courses filtered by organization:', filteredCourses);
-
-        if (filteredCourses.length === 0) {
-            console.log('No scheduled courses found, displaying empty message');
+        // Get all courses
+        const scheduledCourses = courses;
+        
+        if (scheduledCourses.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="9" class="text-center">No scheduled courses available</td>
+                    <td colspan="8" class="text-center">No courses available</td>
                 </tr>
             `;
             return;
         }
 
         // Sort courses by date
-        filteredCourses.sort((a, b) => new Date(a.date) - new Date(b.date));
-        console.log('Sorted scheduled courses:', filteredCourses);
+        scheduledCourses.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // Update the table
-        tableBody.innerHTML = filteredCourses.map(course => {
-            // Get organization name
+        tableBody.innerHTML = scheduledCourses.map(course => {
             const organization = organizations.find(org => org.id === course.organizationId);
-            const orgName = organization ? organization.name : 'N/A';
-            console.log(`Organization for course ${course.id}:`, organization);
-
-            // Get instructor name
             const instructor = instructors.find(inst => inst.id === course.instructorId);
-            const instructorName = instructor ? instructor.name : 'Not Assigned';
-            console.log(`Instructor for course ${course.id}:`, instructor);
-
-            // Check if any instructors are available for this course date
-            const availableInstructors = instructors.filter(inst => 
-                inst.availability && 
-                inst.availability.some(date => 
-                    this.isSameDay(new Date(date), new Date(course.date))
-                )
-            );
-            const hasAvailableInstructors = availableInstructors.length > 0;
+            
+            // Determine status and button display
+            const displayStatus = instructor ? 'SCHEDULED' : 'PENDING';
+            const actionButton = instructor ? 
+                `<button class="btn btn-success btn-sm" onclick="adminPortal.confirmCourse('${course.id}')">
+                    Confirm
+                </button>` :
+                `<button class="btn btn-primary btn-sm" onclick="adminPortal.showInstructorSelectionModal('${course.id}')">
+                    Schedule
+                </button>`;
 
             return `
                 <tr>
-                    <td>${this.formatDate(course.date)}</td>
-                    <td>${orgName}</td>
+                    <td>${course.date}</td>
+                    <td>${organization ? organization.name : 'N/A'}</td>
                     <td>${course.location || 'N/A'}</td>
                     <td>${course.classType || 'N/A'}</td>
-                    <td>${course.studentsRegistered || 0}</td>
+                    <td>${course.studentsRegistered || '0'}</td>
+                    <td><span class="status-${displayStatus.toLowerCase()}">${displayStatus}</span></td>
+                    <td>${instructor ? instructor.name : 'Not Assigned'}</td>
                     <td>
-                        <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
-                    </td>
-                    <td>${instructorName}</td>
-                    <td>
-                        <button class="btn btn-sm btn-info" onclick="adminPortal.viewCourseDetails('${course.id}')">
+                        <button class="btn btn-info btn-sm" onclick="adminPortal.viewCourseDetails('${course.id}')">
                             View Details
                         </button>
-                        ${course.status === 'PENDING' ? `
-                            ${hasAvailableInstructors ? `
-                                <button class="btn btn-sm btn-primary" onclick="adminPortal.showInstructorSelectionModal('${course.id}')">
-                                    Schedule
-                                </button>
-                            ` : `
-                                <button class="btn btn-sm btn-secondary" disabled>
-                                    No Instructor Available
-                                </button>
-                            `}
-                        ` : ''}
-                        ${course.status === 'SCHEDULED' ? `
-                            <button class="btn btn-sm btn-success" onclick="adminPortal.confirmCourse('${course.id}')">
-                                Confirm
-                            </button>
-                        ` : ''}
+                        ${actionButton}
                     </td>
                 </tr>
             `;
         }).join('');
-        console.log('=== Completed updateScheduledCoursesTable ===');
     }
 
     updateConfirmedCoursesTable() {
@@ -467,72 +410,70 @@ class AdminPortal {
     }
 
     updateInstructorAvailability() {
-        const instructors = this.getInstructorsFromStorage();
-        const courses = this.getCoursesFromStorage();
+        console.log('=== Starting updateInstructorAvailability ===');
         const tableBody = document.getElementById('instructorAvailabilityBody');
-        if (!tableBody) return;
-
-        // Prepare data with latest course information
-        const instructorData = instructors.map(instructor => {
-            const instructorCourses = courses.filter(course => course.instructor === instructor.name);
-            const latestCourse = instructorCourses.length > 0 
-                ? instructorCourses.reduce((latest, current) => 
-                    new Date(current.date) > new Date(latest.date) ? current : latest
-                )
-                : null;
-
-            const nextAvailableDate = instructor.availability && instructor.availability.length > 0
-                ? instructor.availability.sort((a, b) => new Date(a) - new Date(b))[0]
-                : null;
-
-            return {
-                name: instructor.name,
-                date: nextAvailableDate ? new Date(nextAvailableDate) : null,
-                status: this.getAvailabilityStatus(instructor),
-                organization: instructor.organization || 'N/A',
-                location: latestCourse ? latestCourse.location : 'N/A',
-                classType: latestCourse ? latestCourse.classType : 'N/A',
-                studentsRegistered: latestCourse ? latestCourse.studentsRegistered : '0',
-                notes: instructor.notes || 'N/A'
-            };
-        });
-
-        // Sort data if a sort column is selected
-        if (this.sortConfig.column) {
-            instructorData.sort((a, b) => {
-                let comparison = 0;
-                switch (this.sortConfig.column) {
-                    case 'name':
-                        comparison = a.name.localeCompare(b.name);
-                        break;
-                    case 'date':
-                        // Handle null dates by treating them as earliest possible date
-                        const dateA = a.date || new Date(0);
-                        const dateB = b.date || new Date(0);
-                        comparison = dateA - dateB;
-                        break;
-                    case 'status':
-                        comparison = a.status.localeCompare(b.status);
-                        break;
-                    case 'organization':
-                        comparison = a.organization.localeCompare(b.organization);
-                        break;
-                }
-                return this.sortConfig.direction === 'asc' ? comparison : -comparison;
-            });
+        if (!tableBody) {
+            console.error('instructorAvailabilityBody not found');
+            return;
         }
 
-        // Render sorted data
-        tableBody.innerHTML = instructorData.map(data => `
+        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+        const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+
+        let rows = [];
+
+        instructors.forEach(instructor => {
+            // Get instructor's available dates
+            const availableDates = instructor.availability || [];
+            
+            // Add rows for available dates
+            availableDates.forEach(date => {
+                rows.push({
+                    name: instructor.name,
+                    date: date,
+                    status: 'AVAILABLE',
+                    organization: 'N/A',
+                    location: 'N/A',
+                    classType: 'N/A',
+                    studentsRegistered: '0',
+                    notes: 'N/A'
+                });
+            });
+
+            // Add rows for assigned courses
+            const assignedCourses = courses.filter(course => 
+                course.instructorId === instructor.id
+            );
+
+            assignedCourses.forEach(course => {
+                const organization = organizations.find(org => org.id === course.organizationId);
+                rows.push({
+                    name: instructor.name,
+                    date: course.date,
+                    status: 'SCHEDULED',  // Always show as SCHEDULED in Instructor Dashboard
+                    organization: organization ? organization.name : 'N/A',
+                    location: course.location || 'N/A',
+                    classType: course.classType || 'N/A',
+                    studentsRegistered: course.studentsRegistered || '0',
+                    notes: course.notes || 'N/A'
+                });
+            });
+        });
+
+        // Sort rows by date
+        rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        tableBody.innerHTML = rows.map(row => `
             <tr>
-                <td>${data.name}</td>
-                <td>${data.date ? this.formatDate(data.date) : 'N/A'}</td>
-                <td>${data.status}</td>
-                <td>${data.organization}</td>
-                <td>${data.location}</td>
-                <td>${data.classType}</td>
-                <td>${data.studentsRegistered}</td>
-                <td>${data.notes}</td>
+                <td>${row.name}</td>
+                <td>${row.date}</td>
+                <td><span class="status-${row.status.toLowerCase()}">${row.status}</span></td>
+                <td>${row.organization}</td>
+                <td>${row.location}</td>
+                <td>${row.classType}</td>
+                <td>${row.studentsRegistered}</td>
+                <td>${row.notes}</td>
             </tr>
         `).join('');
     }
@@ -847,56 +788,53 @@ class AdminPortal {
     }
 
     showInstructorSelectionModal(courseId) {
+        console.log('=== Starting showInstructorSelectionModal ===');
         const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-        const course = courses.find(c => c.id === courseId);
         const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-        
+        const course = courses.find(c => c.id === courseId);
+
         if (!course) {
-            alert('Course not found');
+            console.error('Course not found');
             return;
         }
 
-        // Filter available instructors for the course date
-        const availableInstructors = instructors.filter(instructor => 
-            instructor.availability && 
-            instructor.availability.some(date => 
-                this.isSameDay(new Date(date), new Date(course.date))
-            )
-        );
+        // Get available instructors for this date
+        const availableInstructors = instructors.filter(instructor => {
+            // Check if instructor has this date available
+            const hasDateAvailable = instructor.availability && 
+                instructor.availability.includes(course.date);
 
-        if (availableInstructors.length === 0) {
-            alert('No instructors available for this date');
-            return;
-        }
+            // Check if instructor doesn't have another course on this date
+            const hasNoConflict = !courses.some(c => 
+                c.instructorId === instructor.id && 
+                c.date === course.date
+            );
 
-        // Create and show modal with instructor selection
+            return hasDateAvailable && hasNoConflict;
+        });
+
+        // Create modal HTML
         const modal = document.createElement('div');
         modal.className = 'modal fade';
         modal.innerHTML = `
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Select Instructor</h5>
+                        <h5 class="modal-title">Assign Instructor</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <p><strong>Course Date:</strong> ${this.formatDate(course.date)}</p>
-                                <p><strong>Location:</strong> ${course.location || 'N/A'}</p>
-                                <p><strong>Class Type:</strong> ${course.classType || 'N/A'}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <p><strong>Organization:</strong> ${course.organization?.name || 'N/A'}</p>
-                                <p><strong>Students Registered:</strong> ${course.studentsRegistered || 0}</p>
-                            </div>
+                        <div class="course-details mb-3">
+                            <h6>Course Details:</h6>
+                            <p>Date: ${course.date}</p>
+                            <p>Location: ${course.location}</p>
+                            <p>Type: ${course.classType}</p>
                         </div>
-                        <div class="table-responsive">
+                        ${availableInstructors.length > 0 ? `
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>Instructor Name</th>
-                                        <th>Organization</th>
+                                        <th>Name</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -904,10 +842,9 @@ class AdminPortal {
                                     ${availableInstructors.map(instructor => `
                                         <tr>
                                             <td>${instructor.name}</td>
-                                            <td>${instructor.organization || 'N/A'}</td>
                                             <td>
-                                                <button class="btn btn-sm btn-primary" 
-                                                    onclick="adminPortal.assignInstructor('${courseId}', '${instructor.id}')">
+                                                <button class="btn btn-primary btn-sm" 
+                                                    onclick="adminPortal.assignInstructor('${course.id}', '${instructor.id}')">
                                                     Assign
                                                 </button>
                                             </td>
@@ -915,7 +852,7 @@ class AdminPortal {
                                     `).join('')}
                                 </tbody>
                             </table>
-                        </div>
+                        ` : '<p class="text-center">No Instructors Available</p>'}
                     </div>
                 </div>
             </div>
@@ -931,69 +868,60 @@ class AdminPortal {
     }
 
     assignInstructor(courseId, instructorId) {
+        console.log('=== Starting assignInstructor ===');
         const courses = JSON.parse(localStorage.getItem('courses') || '[]');
         const courseIndex = courses.findIndex(c => c.id === courseId);
         const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
         const instructor = instructors.find(inst => inst.id === instructorId);
-        const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
-        const organization = organizations.find(org => org.id === courses[courseIndex].organizationId);
 
         if (courseIndex === -1 || !instructor) {
-            alert('Course or instructor not found');
+            console.error('Course or instructor not found');
             return;
         }
 
-        // Update course with instructor information
-        courses[courseIndex].instructorId = instructorId;
-        courses[courseIndex].instructorName = instructor.name;
-        courses[courseIndex].status = 'SCHEDULED';
+        // Get the existing course data
+        const existingCourse = courses[courseIndex];
+        console.log('Existing course before update:', existingCourse);
 
-        // Update instructor's record with course and organization info
-        const instructorIndex = instructors.findIndex(inst => inst.id === instructorId);
+        // Update course with instructor and status
+        courses[courseIndex] = {
+            ...existingCourse,
+            instructorId: instructorId,
+            instructorName: instructor.name,
+            // Organization Portal shows PENDING
+            status: 'PENDING',
+            // Instructor Portal shows AVAILABLE
+            instructorStatus: 'AVAILABLE',
+            // Visibility flags
+            showInstructorToOrg: false,
+            displayInstructorDetails: false,
+            showOrgToInstructor: true,
+            displayInInstructorPortal: true,
+            displayOrgDetails: true,
+            hideOrgDetails: false,
+            adminConfirmed: false
+        };
+
+        // Remove instructor's availability entry for this date
+        const instructorIndex = instructors.findIndex(i => i.id === instructorId);
         if (instructorIndex !== -1) {
-            // Remove the assigned date from availability
-            instructors[instructorIndex].availability = instructors[instructorIndex].availability
-                .filter(date => !this.isSameDay(new Date(date), new Date(courses[courseIndex].date)));
-            
-            // Add or update the course in instructor's courses
-            if (!instructors[instructorIndex].courses) {
-                instructors[instructorIndex].courses = [];
-            }
-            
-            const existingCourseIndex = instructors[instructorIndex].courses.findIndex(c => c.id === courseId);
-            if (existingCourseIndex === -1) {
-                instructors[instructorIndex].courses.push({
-                    id: courseId,
-                    date: courses[courseIndex].date,
-                    location: courses[courseIndex].location,
-                    classType: courses[courseIndex].classType,
-                    studentsRegistered: courses[courseIndex].studentsRegistered,
-                    status: 'SCHEDULED',
-                    organization: {
-                        id: organization.id,
-                        name: organization.name
-                    }
-                });
-            } else {
-                instructors[instructorIndex].courses[existingCourseIndex] = {
-                    ...instructors[instructorIndex].courses[existingCourseIndex],
-                    status: 'SCHEDULED',
-                    organization: {
-                        id: organization.id,
-                        name: organization.name
-                    }
-                };
-            }
+            const availability = instructors[instructorIndex].availability || [];
+            instructors[instructorIndex].availability = availability.filter(date => 
+                date !== existingCourse.date
+            );
+            localStorage.setItem('instructors', JSON.stringify(instructors));
         }
 
-        // Save changes
+        console.log('Updated course after changes:', courses[courseIndex]);
         localStorage.setItem('courses', JSON.stringify(courses));
-        localStorage.setItem('instructors', JSON.stringify(instructors));
 
-        // Update the tables
+        // Update Admin Portal views
+        this.updateDashboardData();
         this.updateScheduledCoursesTable();
         this.updateInstructorAvailability();
-
+        
+        console.log('=== Completed assignInstructor ===');
+        
         // Close the modal
         const modal = document.querySelector('.modal');
         if (modal) {
@@ -1002,8 +930,6 @@ class AdminPortal {
                 modalInstance.hide();
             }
         }
-
-        alert('Instructor assigned successfully');
     }
 }
 
