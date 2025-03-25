@@ -1506,14 +1506,27 @@
 
         function saveAvailability() {
             try {
+                console.log('=== Starting saveAvailability ===');
                 const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
                 if (!instructor) {
                     showNotification('Please log in first', 'error');
                     return;
                 }
 
+                // Get the current selected dates from the calendar
+                const newDates = Array.from(selectedDates);
+                console.log('New dates to save:', newDates);
+
+                // Get existing availability
+                const existingDates = instructor.availability || [];
+                console.log('Existing dates:', existingDates);
+
+                // Combine existing and new dates, removing duplicates
+                const combinedDates = Array.from(new Set([...existingDates, ...newDates]));
+                console.log('Combined dates:', combinedDates);
+
                 // Update current instructor's availability
-                instructor.availability = Array.from(selectedDates);
+                instructor.availability = combinedDates;
                 
                 // Update instructor in the instructors array
                 let instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
@@ -1531,6 +1544,7 @@
                 // Update the availability table
                 updateMyAvailabilityTable();
                 
+                console.log('=== Completed saveAvailability ===');
                 showNotification('Availability saved successfully', 'success');
             } catch (error) {
                 console.error('Error saving availability:', error);
@@ -1556,68 +1570,31 @@
                 const availableDates = instructor.availability || [];
                 console.log('Available dates:', availableDates);
 
-                // Filter for courses assigned to this instructor
-                const assignedCourses = courses.filter(course => 
-                    course.instructorId === instructor.id && 
-                    !course.isArchived && 
-                    course.completionStatus !== 'COMPLETED'
-                );
-                console.log('Assigned courses:', assignedCourses);
+                // Get today's date in local timezone
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0];
 
-                // Initialize table rows array
-                const tableRows = [];
-
-                // Add assigned courses first
-                assignedCourses.forEach(course => {
-                    tableRows.push(`
-                        <tr>
-                            <td>${course.courseDate || course.date || '-'}</td>
-                            <td>${course.organizationName || 'Kaizen'}</td>
-                            <td>${course.location || 'markham'}</td>
-                            <td>${course.classType || 'BLS'}</td>
-                            <td>${course.studentsRegistered || '1'}</td>
-                            <td>${course.studentsAttended || '0'}</td>
-                            <td><span class="status-confirmed">CONFIRMED</span></td>
-                            <td>
-                                <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
-                                    View Students
-                                </button>
-                                ${(course.courseDate || course.date) === new Date().toISOString().split('T')[0] ? 
-                                    `<button class="btn btn-primary" onclick="openAttendance('${course.id}')">
-                                        Take Attendance
-                                    </button>` : 
-                                    ''
-                                }
-                            </td>
+                // Create table rows for all available dates
+                const tableRows = availableDates
+                    .filter(date => date >= today)
+                    .map(date => `
+                        <tr class="available-date">
+                            <td>${date}</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td><span class="status-available">AVAILABLE</span></td>
+                            <td>Waiting for assignment</td>
                         </tr>
                     `);
-                });
-
-                // Add available dates that don't have assigned courses
-                const today = new Date().toISOString().split('T')[0];
-                availableDates.forEach(date => {
-                    if (date >= today && !assignedCourses.some(course => 
-                        (course.courseDate || course.date) === date
-                    )) {
-                        tableRows.push(`
-                            <tr class="available-date">
-                                <td>${date}</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td><span class="status-available">AVAILABLE</span></td>
-                                <td>Waiting for assignment</td>
-                            </tr>
-                        `);
-                    }
-                });
 
                 // If no rows, show message
                 if (tableRows.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="7" style="text-align: center;">
+                            <td colspan="8" style="text-align: center;">
                                 No classes assigned yet. Please set your availability in the "Set Availability" section.
                             </td>
                         </tr>
@@ -1975,6 +1952,7 @@
 
         function completeCourse() {
             try {
+                console.log('=== Starting completeCourse ===');
                 const courseId = localStorage.getItem('currentAttendanceCourseId');
                 if (!courseId) {
                     showNotification('No course selected', 'error');
@@ -1990,18 +1968,55 @@
                 }
 
                 const course = courses[courseIndex];
+
+                // Verify requirements
+                if (!course.studentList || course.studentList.length === 0) {
+                    showNotification('Cannot complete course with no students', 'error');
+                    return;
+                }
+
+                const presentStudents = course.studentList.filter(student => student.attendance === 'present').length;
+                if (presentStudents === 0) {
+                    showNotification('Cannot complete course with no students present', 'error');
+                    return;
+                }
+
+                // Get completion notes if available
+                const completionNotes = document.getElementById('completionNotesText')?.value.trim() || '';
                 
                 // Update all status fields for different views
-                course.completionStatus = 'COMPLETED';
-                course.completedDate = new Date().toISOString().split('T')[0];
-                course.status = 'COMPLETED';
-                course.adminInstructorDashStatus = 'COMPLETED';
-                course.adminScheduledDashStatus = 'COMPLETED';
-                course.organizationStatus = 'COMPLETED';
-                course.instructorStatus = 'COMPLETED';
-                // Removed automatic archiving to keep course visible in Organization Portal
+                const completionDate = new Date().toISOString().split('T')[0];
+                
+                // Update course with completion information
+                courses[courseIndex] = {
+                    ...course,
+                    // Status updates for all portals
+                    completionStatus: 'COMPLETED',
+                    status: 'COMPLETED',                    // Organization Portal status
+                    adminStatus: 'COMPLETED',               // Admin Portal main status
+                    adminDashboardStatus: 'COMPLETED',      // Admin Dashboard status
+                    adminInstructorDashStatus: 'COMPLETED', // Admin Instructor Dashboard status
+                    adminScheduledDashStatus: 'COMPLETED',  // Admin Scheduled Dashboard status
+                    organizationStatus: 'COMPLETED',        // Organization Portal status
+                    instructorStatus: 'COMPLETED',          // Instructor Portal status
+                    
+                    // Completion details
+                    completedDate: completionDate,
+                    completionNotes: completionNotes,
+                    
+                    // Move to archived in Instructor Portal only
+                    isArchivedInInstructorPortal: true,
+                    instructorArchiveDate: completionDate,
+                    
+                    // Keep visible in Organization Portal
+                    isVisibleInOrgPortal: true,
+                    
+                    // Update counts
+                    studentsAttended: presentStudents,
+                    studentsRegistered: course.studentList.length
+                };
 
-                // Generate certificates for all students who attended
+                // Generate certificates for present students
                 if (course.studentList && course.studentList.length > 0) {
                     course.studentList.forEach(student => {
                         if (student.attendance === 'present') {
@@ -2010,11 +2025,21 @@
                     });
                 }
 
+                // Save changes
                 localStorage.setItem('courses', JSON.stringify(courses));
-                showNotification('Course completed successfully', 'success');
-                updateClassList();
-                updateArchivedClassesList(); // Update archived classes list
+                
+                // Update all relevant displays
+                updateClassList();                 // Update My Classes section
+                updateArchivedClassesList();       // Update Archived Classes section
+                updateTodaysCourses();             // Update Today's Courses
+                updateConfirmedCoursesDash();      // Update Confirmed Courses Dashboard
+                updateCompletedCoursesDash();      // Update Completed Courses Dashboard
+                
+                // Close modal and show success message
                 closeModal('attendanceModal');
+                showNotification('Course completed successfully', 'success');
+                
+                console.log('=== Completed completeCourse ===');
             } catch (error) {
                 console.error('Error completing course:', error);
                 showNotification('Error completing course', 'error');
@@ -2841,40 +2866,89 @@
                     return;
                 }
 
+                const tableBody = document.getElementById('coursesTableBody');
+                if (!tableBody) return;
+
+                // Get instructor's confirmed courses
                 const instructorCourses = courses.filter(course => 
                     course.instructorId === currentInstructor.id && 
                     course.adminConfirmed
                 );
 
-                const tableBody = document.getElementById('coursesTableBody');
-                if (!tableBody) return;
+                // Get instructor's availability dates
+                const availableDates = currentInstructor.availability || [];
+                console.log('Available dates:', availableDates);
 
-                if (instructorCourses.length === 0) {
+                // Convert availability dates to course-like objects
+                const availabilityRows = availableDates.map(date => ({
+                    id: 'avail_' + date,
+                    courseDate: date,
+                    status: 'AVAILABLE',
+                    isAvailability: true
+                }));
+
+                // Combine confirmed courses and availability dates
+                const allRows = [
+                    ...instructorCourses,
+                    ...availabilityRows.filter(avail => 
+                        // Only show availability dates that don't have a course assigned
+                        !instructorCourses.some(course => 
+                            (course.courseDate === avail.courseDate || course.date === avail.courseDate)
+                        )
+                    )
+                ];
+
+                // Sort by date
+                allRows.sort((a, b) => new Date(a.courseDate || a.date) - new Date(b.courseDate || b.date));
+
+                if (allRows.length === 0) {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="6" class="text-center">No confirmed courses available</td>
+                            <td colspan="9" class="text-center">No courses or availability dates found</td>
                         </tr>
                     `;
                     return;
                 }
 
-                tableBody.innerHTML = instructorCourses.map(course => `
-                    <tr>
-                        <td>${course.id}</td>
-                        <td>${formatDate(course.courseDate)}</td>
-                        <td>${course.location}</td>
-                        <td>${course.classType}</td>
-                        <td>${course.organizationName || '-'}</td>
-                        <td>${course.studentsRegistered || 0}</td>
-                        <td>${course.studentsAttended || 0}</td>
-                        <td>
-                            <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-info" onclick="viewCourseDetails('${course.id}')">View Details</button>
-                        </td>
-                    </tr>
-                `).join('');
+                tableBody.innerHTML = allRows.map(row => {
+                    if (row.isAvailability) {
+                        return `
+                            <tr>
+                                <td>-</td>
+                                <td>${formatDate(row.courseDate)}</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>
+                                    <span class="status status-available">AVAILABLE</span>
+                                </td>
+                                <td>-</td>
+                            </tr>
+                        `;
+                    } else {
+                        return `
+                            <tr>
+                                <td>${row.id}</td>
+                                <td>${formatDate(row.courseDate || row.date)}</td>
+                                <td>${row.location || '-'}</td>
+                                <td>${row.classType || '-'}</td>
+                                <td>${row.organizationName || '-'}</td>
+                                <td>${row.studentsRegistered || 0}</td>
+                                <td>${row.studentsAttended || 0}</td>
+                                <td>
+                                    <span class="status status-${row.status.toLowerCase()}">${row.status}</span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="viewCourseDetails('${row.id}')">View Details</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                }).join('');
+
+                console.log('Updated My Classes table with courses and availability');
             } catch (error) {
                 console.error('Error updating courses table:', error);
                 showNotification('Error loading courses', 'error');

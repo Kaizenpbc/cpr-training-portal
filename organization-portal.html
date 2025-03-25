@@ -711,6 +711,39 @@
             margin: 5px 0;
             color: white;
         }
+
+        /* Add these styles in the existing style section */
+        .upload-progress-bar-container {
+            width: 100%;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            padding: 2px;
+            margin: 5px 0;
+        }
+
+        .upload-progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .upload-progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-progress-text {
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
@@ -1262,6 +1295,7 @@
                         orgCourses.forEach(course => {
                             console.log(`Course ${course.id} status:`, {
                                 status: course.status,
+                                adminConfirmed: course.adminConfirmed,
                                 organizationStatus: course.organizationStatus,
                                 displayInstructorDetails: course.displayInstructorDetails,
                                 instructorName: course.instructorName
@@ -1277,7 +1311,20 @@
                             return;
                         }
 
-                        coursesTableBody.innerHTML = orgCourses.map(course => `
+                        coursesTableBody.innerHTML = orgCourses.map(course => {
+                            // Determine the status display
+                            let statusDisplay = course.status;
+                            if (course.adminConfirmed) {
+                                statusDisplay = 'CONFIRMED';
+                            }
+
+                            // Determine instructor display
+                            let instructorDisplay = '-';
+                            if (course.adminConfirmed && course.instructorName) {
+                                instructorDisplay = course.instructorName;
+                            }
+
+                            return `
                             <tr>
                                 <td>${course.id}</td>
                                 <td>${getISODate(course.date)}</td>
@@ -1286,22 +1333,29 @@
                                 <td>${course.studentsRegistered || 0}</td>
                                 <td>${course.studentsAttended || 0}</td>
                                 <td>
-                                    <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
+                                    <span class="status status-${statusDisplay.toLowerCase()}">${statusDisplay}</span>
                                 </td>
-                                <td>${course.displayInstructorDetails ? (course.instructorName || 'Not Assigned') : '-'}</td>
+                                <td>${instructorDisplay}</td>
                                 <td class="note-cell" data-full-note="${course.notes || '-'}">${course.notes || '-'}</td>
                                 <td>
-                                    ${course.studentList && course.studentList.length > 0 ? 
-                                        `<button class="btn btn-sm btn-info" onclick="viewStudentList('${course.id}')">View Students</button>` : 
-                                        `<button class="btn btn-sm btn-primary" onclick="uploadStudentList('${course.id}')">Upload Student List</button>`
-                                    }
-                                    ${course.status === 'CONFIRMED' ? 
-                                        `<button class="btn btn-sm btn-success" onclick="viewCourseDetails('${course.id}')">View Details</button>` : 
-                                        `<button class="btn btn-sm btn-warning" onclick="viewCourseDetails('${course.id}')">View Details</button>`
-                                    }
+                                    <button class="btn btn-sm btn-primary" onclick="uploadStudentList('${course.id}')">
+                                        <i class="fas fa-upload"></i> Upload Student List
+                                    </button>
+                                    <div id="uploadProgress_${course.id}" class="upload-progress-bar-container" style="display: none; margin-top: 5px;">
+                                        <div class="upload-progress-bar">
+                                            <div class="upload-progress-fill" style="width: 0%">
+                                                <span class="upload-progress-text">0%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-info" onclick="viewStudentList('${course.id}')">
+                                        <i class="fas fa-users"></i> View Students
+                                    </button>
                                 </td>
                             </tr>
-                        `).join('');
+                        `}).join('');
+
+                        console.log('Updated My Courses table');
                     } catch (error) {
                         console.error('Error updating courses table:', error);
                         showNotification('Error updating courses table', 'error');
@@ -1313,58 +1367,56 @@
                     fileInput.type = 'file';
                     fileInput.accept = '.csv';
                     
+                    // Get progress bar elements
+                    const progressContainer = document.getElementById(`uploadProgress_${courseId}`);
+                    const progressFill = progressContainer.querySelector('.upload-progress-fill');
+                    const progressText = progressContainer.querySelector('.upload-progress-text');
+                    
                     fileInput.onchange = function(e) {
                         const file = e.target.files[0];
                         if (!file) return;
-
+                        
+                        // Show progress bar immediately
+                        progressContainer.style.display = 'block';
+                        progressFill.style.width = '0%';
+                        progressText.textContent = '0%';
+                        
                         const reader = new FileReader();
-                        reader.onload = function(event) {
+                        let lastProgress = 0;
+                        
+                        // Simulate progress while reading
+                        const progressInterval = setInterval(() => {
+                            if (lastProgress < 90) {
+                                lastProgress += 10;
+                                progressFill.style.width = lastProgress + '%';
+                                progressText.textContent = lastProgress + '%';
+                            }
+                        }, 200);
+                        
+                        reader.onload = function(e) {
                             try {
-                                console.log('=== Starting Student List Upload ===');
-                                const csv = event.target.result;
-                                const lines = csv.split('\n').map(line => line.trim()).filter(line => line);
+                                clearInterval(progressInterval);
+                                // Set progress to 100%
+                                progressFill.style.width = '100%';
+                                progressText.textContent = '100%';
                                 
-                                if (lines.length < 2) {
-                                    showNotification('File is empty or has no data rows', 'error');
-                                    return;
-                                }
+                                const content = e.target.result;
+                                const rows = content.split('\n');
+                                const students = [];
 
-                                const headers = lines[0].split(',').map(h => h.trim());
-                                console.log('Found headers:', headers);
-                                
-                                // Validate headers
-                                const requiredHeaders = ['Name', 'Email', 'Phone'];
-                                const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-                                if (missingHeaders.length > 0) {
-                                    console.log('Missing headers:', missingHeaders);
-                                    showNotification(`Missing required columns: ${missingHeaders.join(', ')}`, 'error');
-                                    return;
-                                }
-
-                                const students = lines.slice(1)
-                                    .filter(line => line.trim())
-                                    .map(line => {
-                                        const values = line.split(',').map(v => v.trim());
-                                        const student = {
-                                            id: `student_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                                            name: values[headers.indexOf('Name')],
-                                            email: values[headers.indexOf('Email')],
-                                            phone: values[headers.indexOf('Phone')],
-                                            status: 'REGISTERED',
-                                            attendance: null
-                                        };
-                                        console.log('Processed student:', student);
-                                        return student;
-                                    });
-
-                                console.log('Total students processed:', students.length);
-
-                                // Validate student data
-                                const invalidStudents = students.filter(s => !s.name || !s.email || !s.phone);
-                                if (invalidStudents.length > 0) {
-                                    console.log('Invalid students found:', invalidStudents);
-                                    showNotification(`Found ${invalidStudents.length} students with missing information`, 'error');
-                                    return;
+                                // Process student data
+                                for (let i = 1; i < rows.length; i++) {
+                                    const row = rows[i].trim();
+                                    if (row) {
+                                        const [name, email, phone] = row.split(',').map(field => field.trim());
+                                        students.push({
+                                            name: name,
+                                            email: email,
+                                            phone: phone,
+                                            status: 'registered',
+                                            attendance: 'pending'
+                                        });
+                                    }
                                 }
 
                                 // Update course with students
@@ -1372,29 +1424,34 @@
                                 const courseIndex = courses.findIndex(c => c.id === courseId);
                                 
                                 if (courseIndex === -1) {
-                                    console.log('Course not found:', courseId);
-                                    showNotification('Course not found', 'error');
-                                    return;
+                                    throw new Error('Course not found');
                                 }
 
-                                // Update the course's studentList and studentsRegistered count
                                 courses[courseIndex].studentList = students;
                                 courses[courseIndex].studentsRegistered = students.length;
                                 
                                 localStorage.setItem('courses', JSON.stringify(courses));
+                                
+                                // Hide progress bar after success with a delay
+                                setTimeout(() => {
+                                    progressContainer.style.display = 'none';
+                                }, 1000);
 
-                                console.log('Successfully updated course with students');
                                 showNotification(`Successfully uploaded ${students.length} students`, 'success');
                                 updateMyCoursesTable();
                             } catch (error) {
+                                clearInterval(progressInterval);
                                 console.error('Error processing student list:', error);
                                 showNotification('Error processing student list. Please check the file format.', 'error');
+                                progressContainer.style.display = 'none';
                             }
                         };
 
                         reader.onerror = function() {
+                            clearInterval(progressInterval);
                             console.error('Error reading file');
                             showNotification('Error reading file', 'error');
+                            progressContainer.style.display = 'none';
                         };
 
                         reader.readAsText(file);
@@ -1407,19 +1464,24 @@
                     const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                     const course = courses.find(c => c.id === courseId);
                     
-                    if (!course || !course.students) {
+                    if (!course || !course.studentList) {
                         showNotification('No students found for this course', 'error');
                         return;
                     }
 
+                    // Create modal with unique ID
+                    const modalId = `studentListModal_${courseId}`;
                     const modal = document.createElement('div');
-                    modal.className = 'modal fade';
+                    modal.id = modalId;
+                    modal.className = 'modal';
+                    modal.setAttribute('tabindex', '-1');
+                    modal.setAttribute('role', 'dialog');
                     modal.innerHTML = `
-                        <div class="modal-dialog modal-lg">
+                        <div class="modal-dialog modal-lg" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title">Student List - ${course.classType}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    <button type="button" class="btn-close" onclick="closeStudentListModal('${modalId}')" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <table class="table">
@@ -1432,7 +1494,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            ${course.students.map(student => `
+                                            ${course.studentList.map(student => `
                                                 <tr>
                                                     <td>${student.name}</td>
                                                     <td>${student.email}</td>
@@ -1443,17 +1505,37 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" onclick="closeStudentListModal('${modalId}')">Close</button>
+                                </div>
                             </div>
                         </div>
                     `;
 
-                    document.body.appendChild(modal);
-                    const modalInstance = new bootstrap.Modal(modal);
-                    modalInstance.show();
+                    // Remove any existing modal with the same ID
+                    const existingModal = document.getElementById(modalId);
+                    if (existingModal) {
+                        existingModal.remove();
+                    }
 
-                    modal.addEventListener('hidden.bs.modal', () => {
-                        document.body.removeChild(modal);
+                    // Add modal to body
+                    document.body.appendChild(modal);
+                    modal.style.display = 'block';
+
+                    // Add click outside listener
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === modal) {
+                            closeStudentListModal(modalId);
+                        }
                     });
+                }
+
+                function closeStudentListModal(modalId) {
+                    const modal = document.getElementById(modalId);
+                    if (modal) {
+                        modal.style.display = 'none';
+                        modal.remove();
+                    }
                 }
 
                 function getISODate(date) {

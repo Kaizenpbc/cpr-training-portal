@@ -364,9 +364,61 @@ class AdminPortal {
     }
 
     updateCompletedCoursesTable() {
-        const courses = this.getCoursesFromStorage();
-        const completedCourses = courses.filter(course => course.status === 'COMPLETED');
-        this.displayCoursesList('completedCoursesTableBody', completedCourses);
+        console.log('=== Starting updateCompletedCoursesTable ===');
+        const tableBody = document.getElementById('completedCoursesTableBody');
+        if (!tableBody) {
+            console.error('completedCoursesTableBody not found');
+            return;
+        }
+
+        const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+        const organizations = JSON.parse(localStorage.getItem('organizations') || '[]');
+        const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+
+        // Get completed courses
+        const completedCourses = courses.filter(course => 
+            course.status === 'COMPLETED' || course.completionStatus === 'COMPLETED'
+        );
+        
+        if (completedCourses.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center">No completed courses</td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Sort courses by date
+        completedCourses.sort((a, b) => new Date(b.date || b.courseDate) - new Date(a.date || a.courseDate));
+
+        tableBody.innerHTML = completedCourses.map(course => {
+            const organization = organizations.find(org => org.id === course.organizationId);
+            const instructor = instructors.find(inst => inst.id === course.instructorId);
+
+            return `
+                <tr>
+                    <td>${course.date || course.courseDate}</td>
+                    <td>${organization ? organization.name : course.organizationName || 'N/A'}</td>
+                    <td>${course.location || 'N/A'}</td>
+                    <td>${course.classType || 'N/A'}</td>
+                    <td>${course.studentsRegistered || '0'}</td>
+                    <td>${course.studentsAttended || '0'}</td>
+                    <td><span class="status-completed">COMPLETED</span></td>
+                    <td>${instructor ? instructor.name : course.instructorName || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-info btn-sm" onclick="adminPortal.viewStudentList('${course.id}')">
+                            View Students
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="adminPortal.billCourse('${course.id}')">
+                            Bill
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        console.log('=== Completed updateCompletedCoursesTable ===');
     }
 
     updateDashboardData() {
@@ -1066,9 +1118,68 @@ class AdminPortal {
     }
 
     billCourse(courseId) {
-        // Placeholder for billing functionality
-        console.log('Billing course:', courseId);
-        this.showNotification('Billing feature coming soon', 'info');
+        console.log('=== Starting billCourse ===');
+        try {
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const courseIndex = courses.findIndex(c => c.id === courseId);
+            
+            if (courseIndex === -1) {
+                this.showNotification('Course not found', 'error');
+                return;
+            }
+
+            const course = courses[courseIndex];
+            
+            // Create a new invoice
+            const invoice = {
+                id: 'inv_' + Date.now(),
+                courseId: courseId,
+                organizationId: course.organizationId,
+                organizationName: course.organizationName,
+                date: new Date().toISOString().split('T')[0],
+                amount: this.calculateInvoiceAmount(course),
+                status: 'PENDING',
+                details: {
+                    courseDate: course.date || course.courseDate,
+                    classType: course.classType,
+                    location: course.location,
+                    studentsRegistered: course.studentsRegistered,
+                    studentsAttended: course.studentsAttended,
+                    instructorName: course.instructorName
+                }
+            };
+
+            // Save invoice
+            const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+            invoices.push(invoice);
+            localStorage.setItem('invoices', JSON.stringify(invoices));
+
+            // Update course with invoice reference
+            courses[courseIndex] = {
+                ...course,
+                invoiceId: invoice.id,
+                invoiceStatus: 'PENDING',
+                billingStatus: 'PENDING'
+            };
+            localStorage.setItem('courses', JSON.stringify(courses));
+
+            // Update displays
+            this.updateCompletedCoursesTable();
+            this.showNotification('Invoice created successfully', 'success');
+            
+            console.log('=== Completed billCourse ===');
+        } catch (error) {
+            console.error('Error in billCourse:', error);
+            this.showNotification('Error creating invoice', 'error');
+        }
+    }
+
+    calculateInvoiceAmount(course) {
+        // This is a placeholder implementation
+        // You should implement your actual billing logic here
+        const baseAmount = 100; // Base amount per student
+        const studentsAttended = course.studentsAttended || 0;
+        return baseAmount * studentsAttended;
     }
 
     viewStudentList(courseId) {
