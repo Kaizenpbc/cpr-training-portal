@@ -347,11 +347,12 @@ class AdminPortal {
                     <td>${course.location || 'N/A'}</td>
                     <td>${course.classType || 'N/A'}</td>
                     <td>${course.studentsRegistered || '0'}</td>
+                    <td>${course.studentsAttended || '0'}</td>
                     <td><span class="status-confirmed">CONFIRMED</span></td>
                     <td>${instructor ? instructor.name : 'N/A'}</td>
                     <td>
-                        <button class="btn btn-info btn-sm" onclick="adminPortal.viewCourseDetails('${course.id}')">
-                            View Details
+                        <button class="btn btn-info btn-sm" onclick="adminPortal.viewStudentList('${course.id}')">
+                            View Students
                         </button>
                         <button class="btn btn-primary btn-sm" onclick="adminPortal.billCourse('${course.id}')">
                             Bill
@@ -1068,6 +1069,72 @@ class AdminPortal {
         // Placeholder for billing functionality
         console.log('Billing course:', courseId);
         this.showNotification('Billing feature coming soon', 'info');
+    }
+
+    viewStudentList(courseId) {
+        console.log('=== Starting viewStudentList ===');
+        try {
+            const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+            const course = courses.find(c => c.id === courseId);
+            
+            if (!course) {
+                this.showNotification('Course not found', 'error');
+                return;
+            }
+
+            // Create modal content
+            const modalContent = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Student List - ${course.classType || 'Course'}</h3>
+                        <button type="button" class="close" onclick="adminPortal.closeModal('studentListModal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="course-info mb-3">
+                            <p><strong>Date:</strong> ${course.date}</p>
+                            <p><strong>Organization:</strong> ${course.organizationName || 'N/A'}</p>
+                            <p><strong>Location:</strong> ${course.location || 'N/A'}</p>
+                            <p><strong>Instructor:</strong> ${course.instructorName || 'N/A'}</p>
+                        </div>
+                        <div class="student-list">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Attendance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${course.studentList && course.studentList.length > 0 ? 
+                                        course.studentList.map(student => `
+                                            <tr>
+                                                <td>${student.name || 'N/A'}</td>
+                                                <td>${student.email || 'N/A'}</td>
+                                                <td>${student.status || 'Registered'}</td>
+                                                <td>${student.attendance || 'Not Recorded'}</td>
+                                            </tr>
+                                        `).join('') : 
+                                        '<tr><td colspan="4" class="text-center">No students registered</td></tr>'
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="adminPortal.closeModal('studentListModal')">Close</button>
+                    </div>
+                </div>
+            `;
+
+            // Show modal
+            this.showModal('studentListModal', modalContent);
+            
+        } catch (error) {
+            console.error('Error viewing student list:', error);
+            this.showNotification('Error viewing student list', 'error');
+        }
     }
 }
 
