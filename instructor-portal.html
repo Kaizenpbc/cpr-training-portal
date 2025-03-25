@@ -801,6 +801,7 @@
                             <th>Location</th>
                             <th>Class Type</th>
                             <th>Students Registered</th>
+                            <th>Students Attendance</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -1059,14 +1060,16 @@
                             <tr>
                                 <th>Course ID</th>
                                 <th>Date</th>
-                                <th>Status</th>
                                 <th>Location</th>
                                 <th>Class Type</th>
-                                <th>Students</th>
+                                <th>Organization</th>
+                                <th>Students Registered</th>
+                                <th>Students Attendance</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="myCoursesTableBody">
+                        <tbody id="coursesTableBody">
                             <!-- JavaScript will populate this -->
                         </tbody>
                     </table>
@@ -1573,6 +1576,7 @@
                             <td>${course.location || 'markham'}</td>
                             <td>${course.classType || 'BLS'}</td>
                             <td>${course.studentsRegistered || '1'}</td>
+                            <td>${course.studentsAttended || '0'}</td>
                             <td><span class="status-confirmed">CONFIRMED</span></td>
                             <td>
                                 <button class="btn btn-info" onclick="viewStudentList('${course.id}')">
@@ -1824,7 +1828,10 @@
                 }
 
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
-                const today = new Date().toISOString().split('T')[0];
+                
+                // Get today's date in local timezone
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0];
                 
                 console.log('Current instructor:', currentInstructor);
                 console.log('Today:', today);
@@ -2859,6 +2866,7 @@
                         <td>${course.classType}</td>
                         <td>${course.organizationName || '-'}</td>
                         <td>${course.studentsRegistered || 0}</td>
+                        <td>${course.studentsAttended || 0}</td>
                         <td>
                             <span class="status status-${course.status.toLowerCase()}">${course.status}</span>
                         </td>
@@ -3315,7 +3323,9 @@
                     return;
                 }
 
-                const today = new Date().toISOString().split('T')[0];
+                // Get today's date in local timezone
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0];
                 const courseId = 'course_' + Date.now();
 
                 const newCourse = {

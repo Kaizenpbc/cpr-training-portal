@@ -1107,7 +1107,7 @@ class AdminPortal {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${course.studentList && course.studentList.length > 0 ? 
+                                    ${course.studentList ? 
                                         course.studentList.map(student => `
                                             <tr>
                                                 <td>${student.name || 'N/A'}</td>
@@ -1128,12 +1128,27 @@ class AdminPortal {
                 </div>
             `;
 
-            // Show modal
-            this.showModal('studentListModal', modalContent);
+            // Create or update the modal
+            let modal = document.getElementById('studentListModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'studentListModal';
+                modal.className = 'modal';
+                document.body.appendChild(modal);
+            }
+            modal.innerHTML = modalContent;
+            modal.style.display = 'block';
             
         } catch (error) {
             console.error('Error viewing student list:', error);
             this.showNotification('Error viewing student list', 'error');
+        }
+    }
+
+    closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
         }
     }
 }
