@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor Portal</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-lg);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .dashboard-card {
+            background: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .dashboard-card h2 {
+            color: var(--primary-blue);
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-lg);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: var(--spacing-md);
+            background: var(--gray-50);
+            border-radius: var(--border-radius-md);
+        }
+
+        .stat-value {
+            font-size: var(--font-size-xl);
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+        }
+
+        .course-list {
+            background: white;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .course-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .course-item:last-child {
+            border-bottom: none;
+        }
+
+        .course-info {
+            flex: 1;
+        }
+
+        .course-info h3 {
+            margin: 0 0 var(--spacing-xs) 0;
+            color: var(--primary-blue);
+        }
+
+        .course-info p {
+            margin: var(--spacing-xs) 0;
+            color: var(--gray-600);
+        }
+
+        .course-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--border-radius-sm);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+        }
+
+        .status-active {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .status-pending {
+            background-color: var(--warning);
+            color: white;
+        }
+
+        .status-completed {
+            background-color: var(--info);
+            color: white;
+        }
+
+        .status-cancelled {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .modal-title {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-body p {
+            margin: 0;
+            color: #666;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-close {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .modal-close:hover {
+            color: #666;
+        }
+
+        .alert {
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius-md);
+            margin-bottom: var(--spacing-sm);
+            background-color: var(--gray-100);
+        }
+
+        .alert-warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .alert-error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .section {
+            margin: var(--spacing-xl) 0;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-header h2 {
+            margin: 0;
+            color: var(--primary-blue);
+        }
+
+        .btn-sm {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: var(--font-size-sm);
+        }
+
+        .attendance-list {
+            margin-top: var(--spacing-md);
+        }
+
+        .attendance-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .attendance-item:last-child {
+            border-bottom: none;
+        }
+
+        .attendance-checkbox {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Availability Scheduling Styles */
+        .availability-section {
+            background: white;
+            border-radius: var(--border-radius-md);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .availability-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .availability-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .calendar-header button {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .calendar-header h2 {
+            margin: 0;
+            font-size: var(--font-size-lg);
+            color: var(--primary-blue);
+        }
+
+        .calendar-day {
+            position: relative;
+            border: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 2px;
+            cursor: pointer;
+            background: white;
+            aspect-ratio: 1;
+            transition: background-color 0.2s ease;
+        }
+
+        .calendar-day:hover {
+            background-color: #f5f5f5;
+        }
+
+        .calendar-day.empty {
+            background-color: #f9f9f9;
+            cursor: default;
+        }
+
+        .calendar-day .date-number {
+            font-size: clamp(11px, 1.2vw, 13px);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .calendar-day .status-indicator {
+            font-size: clamp(10px, 1vw, 12px);
+            font-weight: 600;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-bottom: 2px;
+            color: white;
+        }
+
+        .calendar-day.available {
+            background-color: #fff3e0; /* Light yellow background */
+            border-color: #ffb74d;
+        }
+
+        .calendar-day.confirmed {
+            background-color: #e3f2fd; /* Light blue background */
+            border-color: #2196f3;
+        }
+
+        .day-number {
+            font-size: var(--font-size-md);
+            font-weight: 500;
+        }
+
+        .slot-count {
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+        }
+
+        .calendar-day.selected .slot-count {
+            color: white;
+        }
+
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .time-slot {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .time-slot:hover {
+            background: var(--gray-50);
+        }
+
+        .time-slot.selected {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .month-navigation {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .month-navigation span {
+            font-weight: 500;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .availability-summary {
+            display: flex;
+            gap: var(--spacing-md);
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+        }
+
+        .availability-summary span {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        @media (max-width: 768px) {
+            .availability-summary {
+                flex-direction: column;
+                gap: var(--spacing-xs);
+            }
+
+            .time-slots {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+        }
+
+        /* Layout Styles */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: var(--primary-blue);
+            color: white;
+            padding: var(--spacing-lg) 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 0 var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .sidebar-header h1 {
+            margin: 0;
+            font-size: var(--font-size-lg);
+            color: white;
+        }
+
+        .nav-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-item {
+            padding: var(--spacing-sm) var(--spacing-lg);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid white;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: var(--spacing-lg);
+            background: var(--gray-50);
+        }
+
+        .top-bar {
+            background: white;
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .content-section {
+            display: none;
+            background: white;
+            border-radius: var(--border-radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+            }
+
+            .sidebar-header h1,
+            .nav-item span {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 60px;
+            }
+        }
+
+        /* Calendar Container Styles */
+        .calendar-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin: 20px 0;
+            height: calc(100vh - 250px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #availabilityCalendar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .calendar-days-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+            font-weight: 600;
+            color: #666;
+            padding: 5px;
+        }
+
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            flex: 1;
+        }
+
+        .calendar-day {
+            position: relative;
+            border: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 4px;
+            cursor: pointer;
+            background: white;
+            aspect-ratio: 1;
+            transition: all 0.2s ease;
+        }
+
+        .calendar-day.available {
+            background-color: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .calendar-day.empty {
+            background-color: #f5f5f5;
+            border-color: #e0e0e0;
+            cursor: default;
+        }
+
+        .calendar-day .date-number {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .calendar-day .status-indicator {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background-color: #4caf50;
+            color: white;
+            margin-top: 4px;
+        }
+
+        .calendar-day:hover:not(.empty) {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .month-navigation {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .month-navigation span {
+            font-weight: 500;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .availability-summary {
+            display: flex;
+            gap: var(--spacing-md);
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+        }
+
+        .availability-summary span {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        @media (max-width: 1200px) {
+            .calendar-container {
+                height: calc(100vh - 220px);
+                margin: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .calendar-container {
+                height: calc(100vh - 200px);
+                margin: 10px;
+                padding: 10px;
+            }
+
+            .calendar-days, .calendar-days-header {
+                gap: 2px;
+                padding: 2px;
+            }
+
+            .calendar-day {
+                padding: 2px 1px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .calendar-container {
+                height: calc(100vh - 150px);
+            }
+        }
+
+        /* Table Styles */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .table th,
+        .table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .table th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+
+        .table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-available {
+            background-color: #fff3e0;
+            color: #f57c00;
+        }
+
+        .status-confirmed {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        /* Notification Styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 9999;
+            animation: slideIn 0.2s ease-out;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: auto;
+            max-width: 300px;
+            text-align: left;
+            opacity: 0.95;
+            pointer-events: none;
+            transform-origin: top right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .toast.success {
+            background-color: #28a745;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 0.95;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                transform: translateX(0);
+                opacity: 0.95;
+            }
+            to {
+                transform: translateX(30px);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1>Instructor Portal</h1>
+            </div>
+            <ul class="nav-list">
+                <li class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </li>
+                <li class="nav-item" data-section="availability">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Availability</span>
+                </li>
+                <li class="nav-item" data-section="courses">
+                    <i class="fas fa-book"></i>
+                    <span>Courses</span>
+                </li>
+                <li class="nav-item" id="clearStorageBtn" style="color: #dc3545;">
+                    <i class="fas fa-trash"></i>
+                    <span>Clear Storage</span>
+                </li>
+                <li class="nav-item" data-section="attendance">
+                    <i>✓</i>
+                    <span>Attendance</span>
+                </li>
+                <li class="nav-item" data-section="profile">
+                    <i>👤</i>
+                    <span>Profile</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <h2 id="sectionTitle">Dashboard</h2>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div>
+                        <div id="userName"></div>
+                        <div id="userRole" class="text-sm text-gray-600"></div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="instructor.handleLogout()">Logout</button>
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h2>Course Statistics</h2>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalCourses">0</div>
+                                <div class="stat-label">Total Courses</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="upcomingCourses">0</div>
+                                <div class="stat-label">Upcoming Courses</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="completedCourses">0</div>
+                                <div class="stat-label">Completed Courses</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="cancelledCourses">0</div>
+                                <div class="stat-label">Cancelled Courses</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Availability Section -->
+            <section id="availability" class="content-section">
+                <div class="section-header">
+                    <h2>Availability Management</h2>
+                </div>
+                
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button onclick="instructor.previousMonth()" class="calendar-nav-btn">&lt;</button>
+                        <h2 id="monthYear"></h2>
+                        <button onclick="instructor.nextMonth()" class="calendar-nav-btn">&gt;</button>
+                    </div>
+                    <div class="calendar" id="availabilityCalendar"></div>
+                </div>
+            </section>
+
+            <!-- Courses Section -->
+            <section id="courses" class="content-section">
+                <div class="section-header">
+                    <h2>My Classes</h2>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Organization Name</th>
+                                <th>Location</th>
+                                <th>Course Type</th>
+                                <th>Students Registered</th>
+                                <th>Notes</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coursesTableBody">
+                            <!-- Course rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Attendance Section -->
+            <section id="attendance" class="content-section">
+                <div class="section-header">
+                    <h2>Attendance Management</h2>
+                </div>
+                <div class="attendance-list" id="attendanceList">
+                    <!-- Attendance items will be populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Profile Section -->
+            <section id="profile" class="content-section">
+                <div class="section-header">
+                    <h2>Profile Settings</h2>
+                </div>
+                <div class="profile-content">
+                    <!-- Profile content will be populated by JavaScript -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="toast"></div>
+
+    <!-- Add this before the closing body tag -->
+    <div id="confirmRemoveModal" class="modal">
+        <div class="modal-content">
+            <h3>Confirm Remove Availability</h3>
+            <p>Are you sure you want to remove availability for this date?</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelRemoveBtn">Cancel</button>
+                <button class="btn btn-danger" id="confirmRemoveBtn">Yes, Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import instructor from '../../js/portals/instructor.js';
+        import state from '../../js/core/state.js';
+        
+        // Make instructor available globally for onclick handlers
+        window.instructor = instructor;
+
+        // Add notification display functionality
+        function showNotification(message, type) {
+            const toast = document.querySelector('.toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            
+            // Reset animation
+            toast.style.animation = 'none';
+            toast.offsetHeight; // Trigger reflow
+            toast.style.animation = 'slideIn 0.2s ease-out';
+
+            // Hide after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.2s ease-out';
+                setTimeout(() => {
+                    toast.className = 'toast';
+                }, 200);
+            }, 3000);
+        }
+
+        // Subscribe to state notifications
+        state.subscribe('notifications', (notifications) => {
+            if (notifications && notifications.length > 0) {
+                const latestNotification = notifications[notifications.length - 1];
+                showNotification(latestNotification.message, latestNotification.type);
+            }
+        });
+
+        // Initialize the portal
+        document.addEventListener('DOMContentLoaded', () => {
+            instructor.initialize();
+        });
+    </script>
+</body>
+</html> 

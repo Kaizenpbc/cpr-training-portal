@@ -1,0 +1,169 @@
+        <script type="module">
+            import auth from '../js/core/auth.js';
+            import state from '../js/core/state.js';
+
+            // Debug logging utility
+            const debug = {
+                log: (message, data = null) => {
+                    const timestamp = new Date().toISOString();
+                    console.log(`[${timestamp}] ${message}`, data || '');
+                },
+                error: (message, error = null) => {
+                    const timestamp = new Date().toISOString();
+                    console.error(`[${timestamp}] ERROR: ${message}`, error || '');
+                }
+            };
+
+            // Initialize portal
+            document.addEventListener('DOMContentLoaded', function() {
+                debug.log('=== Starting Instructor Portal Initialization ===');
+                debug.log('DOM Content Loaded, checking session...');
+                
+                // Check if we're already logged in
+                const currentUser = auth.getCurrentUser();
+                debug.log('Current user from auth:', currentUser);
+                
+                if (currentUser && currentUser.role === 'instructor') {
+                    debug.log('Instructor already logged in, showing main UI');
+                    showSection('classes');
+                    updateNavButtons();
+                    updateMyCoursesTable();
+                } else {
+                    debug.log('No valid instructor session, showing login section');
+                    showSection('login');
+                }
+            });
+
+            // Show section function
+            function showSection(sectionId) {
+                debug.log('Showing section:', sectionId);
+                // Hide all sections
+                document.querySelectorAll('.section').forEach(section => {
+                    section.style.display = 'none';
+                });
+                
+                // Show the requested section
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.display = 'block';
+                    debug.log('Section shown:', sectionId);
+                } else {
+                    debug.error('Section not found:', sectionId);
+                }
+            }
+
+            // Update navigation buttons
+            function updateNavButtons() {
+                debug.log('Updating navigation buttons');
+                const currentUser = auth.getCurrentUser();
+                const isLoggedIn = currentUser && currentUser.role === 'instructor';
+                
+                // Update button states
+                document.querySelectorAll('.left-nav button').forEach(button => {
+                    if (button.id === 'loginBtn') {
+                        button.style.display = isLoggedIn ? 'none' : 'flex';
+                    } else {
+                        button.style.display = isLoggedIn ? 'flex' : 'none';
+                    }
+                });
+                
+                debug.log('Navigation buttons updated, logged in:', isLoggedIn);
+            }
+
+            // Login/Logout handling
+            async function handleLogin(event) {
+                event.preventDefault();
+                debug.log('=== Starting handleLogin ===');
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                debug.log('Login attempt details:', { username, hasPassword: !!password });
+                
+                try {
+                    debug.log('Calling auth.login...');
+                    const result = await auth.login(username, password);
+                    debug.log('Login result:', result);
+                    
+                    if (result.success && result.user.role === 'instructor') {
+                        debug.log('Login successful, updating UI...');
+                        debug.log('Setting current user:', result.user);
+                        
+                        // Store session data
+                        localStorage.setItem('currentUser', JSON.stringify(result.user));
+                        localStorage.setItem('authToken', result.token);
+                        debug.log('Session data stored in localStorage');
+                        
+                        // Update UI
+                        showSection('classes');
+                        debug.log('Classes section shown');
+                        updateNavButtons();
+                        debug.log('Nav buttons updated');
+                        showNotification('Login successful', 'success');
+                        debug.log('Success notification shown');
+                        
+                        // Verify session was stored correctly
+                        const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+                        const storedToken = localStorage.getItem('authToken');
+                        debug.log('Session verification:', {
+                            storedUser,
+                            storedToken,
+                            matchesLogin: storedUser?.id === result.user.id
+                        });
+                    } else {
+                        debug.log('Login failed:', result.message);
+                        showNotification(result.message || 'Login failed', 'error');
+                    }
+                } catch (error) {
+                    debug.error('Login error:', error);
+                    showNotification('Error during login', 'error');
+                }
+                debug.log('=== Login Process Completed ===');
+            }
+
+            async function handleLogout() {
+                debug.log('=== Starting handleLogout ===');
+                debug.log('Current localStorage state before logout:', {
+                    currentUser: localStorage.getItem('currentUser'),
+                    authToken: localStorage.getItem('authToken'),
+                    allKeys: Object.keys(localStorage)
+                });
+                
+                await auth.logout();
+                debug.log('Auth.logout completed');
+                
+                debug.log('Session data cleared. Current localStorage state:', {
+                    currentUser: localStorage.getItem('currentUser'),
+                    authToken: localStorage.getItem('authToken'),
+                    allKeys: Object.keys(localStorage)
+                });
+                
+                // Reset UI
+                showWelcomeBanner('Welcome!');
+                showSection('login');
+                updateNavButtons();
+                resetCalendar();
+                
+                // Clear any form data
+                document.getElementById('username').value = '';
+                
+                showNotification('Logged out successfully', 'success');
+                debug.log('=== Logout Process Completed Successfully ===');
+            }
+
+            // Make functions available globally
+            window.handleLogin = handleLogin;
+            window.handleLogout = handleLogout;
+            window.showSection = showSection;
+            window.updateNavButtons = updateNavButtons;
+
+            // Add periodic session check
+            setInterval(() => {
+                debug.log('=== Periodic Session Check ===');
+                const currentUser = auth.getCurrentUser();
+                if (!currentUser || currentUser.role !== 'instructor') {
+                    debug.log('No valid instructor session found, showing login section');
+                    showSection('login');
+                    updateNavButtons();
+                }
+            }, 5000);
+        </script> 

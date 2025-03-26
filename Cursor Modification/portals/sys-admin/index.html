@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Administration Portal</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-lg);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .dashboard-card {
+            background: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .dashboard-card h2 {
+            color: var(--primary-blue);
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-lg);
+        }
+
+        .user-list {
+            background: white;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .user-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: var(--spacing-sm);
+        }
+
+        .status-active {
+            background-color: var(--success);
+        }
+
+        .status-inactive {
+            background-color: var(--danger);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            margin: 2rem auto;
+            padding: var(--spacing-xl);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: var(--primary-blue);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: var(--font-size-xl);
+            cursor: pointer;
+            color: var(--gray-500);
+            padding: var(--spacing-xs);
+        }
+
+        .modal-close:hover {
+            color: var(--gray-700);
+        }
+
+        .alert {
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius-md);
+            margin-bottom: var(--spacing-sm);
+            background-color: var(--gray-100);
+        }
+
+        .alert-warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .alert-error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .log-item {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .log-item small {
+            color: var(--gray-600);
+            display: block;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .section {
+            margin: var(--spacing-xl) 0;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-header h2 {
+            margin: 0;
+            color: var(--primary-blue);
+        }
+
+        .btn-sm {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: var(--font-size-sm);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            border-color: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="container">
+            <h1>System Administration</h1>
+            <div id="userInfo"></div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h2>System Status</h2>
+                <div id="systemStatus">
+                    <p>Status: <span class="status-indicator status-active"></span> Active</p>
+                    <p>Last Sync: <span id="lastSync">-</span></p>
+                    <p>Active Users: <span id="activeUsers">0</span></p>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h2>Quick Actions</h2>
+                <div class="flex flex-col gap-2">
+                    <button class="btn btn-primary" onclick="sysAdmin.showModal('createUserModal')">Create User</button>
+                    <button class="btn btn-primary" onclick="sysAdmin.showModal('systemConfigModal')">System Config</button>
+                    <button class="btn btn-primary" onclick="sysAdmin.loadActivityLog()">View Logs</button>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h2>System Alerts</h2>
+                <div id="alertsList"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>User Management</h2>
+                <button class="btn btn-primary" onclick="sysAdmin.showModal('createUserModal')">Add User</button>
+            </div>
+            <div class="user-list" id="userList">
+                <!-- User list will be populated here -->
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>Activity Log</h2>
+                <button class="btn btn-secondary" onclick="sysAdmin.loadActivityLog()">Refresh</button>
+            </div>
+            <div id="activityLog">
+                <!-- Activity log will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="createUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New User</h2>
+                <button class="modal-close" onclick="sysAdmin.hideModal('createUserModal')">&times;</button>
+            </div>
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role</label>
+                    <select id="role" name="role" required>
+                        <option value="sys_admin">System Administrator</option>
+                        <option value="course_admin">Course Administrator</option>
+                        <option value="instructor">Instructor</option>
+                        <option value="organization">Organization</option>
+                        <option value="accounting">Accounting</option>
+                        <option value="support">Support</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="password">Initial Password</label>
+                    <input type="password" id="password" name="password">
+                    <small class="text-gray-600">Leave blank for default password</small>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="btn btn-secondary" onclick="sysAdmin.hideModal('createUserModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- System Config Modal -->
+    <div id="systemConfigModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>System Configuration</h2>
+                <button class="modal-close" onclick="sysAdmin.hideModal('systemConfigModal')">&times;</button>
+            </div>
+            <form id="systemConfigForm">
+                <div class="form-group">
+                    <label for="sessionTimeout">Session Timeout (minutes)</label>
+                    <input type="number" id="sessionTimeout" name="sessionTimeout" min="5" max="120" required>
+                </div>
+                <div class="form-group">
+                    <label for="maxLoginAttempts">Max Login Attempts</label>
+                    <input type="number" id="maxLoginAttempts" name="maxLoginAttempts" min="3" max="10" required>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="btn btn-secondary" onclick="sysAdmin.hideModal('systemConfigModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import sysAdmin from '../../js/portals/sys-admin.js';
+        
+        // Make sysAdmin available globally for onclick handlers
+        window.sysAdmin = sysAdmin;
+    </script>
+</body>
+</html> 

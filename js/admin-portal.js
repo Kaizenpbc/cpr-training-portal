@@ -820,29 +820,47 @@ class AdminPortal {
 
         // Get instructor data
         const instructor = instructors.find(i => i.id === existingCourse.instructorId);
+        console.log('Instructor before confirmation:', instructor);
+
+        // Restore the course date to instructor's availability if it's not already there
+        if (instructor && existingCourse.date) {
+            const instructorIndex = instructors.findIndex(i => i.id === instructor.id);
+            if (instructorIndex !== -1) {
+                instructor.availability = instructor.availability || [];
+                if (!instructor.availability.includes(existingCourse.date)) {
+                    instructor.availability.push(existingCourse.date);
+                    instructors[instructorIndex] = instructor;
+                    localStorage.setItem('instructors', JSON.stringify(instructors));
+                    console.log('Restored availability for instructor:', instructor);
+                }
+            }
+        }
         
         // Update course status and visibility flags
         courses[courseIndex] = {
             ...existingCourse,
+            // Critical flags for instructor portal display
+            adminConfirmed: true,                 // Primary confirmation flag
+            instructorStatus: 'CONFIRMED',        // Status shown in instructor portal
+            displayInInstructorPortal: true,      // Controls visibility in instructor portal
+            
             // Status updates
-            status: 'CONFIRMED',           // Organization Portal
-            adminStatus: 'CONFIRMED',      // Admin Portal main status
-            adminDashboardStatus: 'CONFIRMED', // Admin Dashboard status
+            status: 'CONFIRMED',                  // Organization Portal
+            adminStatus: 'CONFIRMED',             // Admin Portal main status
+            adminDashboardStatus: 'CONFIRMED',    // Admin Dashboard status
             adminInstructorDashStatus: 'CONFIRMED', // Admin Instructor Dashboard status
-            instructorStatus: 'CONFIRMED', // Now show as CONFIRMED in Instructor Portal
+            adminScheduledDashStatus: 'CONFIRMED',  // Admin Scheduled Dashboard status
             
             // Instructor details
             instructorId: existingCourse.instructorId,
             instructorName: instructor ? instructor.name : existingCourse.instructorName,
             
-            // Visibility flags - Now show everything
-            showInstructorToOrg: true,      // Show instructor to org
-            displayInstructorDetails: true,  // Display instructor details
-            showOrgToInstructor: true,      // Show org to instructor
-            displayInInstructorPortal: true, // Now show in instructor portal
-            displayOrgDetails: true,         // Show org details
-            hideOrgDetails: false,          // Don't hide org details
-            adminConfirmed: true,
+            // Additional visibility flags
+            showInstructorToOrg: true,           // Show instructor to org
+            displayInstructorDetails: true,       // Display instructor details
+            showOrgToInstructor: true,           // Show org to instructor
+            displayOrgDetails: true,              // Show org details
+            hideOrgDetails: false,                // Don't hide org details
             
             // Organization details
             organizationName: existingCourse.organizationName || existingCourse.organization?.name,
@@ -1046,13 +1064,6 @@ class AdminPortal {
         console.log('Existing course before assignment:', existingCourse);
         console.log('Instructor before update:', instructor);
 
-        // Remove the assigned date from instructor's availability
-        instructor.availability = (instructor.availability || []).filter(date => 
-            date !== existingCourse.date
-        );
-        localStorage.setItem('instructors', JSON.stringify(instructors));
-        console.log('Updated instructor availability:', instructor.availability);
-
         // Update course with instructor and status
         courses[courseIndex] = {
             ...existingCourse,
@@ -1064,6 +1075,7 @@ class AdminPortal {
             adminStatus: 'SCHEDULED',    // Admin Portal main status
             adminDashboardStatus: 'SCHEDULED', // Admin Dashboard status
             adminInstructorDashStatus: 'SCHEDULED', // Admin Instructor Dashboard status
+            adminScheduledDashStatus: 'SCHEDULED', // Admin Scheduled Dashboard status
             instructorStatus: 'AVAILABLE',  // Instructor Portal - stays AVAILABLE
             
             // Visibility flags

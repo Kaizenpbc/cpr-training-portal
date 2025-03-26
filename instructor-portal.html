@@ -769,20 +769,6 @@
                 </div>
                 <div class="calendar" id="availabilityCalendar"></div>
                 <button class="btn btn-primary" onclick="saveAvailability()">Save Availability</button>
-                
-                <h3>My Availability</h3>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="availabilityTableBody"></tbody>
-                    </table>
-                </div>
             </section>
 
             <section id="classes" class="section">
@@ -1112,55 +1098,176 @@
                 </div>
             </div>
 
-            <script>
-                // Add these functions for instructor availability
-                function openInstructorAvailabilityModal() {
-                    const frame = document.getElementById('availabilityFrame');
-                    frame.contentWindow.openInstructorAvailabilityModal();
-                }
+            <script type="module">
+                import auth from '../js/core/auth.js';
+                import state from '../js/core/state.js';
 
-                function updateInstructorAvailabilityTable() {
-                    const tableBody = document.getElementById('instructorAvailabilityTableBody');
-                    const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
-                    const currentUser = localStorage.getItem('currentUser');
-
-                    if (!currentUser) return;
-
-                    const myAvailabilities = availabilities.filter(a => a.instructorName === currentUser);
-
-                    if (myAvailabilities.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="3" class="text-center">No availabilities set</td></tr>';
-                        return;
+                // Debug logging utility
+                const debug = {
+                    log: (message, data = null) => {
+                        const timestamp = new Date().toISOString();
+                        console.log(`[${timestamp}] ${message}`, data || '');
+                    },
+                    error: (message, error = null) => {
+                        const timestamp = new Date().toISOString();
+                        console.error(`[${timestamp}] ERROR: ${message}`, error || '');
                     }
+                };
 
-                    tableBody.innerHTML = myAvailabilities
-                        .sort((a, b) => new Date(a.date) - new Date(b.date))
-                        .map(availability => `
-                            <tr>
-                                <td>${formatDate(availability.date)}</td>
-                                <td><span class="status status-${availability.status.toLowerCase()}">${availability.status}</span></td>
-                                <td>
-                                    <button class="btn btn-danger" onclick="deleteInstructorAvailability('${availability.instructorName}', '${availability.date}')">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('');
-                }
-
-                function deleteInstructorAvailability(instructorName, date) {
-                    const availabilities = JSON.parse(localStorage.getItem('instructorAvailabilities') || '[]');
-                    const updatedAvailabilities = availabilities.filter(a => 
-                        !(a.instructorName === instructorName && a.date === date)
-                    );
-                    localStorage.setItem('instructorAvailabilities', JSON.stringify(updatedAvailabilities));
-                    updateInstructorAvailabilityTable();
-                }
-
-                // Add this to your existing DOMContentLoaded event listener
+                // Initialize portal
                 document.addEventListener('DOMContentLoaded', function() {
-                    updateInstructorAvailabilityTable();
+                    debug.log('=== Starting Instructor Portal Initialization ===');
+                    debug.log('DOM Content Loaded, checking session...');
+                    
+                    // Check if we're already logged in
+                    const currentUser = auth.getCurrentUser();
+                    debug.log('Current user from auth:', currentUser);
+                    
+                    if (currentUser && currentUser.role === 'instructor') {
+                        debug.log('Instructor already logged in, showing main UI');
+                        showSection('classes');
+                        updateNavButtons();
+                        updateMyCoursesTable();
+                    } else {
+                        debug.log('No valid instructor session, showing login section');
+                        showSection('login');
+                    }
                 });
+
+                // Show section function
+                function showSection(sectionId) {
+                    debug.log('Showing section:', sectionId);
+                    // Hide all sections
+                    document.querySelectorAll('.section').forEach(section => {
+                        section.style.display = 'none';
+                    });
+                    
+                    // Show the requested section
+                    const section = document.getElementById(sectionId);
+                    if (section) {
+                        section.style.display = 'block';
+                        debug.log('Section shown:', sectionId);
+                    } else {
+                        debug.error('Section not found:', sectionId);
+                    }
+                }
+
+                // Update navigation buttons
+                function updateNavButtons() {
+                    debug.log('Updating navigation buttons');
+                    const currentUser = auth.getCurrentUser();
+                    const isLoggedIn = currentUser && currentUser.role === 'instructor';
+                    
+                    // Update button states
+                    document.querySelectorAll('.left-nav button').forEach(button => {
+                        if (button.id === 'loginBtn') {
+                            button.style.display = isLoggedIn ? 'none' : 'flex';
+                        } else {
+                            button.style.display = isLoggedIn ? 'flex' : 'none';
+                        }
+                    });
+                    
+                    debug.log('Navigation buttons updated, logged in:', isLoggedIn);
+                }
+
+                // Login/Logout handling
+                async function handleLogin(event) {
+                    event.preventDefault();
+                    debug.log('=== Starting handleLogin ===');
+                    
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    debug.log('Login attempt details:', { username, hasPassword: !!password });
+                    
+                    try {
+                        debug.log('Calling auth.login...');
+                        const result = await auth.login(username, password);
+                        debug.log('Login result:', result);
+                        
+                        if (result.success && result.user.role === 'instructor') {
+                            debug.log('Login successful, updating UI...');
+                            debug.log('Setting current user:', result.user);
+                            
+                            // Store session data
+                            localStorage.setItem('currentUser', JSON.stringify(result.user));
+                            localStorage.setItem('authToken', result.token);
+                            debug.log('Session data stored in localStorage');
+                            
+                            // Update UI
+                            showSection('classes');
+                            debug.log('Classes section shown');
+                            updateNavButtons();
+                            debug.log('Nav buttons updated');
+                            showNotification('Login successful', 'success');
+                            debug.log('Success notification shown');
+                            
+                            // Verify session was stored correctly
+                            const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+                            const storedToken = localStorage.getItem('authToken');
+                            debug.log('Session verification:', {
+                                storedUser,
+                                storedToken,
+                                matchesLogin: storedUser?.id === result.user.id
+                            });
+                        } else {
+                            debug.log('Login failed:', result.message);
+                            showNotification(result.message || 'Login failed', 'error');
+                        }
+                    } catch (error) {
+                        debug.error('Login error:', error);
+                        showNotification('Error during login', 'error');
+                    }
+                    debug.log('=== Login Process Completed ===');
+                }
+
+                async function handleLogout() {
+                    debug.log('=== Starting handleLogout ===');
+                    debug.log('Current localStorage state before logout:', {
+                        currentUser: localStorage.getItem('currentUser'),
+                        authToken: localStorage.getItem('authToken'),
+                        allKeys: Object.keys(localStorage)
+                    });
+                    
+                    await auth.logout();
+                    debug.log('Auth.logout completed');
+                    
+                    debug.log('Session data cleared. Current localStorage state:', {
+                        currentUser: localStorage.getItem('currentUser'),
+                        authToken: localStorage.getItem('authToken'),
+                        allKeys: Object.keys(localStorage)
+                    });
+                    
+                    // Reset UI
+                    showWelcomeBanner('Welcome!');
+                    showSection('login');
+                    updateNavButtons();
+                    resetCalendar();
+                    
+                    // Clear any form data
+                    document.getElementById('username').value = '';
+                    
+                    showNotification('Logged out successfully', 'success');
+                    debug.log('=== Logout Process Completed Successfully ===');
+                }
+
+                // Make functions available globally
+                window.handleLogin = handleLogin;
+                window.handleLogout = handleLogout;
+                window.showSection = showSection;
+                window.updateNavButtons = updateNavButtons;
+
+                // Add periodic session check
+                setInterval(() => {
+                    debug.log('=== Periodic Session Check ===');
+                    const currentUser = auth.getCurrentUser();
+                    if (!currentUser || currentUser.role !== 'instructor') {
+                        debug.log('No valid instructor session found, showing login section');
+                        showSection('login');
+                        updateNavButtons();
+                    }
+                }, 5000);
+
+                // ... existing code ...
             </script>
         </main>
     </div>
@@ -1236,29 +1343,26 @@
         // Session management
         function checkSession() {
             console.log('=== Starting checkSession ===');
-            const instructor = JSON.parse(localStorage.getItem('currentInstructor'));
-            console.log('Current instructor from localStorage:', instructor);
-            
-            // Remove active class from all nav buttons
-            document.querySelectorAll('.left-nav button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            if (instructor) {
-                console.log('Instructor found, showing welcome banner and classes');
-                showWelcomeBanner(instructor.name);
+            const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
+            const authToken = localStorage.getItem('auth_token');
+            console.log('Current instructor from localStorage:', currentInstructor);
+            console.log('Auth token:', authToken);
+            console.log('All localStorage keys:', Object.keys(localStorage));
+
+            if (currentInstructor && authToken) {
+                console.log('Instructor found and authenticated, showing welcome banner and classes');
+                showWelcomeBanner(currentInstructor.name);
                 showSection('classes');
+                updateNavButtons();
+                updateMyCoursesTable();
             } else {
-                console.log('No instructor found, showing login section');
-                // Only highlight the login button
-                const loginBtn = document.getElementById('loginBtn');
-                if (loginBtn) {
-                    loginBtn.classList.add('active');
-                }
+                console.log('No valid session found, showing login section');
+                console.log('Clearing partial session data...');
+                // Clear any partial session data
+                localStorage.removeItem('currentInstructor');
+                localStorage.removeItem('auth_token');
                 showSection('login');
             }
-            console.log('Updating nav buttons');
-            updateNavButtons();
             console.log('=== End checkSession ===');
         }
 
@@ -1269,67 +1373,81 @@
         // Login/Logout handling
         function handleLogin(event) {
             event.preventDefault();
-            try {
-                console.log('=== Starting handleLogin ===');
-                const instructorName = document.getElementById('username')?.value.trim();
-                console.log('Login attempt for instructor:', instructorName);
-                
-                if (!instructorName) {
-                    console.warn('No instructor name provided');
-                    showNotification('Please enter your name', 'error');
-                    return;
-                }
+            console.log('=== Starting handleLogin ===');
             
-                let instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-                console.log('Current instructors in system:', instructors);
+            const username = document.getElementById('username').value;
+            console.log('Login attempt for instructor:', username);
             
-                let instructor = instructors.find(inst => inst.name === instructorName);
-                console.log('Found matching instructor:', instructor);
-
-                if (!instructor) {
-                    console.log('Creating new instructor');
-                    instructor = {
-                        id: 'inst_' + Date.now(),
-                        name: instructorName,
-                        availability: []
-                    };
-                    instructors.push(instructor);
-                    localStorage.setItem('instructors', JSON.stringify(instructors));
-                    console.log('New instructor created:', instructor);
-                }
-                
-                localStorage.setItem('currentInstructor', JSON.stringify(instructor));
-                console.log('Current instructor set in localStorage:', instructor);
-                
-                // Reset calendar before loading new instructor's availability
-                resetCalendar();
-                
-                // Load the instructor's availability into the calendar
-                if (instructor.availability) {
-                    selectedDates = new Set(instructor.availability);
-                    renderCalendar();
-                }
-                
-                showWelcomeBanner(instructor.name);
-                showSection('classes');
-                updateNavButtons();
-
-                console.log('=== Login Process Completed Successfully ===');
-                showNotification('Login successful', 'success');
-            } catch (error) {
-                console.error('Login error:', error);
-                console.error('Error stack:', error.stack);
-                showNotification('Error during login', 'error');
+            // Get existing instructors
+            const instructors = JSON.parse(localStorage.getItem('instructors') || '[]');
+            console.log('Existing instructors:', instructors);
+            
+            // Try to find existing instructor
+            let instructor = instructors.find(i => i.username === username);
+            console.log('Found existing instructor:', instructor);
+            
+            // If instructor doesn't exist, create new one
+            if (!instructor) {
+                console.log('Creating new instructor...');
+                instructor = {
+                    id: 'inst_' + Date.now(),
+                    username: username,
+                    name: username,
+                    role: 'instructor',
+                    permissions: ['manage_courses', 'view_students', 'manage_availability'],
+                    availability: []
+                };
+                instructors.push(instructor);
+                localStorage.setItem('instructors', JSON.stringify(instructors));
+                console.log('New instructor created:', instructor);
             }
+            
+            // Store in localStorage
+            localStorage.setItem('currentInstructor', JSON.stringify(instructor));
+            console.log('Current instructor stored in localStorage:', JSON.parse(localStorage.getItem('currentInstructor')));
+            
+            // Set auth token
+            const token = 'token_' + Date.now();
+            localStorage.setItem('auth_token', token);
+            console.log('Auth token stored:', token);
+            
+            // Update UI
+            console.log('Updating UI after successful login...');
+            showSection('classes');
+            updateNavButtons();
+            showNotification('Login successful', 'success');
+            console.log('=== Login Process Completed Successfully ===');
         }
 
         function handleLogout() {
+            console.log('=== Starting handleLogout ===');
+            console.log('Current localStorage state before logout:', {
+                currentInstructor: localStorage.getItem('currentInstructor'),
+                authToken: localStorage.getItem('auth_token'),
+                allKeys: Object.keys(localStorage)
+            });
+            
+            // Clear all session data
             localStorage.removeItem('currentInstructor');
+            localStorage.removeItem('auth_token');
+            
+            console.log('Session data cleared. Current localStorage state:', {
+                currentInstructor: localStorage.getItem('currentInstructor'),
+                authToken: localStorage.getItem('auth_token'),
+                allKeys: Object.keys(localStorage)
+            });
+            
+            // Reset UI
             showWelcomeBanner('Welcome!');
             showSection('login');
-            updateNavButtons();  // Update nav buttons after logout
-            resetCalendar();     // Reset calendar state
+            updateNavButtons();
+            resetCalendar();
+            
+            // Clear any form data
+            document.getElementById('username').value = '';
+            
             showNotification('Logged out successfully', 'success');
+            console.log('=== Logout Process Completed Successfully ===');
         }
 
         // Reset calendar state
@@ -1392,6 +1510,13 @@
         // Calendar functionality
         let currentYear, currentMonth;
         let selectedDates = new Set();
+
+        // Initialize page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded - Initializing page');
+            checkSession();
+            initializeCalendar();
+        });
 
         function initializeCalendar() {
             const now = new Date();
@@ -2857,103 +2982,130 @@
         }
 
         function updateMyCoursesTable() {
+            console.log('=== Starting updateMyCoursesTable ===');
             try {
                 const courses = JSON.parse(localStorage.getItem('courses') || '[]');
                 const currentInstructor = JSON.parse(localStorage.getItem('currentInstructor'));
                 
                 if (!currentInstructor) {
-                    showNotification('Please log in first', 'error');
+                    console.error('No instructor logged in');
                     return;
                 }
 
-                const tableBody = document.getElementById('coursesTableBody');
-                if (!tableBody) return;
+                const tableBody = document.getElementById('classesTableBody');
+                if (!tableBody) {
+                    console.error('classesTableBody not found');
+                    return;
+                }
 
                 // Get instructor's confirmed courses
                 const instructorCourses = courses.filter(course => 
-                    course.instructorId === currentInstructor.id && 
-                    course.adminConfirmed
+                    course.instructorId === currentInstructor.id
                 );
 
-                // Get instructor's availability dates
+                // Get all available dates from instructor's availability
                 const availableDates = currentInstructor.availability || [];
-                console.log('Available dates:', availableDates);
-
-                // Convert availability dates to course-like objects
-                const availabilityRows = availableDates.map(date => ({
-                    id: 'avail_' + date,
-                    courseDate: date,
-                    status: 'AVAILABLE',
-                    isAvailability: true
-                }));
-
-                // Combine confirmed courses and availability dates
-                const allRows = [
-                    ...instructorCourses,
-                    ...availabilityRows.filter(avail => 
-                        // Only show availability dates that don't have a course assigned
-                        !instructorCourses.some(course => 
-                            (course.courseDate === avail.courseDate || course.date === avail.courseDate)
-                        )
-                    )
-                ];
-
-                // Sort by date
-                allRows.sort((a, b) => new Date(a.courseDate || a.date) - new Date(b.courseDate || b.date));
-
-                if (allRows.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="9" class="text-center">No courses or availability dates found</td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                tableBody.innerHTML = allRows.map(row => {
-                    if (row.isAvailability) {
-                        return `
-                            <tr>
-                                <td>-</td>
-                                <td>${formatDate(row.courseDate)}</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>
-                                    <span class="status status-available">AVAILABLE</span>
-                                </td>
-                                <td>-</td>
-                            </tr>
+                
+                // Create a map of dates that have confirmed courses
+                const confirmedDates = new Set(instructorCourses.map(course => course.date));
+                
+                // Combine confirmed courses with available dates
+                const allRows = [];
+                
+                // Add confirmed courses
+                instructorCourses.forEach(course => {
+                    allRows.push({
+                        date: course.date,
+                        isConfirmed: true,
+                        course: course
+                    });
+                });
+                
+                // Add available dates that don't have confirmed courses
+                availableDates.forEach(date => {
+                    if (!confirmedDates.has(date)) {
+                        allRows.push({
+                            date: date,
+                            isConfirmed: false
+                        });
+                    }
+                });
+                
+                // Sort all rows by date
+                allRows.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                // Clear and populate table
+                tableBody.innerHTML = '';
+                
+                allRows.forEach(row => {
+                    const tr = document.createElement('tr');
+                    if (row.isConfirmed) {
+                        const course = row.course;
+                        tr.innerHTML = `
+                            <td>${course.date}</td>
+                            <td>${course.organizationName || 'Kaizen'}</td>
+                            <td>${course.location || 'Markham'}</td>
+                            <td>${course.classType || 'BLS'}</td>
+                            <td>${course.studentsRegistered || 0}</td>
+                            <td>${course.studentsAttended || 0}</td>
+                            <td>CONFIRMED</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="viewCourseDetails('${course.id}')">
+                                    View Details
+                                </button>
+                            </td>
                         `;
                     } else {
-                        return `
-                            <tr>
-                                <td>${row.id}</td>
-                                <td>${formatDate(row.courseDate || row.date)}</td>
-                                <td>${row.location || '-'}</td>
-                                <td>${row.classType || '-'}</td>
-                                <td>${row.organizationName || '-'}</td>
-                                <td>${row.studentsRegistered || 0}</td>
-                                <td>${row.studentsAttended || 0}</td>
-                                <td>
-                                    <span class="status status-${row.status.toLowerCase()}">${row.status}</span>
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-info" onclick="viewCourseDetails('${row.id}')">View Details</button>
-                                </td>
-                            </tr>
+                        tr.innerHTML = `
+                            <td>${row.date}</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>AVAILABLE</td>
+                            <td>Waiting for assignment</td>
                         `;
                     }
-                }).join('');
-
-                console.log('Updated My Classes table with courses and availability');
+                    tableBody.appendChild(tr);
+                });
+                
+                console.log('Table updated with rows:', allRows.length);
             } catch (error) {
                 console.error('Error updating courses table:', error);
-                showNotification('Error loading courses', 'error');
             }
+            console.log('=== Completed updateMyCoursesTable ===');
         }
+
+        // Add event listener for storage changes
+        window.addEventListener('storage', function(e) {
+            console.log('=== Storage Event Detected ===');
+            console.log('Key:', e.key);
+            console.log('Old value:', e.oldValue);
+            console.log('New value:', e.newValue);
+            
+            if (e.key === 'courses') {
+                console.log('Courses data changed, refreshing instructor portal');
+                updateMyCoursesTable();
+            }
+        });
+
+        // Add event listener for visibility changes
+        document.addEventListener('visibilitychange', function() {
+            console.log('=== Visibility Change Detected ===');
+            console.log('Document hidden:', document.hidden);
+            if (!document.hidden) {
+                console.log('Document visible, refreshing courses table');
+                updateMyCoursesTable();
+            }
+        });
+
+        // Add event listener for focus changes
+        window.addEventListener('focus', function() {
+            console.log('=== Window Focus Detected ===');
+            console.log('Window focused, refreshing courses table');
+            updateMyCoursesTable();
+        });
 
         function updateMyAvailabilityTable() {
             console.log('=== updateMyAvailabilityTable called ===');
@@ -3518,6 +3670,14 @@
                 showNotification('Error viewing student list', 'error');
             }
         }
+
+        // Initialize tables
+        updateMyCoursesTable();
+        updateAnalyticsTable();
+        updateArchivedClassesTable();
+        updateConfirmedCoursesTable();
+        updateCompletedCoursesTable();
+        updateDashboardStats();
     </script>
 </body>
 </html> 

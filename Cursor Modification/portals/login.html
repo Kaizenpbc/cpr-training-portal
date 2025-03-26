@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPR Training System - Login</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--light-blue);
+        }
+
+        .login-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .login-card {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .portal-selector {
+            margin-bottom: 1.5rem;
+        }
+
+        .portal-selector label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .portal-selector select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--light-blue);
+            border-radius: var(--border-radius-sm);
+            font-size: var(--font-size-md);
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-footer {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: var(--font-size-sm);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <h1 style="color: var(--primary-blue); margin-bottom: 1.5rem; text-align: center;">
+                CPR Training System
+            </h1>
+
+            <div class="portal-selector">
+                <label for="portalSelect">Select Portal</label>
+                <select id="portalSelect" onchange="updateLoginForm()">
+                    <option value="sys-admin">System Administration</option>
+                    <option value="course-admin">Course Management</option>
+                    <option value="instructor">Instructor Portal</option>
+                    <option value="organization">Organization Portal</option>
+                    <option value="accounting">Accounting Portal</option>
+                    <option value="support">Support Portal</option>
+                </select>
+            </div>
+
+            <form id="loginForm" class="login-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+
+                <button type="button" class="btn btn-primary" id="loginButton">Login</button>
+            </form>
+
+            <div class="form-footer">
+                <p>Forgot your password? Contact system administrator.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import auth from '../js/core/auth.js';
+        import state from '../js/core/state.js';
+
+        // Portal configurations
+        const portalConfig = {
+            'sys-admin': {
+                role: 'sys_admin',
+                redirect: './sys-admin/index.html'
+            },
+            'course-admin': {
+                role: 'course_admin',
+                redirect: './course-admin/index.html'
+            },
+            'instructor': {
+                role: 'instructor',
+                redirect: './instructor/index.html'
+            },
+            'organization': {
+                role: 'organization',
+                redirect: './organization/index.html'
+            },
+            'accounting': {
+                role: 'accounting',
+                redirect: './accounting/index.html'
+            },
+            'support': {
+                role: 'support',
+                redirect: './support/index.html'
+            }
+        };
+
+        // Handle login form submission
+        async function handleLogin(event) {
+            console.log('Login: Form submission started');
+            
+            // Disable login button to prevent double submission
+            const loginButton = document.getElementById('loginButton');
+            loginButton.disabled = true;
+            loginButton.textContent = 'Logging in...';
+            
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const selectedPortal = document.getElementById('portalSelect').value;
+                
+                console.log('Login: Attempting login with:', { username, selectedPortal });
+                
+                // Initialize test users if needed
+                auth.initializeTestUsers();
+                
+                const result = await auth.login(username, password);
+                console.log('Login: Login result:', result);
+                
+                if (result.success) {
+                    const config = portalConfig[selectedPortal];
+                    console.log('Login: Portal config:', config);
+                    
+                    // Verify role matches portal
+                    if (auth.hasRole(config.role)) {
+                        console.log('Login: Role verified, redirecting to:', config.redirect);
+                        // Set active portal in state
+                        state.setState('activePortal', selectedPortal);
+                        
+                        // Redirect to portal
+                        window.location.href = config.redirect;
+                    } else {
+                        console.log('Login: Role verification failed');
+                        state.addNotification({
+                            type: 'error',
+                            message: 'You do not have permission to access this portal'
+                        });
+                    }
+                } else {
+                    console.log('Login: Login failed:', result.message);
+                    state.addNotification({
+                        type: 'error',
+                        message: result.message || 'Login failed'
+                    });
+                }
+            } catch (error) {
+                console.error('Login: Error during login:', error);
+                state.addNotification({
+                    type: 'error',
+                    message: 'An error occurred during login'
+                });
+            } finally {
+                // Re-enable login button
+                loginButton.disabled = false;
+                loginButton.textContent = 'Login';
+            }
+        }
+
+        // Update form based on selected portal
+        window.updateLoginForm = () => {
+            const selectedPortal = document.getElementById('portalSelect').value;
+            const usernameInput = document.getElementById('username');
+            
+            // Update placeholder text based on portal
+            switch (selectedPortal) {
+                case 'sys-admin':
+                    usernameInput.placeholder = 'System Admin Username';
+                    break;
+                case 'course-admin':
+                    usernameInput.placeholder = 'Course Admin Username';
+                    break;
+                case 'instructor':
+                    usernameInput.placeholder = 'Instructor ID';
+                    break;
+                case 'organization':
+                    usernameInput.placeholder = 'Organization ID';
+                    break;
+                case 'accounting':
+                    usernameInput.placeholder = 'Accounting Username';
+                    break;
+                case 'support':
+                    usernameInput.placeholder = 'Support Staff ID';
+                    break;
+            }
+        };
+
+        // Initialize form
+        window.addEventListener('load', () => {
+            console.log('Login: Initializing login form...');
+            
+            // Clear any existing auth state
+            console.log('Login: Clearing existing auth state...');
+            auth.logout();
+            
+            // Initialize test users
+            console.log('Login: Initializing test users...');
+            auth.initializeTestUsers();
+            
+            // Initialize form
+            console.log('Login: Updating form for selected portal...');
+            updateLoginForm();
+            
+            // Log test users
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            console.log('Login: Available test users:', users);
+            
+            // Log portal configuration
+            console.log('Login: Portal configuration:', portalConfig);
+
+            // Add click event listener to login button
+            const loginButton = document.getElementById('loginButton');
+            if (loginButton) {
+                console.log('Login: Adding click event listener to login button');
+                loginButton.addEventListener('click', handleLogin);
+            } else {
+                console.error('Login: Login button not found!');
+            }
+        });
+    </script>
+</body>
+</html> 
